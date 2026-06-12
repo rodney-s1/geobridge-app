@@ -21,6 +21,10 @@ release/
 *.sqlite
 *.sqlite3
 
+# GeoBridge persisted user data — machine-local, do not commit
+backend/geotab/qb_customers.json
+backend/geotab/billing_overrides.json
+
 # macOS
 .DS_Store
 

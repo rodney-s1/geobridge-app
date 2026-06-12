@@ -3,19 +3,50 @@ from pydantic import BaseModel
 from typing import Optional
 import csv
 import io
+import json
+import os
 from .auth import myadmin_call, session_store
 
 router = APIRouter()
 
-# ─── In-memory stores (replace with SQLite later) ─────────────────────────────
+# ─── CELU01 is the only MyAdmin account we pull device contracts for ──────────
+MYADMIN_ACCOUNT = "CELU01"
+
+# ─── Disk persistence paths ───────────────────────────────────────────────────
+# Store QB data right next to this file (backend/geotab/) so it survives
+# backend restarts without any database setup.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+QB_DATA_FILE       = os.path.join(_HERE, "qb_customers.json")
+OVERRIDES_FILE     = os.path.join(_HERE, "billing_overrides.json")
+
+def _load_json(path: str, default):
+    """Load JSON from disk; return default if missing or corrupt."""
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return default
+
+def _save_json(path: str, data) -> None:
+    """Atomically write JSON to disk."""
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    os.replace(tmp, path)  # atomic on all platforms
+
+# ─── In-memory stores — pre-loaded from disk on import ───────────────────────
 # billing_overrides: { customer_id -> billing_type }
-billing_overrides: dict[str, str] = {}
+billing_overrides: dict[str, str] = _load_json(OVERRIDES_FILE, {})
 
 # qb_customers: { normalized_name -> { accountNo, billingType, terms, balance, ... } }
-qb_customers: dict[str, dict] = {}
+qb_customers: dict[str, dict] = _load_json(QB_DATA_FILE, {})
 
-# qb_items: list of item/price records
+# qb_items: list of item/price records (not yet persisted — extend later if needed)
 qb_items: list[dict] = []
+
+_qb_loaded = bool(qb_customers)
+print(f"[customers] QB data: {len(qb_customers)} customers loaded from disk"
+      if _qb_loaded else "[customers] QB data: no saved file found — import a CSV to populate")
 
 # ─── Billing type map from QB Job Type field ───────────────────────────────────
 QB_JOB_TYPE_MAP = {
@@ -95,21 +126,22 @@ async def get_customers(
         raise HTTPException(status_code=401, detail="Not logged in")
 
     try:
-        # ── Fetch ALL device contracts for the account (paginated 1000 at a time)
-        # Use 120 s timeout per page call — large accounts (CELU01) can have
-        # 5 000+ contracts across 3+ pages, each page taking 10-30 s to return.
+        # ── Fetch ALL device contracts for CELU01 (paginated 1000 at a time)
+        # CELU01 is the only account we need; using the constant avoids any
+        # dependency on the user having selected an account from the picker.
+        # Use 120 s timeout per page — CELU01 has 2000+ customers / 5000+ contracts.
         all_contracts = []
         next_id = 0
         page_num = 0
         while True:
             page_num += 1
-            print(f"DEBUG: Fetching contracts page {page_num} (nextId={next_id})…")
+            print(f"DEBUG: Fetching contracts page {page_num} (nextId={next_id}, account={MYADMIN_ACCOUNT})…")
             result = await myadmin_call(
                 "GetDeviceContractsByPage",
                 {
                     "apiKey":     session_store["user_id"],
                     "sessionId":  session_store["session_id"],
-                    "forAccount": session_store.get("account_id"),
+                    "forAccount": MYADMIN_ACCOUNT,
                     "nextId":     next_id,
                 },
                 timeout=120.0,
@@ -292,6 +324,10 @@ async def import_qb_customers(file: UploadFile = File(...)):
         }
         imported += 1
 
+    # ── Persist to disk so the data survives backend restarts ──────────────
+    _save_json(QB_DATA_FILE, qb_customers)
+    print(f"[import-qb] Saved {len(qb_customers)} QB customers to {QB_DATA_FILE}")
+
     return {
         "success": True,
         "message": f"{imported} customers imported, {skipped} skipped",
@@ -378,6 +414,7 @@ async def set_billing_type(account_id: str, body: BillingTypeUpdate):
         raise HTTPException(status_code=400, detail=f"Invalid billing type: {body.billing_type}")
 
     billing_overrides[account_id] = body.billing_type
+    _save_json(OVERRIDES_FILE, billing_overrides)
     return {"success": True, "customerId": account_id, "billingType": body.billing_type}
 
 
