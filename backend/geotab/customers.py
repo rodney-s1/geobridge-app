@@ -47,44 +47,33 @@ def map_billing_type(job_type: str) -> str:
     return "Unknown"
 
 def enrich_customer(customer: dict) -> dict:
-    """Merge MyAdmin database record with QB data and billing overrides."""
+    """Merge MyAdmin device contract record with QB data and billing overrides."""
     db_name = customer.get("databaseName") or ""
     cid = str(customer.get("accountId") or customer.get("id") or db_name)
 
-    # Try to find a human-readable name from QB data by matching database name
-    # Database names are like "ae_workplace_services" -> "AE Workplace Services"
-    readable_name = (
-        customer.get("customerName") or
-        customer.get("name") or
-        customer.get("companyName") or
-        db_name.replace("_", " ").title()
-    )
+    # customerName comes directly from MyAdmin device contracts
+    customer_name = customer.get("customerName") or customer.get("companyName") or ""
 
-    # Look up QB data by normalized name (try both readable and raw db name)
-    qb = (
-        qb_customers.get(normalize(readable_name)) or
-        qb_customers.get(normalize(db_name)) or
-        {}
-    )
+    # Look up QB data by normalized name (exact match preferred)
+    qb = qb_customers.get(normalize(customer_name)) or {}
 
-    # If QB match found, use QB's proper name
-    if qb.get("name"):
-        readable_name = qb["name"]
+    # If QB match found, use QB's proper name (most accurate)
+    display_name = qb.get("name") or customer_name or db_name.replace("_", " ").title()
 
     # Determine billing type: override > QB job type > Unknown
     billing_type = (
         billing_overrides.get(cid)
         or qb.get("billingType")
-        or map_billing_type(customer.get("jobType") or customer.get("customerType") or "")
+        or "Unknown"
     )
 
     return {
         "id":              cid,
-        "name":            readable_name,
-        "accountNo":       qb.get("accountNo") or customer.get("accountNo") or "",
+        "name":            display_name,
+        "accountNo":       qb.get("accountNo") or "",
         "billingType":     billing_type,
         "primaryDatabase": db_name,
-        "deviceCount":     customer.get("deviceCount") or customer.get("numberOfDevices") or 0,
+        "deviceCount":     customer.get("activeDevices") or 0,
         "terms":           qb.get("terms") or "",
         "balance":         float(qb.get("balance") or 0),
         "hasQbData":       bool(qb),
@@ -94,7 +83,7 @@ def enrich_customer(customer: dict) -> dict:
     }
 
 
-# ─── GET /api/customers  (paginated, search, billing filter) ──────────────────
+# ─── GET /api/customers  (search, billing filter) ────────────────────────────
 @router.get("/customers")
 async def get_customers(
     page: int = Query(1, ge=1),
@@ -106,36 +95,57 @@ async def get_customers(
         raise HTTPException(status_code=401, detail="Not logged in")
 
     try:
-        # Fetch one page from MyAdmin
-        # DEBUG - show exactly what's in session_store
-        print("DEBUG session_store at sync:", {
-            "user_id": session_store.get("user_id"),
-            "session_id": session_store.get("session_id"),
-            "account_id": session_store.get("account_id"),
-        })
+        # ── Fetch ALL device contracts for the account (paginated 1000 at a time)
+        all_contracts = []
+        next_id = 0
+        while True:
+            result = await myadmin_call("GetDeviceContractsByPage", {
+                "apiKey":     session_store["user_id"],
+                "sessionId":  session_store["session_id"],
+                "forAccount": session_store.get("account_id"),
+                "nextId":     next_id,
+            })
+            batch = result.get("result") or []
+            if not batch:
+                break
+            all_contracts.extend(batch)
+            if len(batch) < 1000:
+                break
+            next_id = batch[-1].get("id", 0)
 
-        # Use GetOwnDatabases — returns list of customer databases for the account
-        # (GetCustomersAsync requires CONTACT-VIEW role which this account doesn't have)
-        result = await myadmin_call("GetOwnDatabases", {
-            "apiKey":      session_store["user_id"],
-            "sessionId":   session_store["session_id"],
-            "forAccount":  session_store.get("account_id"),
-        })
+        # ── Group contracts by databaseName, collect active device counts
+        from collections import defaultdict
+        db_map: dict[str, dict] = {}
 
-        # DEBUG - print full MyAdmin response to backend console
-        import json
-        print("DEBUG MyAdmin response:", json.dumps(result, indent=2)[:2000])
+        for c in all_contracts:
+            db_name = c.get("databaseName") or c.get("database") or ""
+            if not db_name:
+                continue
+            terminated = c.get("isTerminated") or c.get("terminated") or False
 
-        raw = result.get("result") or []
+            if db_name not in db_map:
+                db_map[db_name] = {
+                    "databaseName":  db_name,
+                    "customerName":  c.get("customerName") or c.get("companyName") or "",
+                    "accountId":     (c.get("account") or {}).get("number") or session_store.get("account_id") or "",
+                    "activeDevices": 0,
+                    "totalDevices":  0,
+                }
+            # Use the first non-empty customer name we find
+            if not db_map[db_name]["customerName"]:
+                db_map[db_name]["customerName"] = c.get("customerName") or c.get("companyName") or ""
 
-        # GetOwnDatabases returns a flat list of database name strings
-        # Convert each to a dict so enrich_customer can process it
-        if raw and isinstance(raw[0], str):
-            raw = [{"databaseName": db} for db in raw]
+            db_map[db_name]["totalDevices"] += 1
+            if not terminated:
+                db_map[db_name]["activeDevices"] += 1
+
+        # ── Filter out customers with ONLY terminated devices
+        raw = [v for v in db_map.values() if v["activeDevices"] > 0]
+        print(f"DEBUG: {len(all_contracts)} contracts → {len(db_map)} databases → {len(raw)} with active devices")
 
         customers = [enrich_customer(c) for c in raw]
 
-        # Apply search filter
+        # ── Apply search filter
         if search:
             s = search.lower()
             customers = [
@@ -145,19 +155,27 @@ async def get_customers(
                 or s in (c["primaryDatabase"] or "").lower()
             ]
 
-        # Apply billing type filter
+        # ── Apply billing type filter
         if billing_type:
             customers = [c for c in customers if c["billingType"] == billing_type]
 
+        # ── Sort by name
+        customers.sort(key=lambda c: c["name"].lower())
+
         return {
             "customers": customers,
-            "page":      page,
-            "pageSize":  page_size,
-            "hasMore":   False,   # GetOwnDatabases returns all at once
+            "page":      1,
+            "pageSize":  len(customers),
+            "hasMore":   False,
             "total":     len(customers),
         }
 
     except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=str(e))
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
