@@ -1,20 +1,44 @@
 {
-  "name": "webapp",
-  "type": "module",
+  "name": "geobridge-app",
+  "version": "1.0.0",
+  "description": "GeoBridge Invoicing Suite - Geotab MyAdmin to QuickBooks Bridge",
+  "main": "electron/main.js",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "wrangler pages dev",
-    "deploy": "npm run build && wrangler pages deploy",
-    "cf-typegen": "wrangler types --env-interface CloudflareBindings"
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"wait-on http://localhost:5173 && electron .\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && python3 -m uvicorn main:app --reload --port 8000",
+    "build:frontend": "cd frontend && npm run build",
+    "build": "npm run build:frontend && electron-builder",
+    "start": "electron ."
   },
-  "dependencies": {
-    "hono": "^4.12.23"
-  },
+  "keywords": [],
+  "author": "GeoBridge",
+  "license": "UNLICENSED",
+  "private": true,
   "devDependencies": {
-    "@hono/vite-build": "^1.2.0",
-    "@hono/vite-dev-server": "^0.25.2",
-    "vite": "^6.3.5",
-    "wrangler": "^4.4.0"
+    "concurrently": "^9.0.1",
+    "electron": "^42.4.0",
+    "electron-builder": "^25.1.8",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.geobridge.invoicing",
+    "productName": "GeoBridge",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "frontend/dist/**/*",
+      "backend/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.business",
+      "target": "dmg"
+    },
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    }
   }
 }
