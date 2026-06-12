@@ -48,21 +48,28 @@ def map_billing_type(job_type: str) -> str:
 
 def enrich_customer(customer: dict) -> dict:
     """Merge MyAdmin database record with QB data and billing overrides."""
-    # GetOwnDatabases returns: databaseName, accountId, customerName, deviceCount, etc.
-    cid = str(
-        customer.get("accountId") or
-        customer.get("id") or
-        customer.get("databaseName") or ""
-    )
-    cname = (
+    db_name = customer.get("databaseName") or ""
+    cid = str(customer.get("accountId") or customer.get("id") or db_name)
+
+    # Try to find a human-readable name from QB data by matching database name
+    # Database names are like "ae_workplace_services" -> "AE Workplace Services"
+    readable_name = (
         customer.get("customerName") or
         customer.get("name") or
         customer.get("companyName") or
-        customer.get("databaseName") or ""
+        db_name.replace("_", " ").title()
     )
 
-    # Look up QB data by normalized name
-    qb = qb_customers.get(normalize(cname)) or {}
+    # Look up QB data by normalized name (try both readable and raw db name)
+    qb = (
+        qb_customers.get(normalize(readable_name)) or
+        qb_customers.get(normalize(db_name)) or
+        {}
+    )
+
+    # If QB match found, use QB's proper name
+    if qb.get("name"):
+        readable_name = qb["name"]
 
     # Determine billing type: override > QB job type > Unknown
     billing_type = (
@@ -73,10 +80,10 @@ def enrich_customer(customer: dict) -> dict:
 
     return {
         "id":              cid,
-        "name":            cname,
+        "name":            readable_name,
         "accountNo":       qb.get("accountNo") or customer.get("accountNo") or "",
         "billingType":     billing_type,
-        "primaryDatabase": customer.get("databaseName") or customer.get("primaryDatabase") or "",
+        "primaryDatabase": db_name,
         "deviceCount":     customer.get("deviceCount") or customer.get("numberOfDevices") or 0,
         "terms":           qb.get("terms") or "",
         "balance":         float(qb.get("balance") or 0),
@@ -120,6 +127,12 @@ async def get_customers(
         print("DEBUG MyAdmin response:", json.dumps(result, indent=2)[:2000])
 
         raw = result.get("result") or []
+
+        # GetOwnDatabases returns a flat list of database name strings
+        # Convert each to a dict so enrich_customer can process it
+        if raw and isinstance(raw[0], str):
+            raw = [{"databaseName": db} for db in raw]
+
         customers = [enrich_customer(c) for c in raw]
 
         # Apply search filter
