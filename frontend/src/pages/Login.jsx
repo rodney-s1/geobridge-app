@@ -73,7 +73,7 @@ function Login({ onLoginSuccess }) {
           {/* Error Message */}
           {error && (
             <div style={styles.error}>
-              ⚠️ {error}
+              {error}
             </div>
           )}
 

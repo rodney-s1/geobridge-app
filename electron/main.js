@@ -13,12 +13,8 @@ function startPythonBackend() {
   ? path.join(__dirname, '../.venv/Scripts/python.exe')
   : 'python3'
 
-  backendProcess = spawn(pythonCmd, [
-    '-m', 'uvicorn', 'main:app',
-    '--host', '127.0.0.1',
-    '--port', '8000',
-    '--reload'
-  ], {
+  const runScript = path.join(backendPath, 'run_backend.py')
+  backendProcess = spawn(pythonCmd, [runScript], {
     cwd: backendPath,
     env: { ...process.env }
   })
