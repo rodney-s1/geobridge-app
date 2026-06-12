@@ -90,8 +90,10 @@ async def get_customers(
 
     try:
         # Fetch one page from MyAdmin
+        # apiKey for GetCustomersAsync must be the accountId, not userId
+        account_id = session_store.get("account_id") or session_store.get("user_id")
         result = await myadmin_call("GetCustomersAsync", {
-            "apiKey":    session_store["user_id"],
+            "apiKey":    account_id,
             "sessionId": session_store["session_id"],
             "page":      page - 1,   # MyAdmin is 0-indexed
         })

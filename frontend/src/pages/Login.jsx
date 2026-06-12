@@ -1,10 +1,18 @@
 import { useState } from 'react'
 
+const API = 'http://127.0.0.1:8001'
+
 function Login({ onLoginSuccess }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Account selection step
+  const [accounts, setAccounts] = useState([])
+  const [selectedAccount, setSelectedAccount] = useState('')
+  const [sessionData, setSessionData] = useState(null)
+  const [selectingAccount, setSelectingAccount] = useState(false)
 
   const handleLogin = async (e) => {
     e.preventDefault()
@@ -12,7 +20,7 @@ function Login({ onLoginSuccess }) {
     setError('')
 
     try {
-      const response = await fetch('http://127.0.0.1:8001/api/geotab/login', {
+      const response = await fetch(`${API}/api/geotab/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })
@@ -21,7 +29,19 @@ function Login({ onLoginSuccess }) {
       const data = await response.json()
 
       if (response.ok && data.success) {
-        onLoginSuccess(data)
+        const accts = data.accounts || []
+        if (accts.length === 1) {
+          // Only one account — auto-select it
+          await selectAccount(accts[0].accountId, data)
+        } else if (accts.length > 1) {
+          // Multiple accounts — show picker
+          setAccounts(accts)
+          setSelectedAccount(accts[0].accountId)
+          setSessionData(data)
+        } else {
+          // No accounts returned — proceed anyway
+          onLoginSuccess(data)
+        }
       } else {
         setError(data.detail || 'Invalid username or password')
       }
@@ -32,18 +52,94 @@ function Login({ onLoginSuccess }) {
     }
   }
 
+  const selectAccount = async (accountId, sessData) => {
+    setSelectingAccount(true)
+    setError('')
+    try {
+      const res = await fetch(`${API}/api/geotab/select-account`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ account_id: accountId })
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        onLoginSuccess({ ...(sessData || sessionData), account_id: accountId })
+      } else {
+        setError(data.detail || 'Failed to select account')
+      }
+    } catch (err) {
+      setError('Cannot connect to backend. Please try again.')
+    } finally {
+      setSelectingAccount(false)
+    }
+  }
+
+  const handleSelectAccount = (e) => {
+    e.preventDefault()
+    selectAccount(selectedAccount, sessionData)
+  }
+
+  // ── Account picker screen ─────────────────────────────────
+  if (accounts.length > 1 && sessionData) {
+    return (
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <div style={styles.header}>
+            <div style={styles.logo}>GB</div>
+            <h1 style={styles.title}>GeoBridge</h1>
+            <p style={styles.subtitle}>Select Account</p>
+          </div>
+
+          <form onSubmit={handleSelectAccount} style={styles.form}>
+            <div style={styles.field}>
+              <label style={styles.label}>MyAdmin Account</label>
+              <select
+                value={selectedAccount}
+                onChange={e => setSelectedAccount(e.target.value)}
+                style={styles.input}
+              >
+                {accounts.map(a => (
+                  <option key={a.accountId} value={a.accountId}>
+                    {a.accountId}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {error && <div style={styles.error}>{error}</div>}
+
+            <button
+              type="submit"
+              style={selectingAccount ? styles.buttonLoading : styles.button}
+              disabled={selectingAccount}
+            >
+              {selectingAccount ? 'Connecting...' : 'Continue'}
+            </button>
+
+            <button
+              type="button"
+              style={styles.backButton}
+              onClick={() => { setAccounts([]); setSessionData(null) }}
+            >
+              Back to Login
+            </button>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
+  // ── Login screen ──────────────────────────────────────────
   return (
     <div style={styles.container}>
       <div style={styles.card}>
 
-        {/* Logo / Title */}
         <div style={styles.header}>
           <div style={styles.logo}>GB</div>
           <h1 style={styles.title}>GeoBridge</h1>
           <p style={styles.subtitle}>Invoicing Suite</p>
         </div>
 
-        {/* Login Form */}
         <form onSubmit={handleLogin} style={styles.form}>
 
           <div style={styles.field}>
@@ -70,14 +166,8 @@ function Login({ onLoginSuccess }) {
             />
           </div>
 
-          {/* Error Message */}
-          {error && (
-            <div style={styles.error}>
-              {error}
-            </div>
-          )}
+          {error && <div style={styles.error}>{error}</div>}
 
-          {/* Submit Button */}
           <button
             type="submit"
             style={loading ? styles.buttonLoading : styles.button}
@@ -194,6 +284,15 @@ const styles = {
     fontWeight: '600',
     cursor: 'not-allowed',
     marginTop: '8px',
+  },
+  backButton: {
+    padding: '10px',
+    borderRadius: '8px',
+    border: '1px solid #334155',
+    background: 'transparent',
+    color: '#64748b',
+    fontSize: '14px',
+    cursor: 'pointer',
   },
   footer: {
     textAlign: 'center',
