@@ -294,7 +294,11 @@ export default function Customers() {
         billing_type: billingFilter,
       })
       const res = await fetch(`${API}/api/customers?${params}`)
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      if (res.status === 401) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error('not_logged_in:' + (body.detail || 'Not logged in'))
+      }
+      if (!res.ok) throw new Error(`Server error (HTTP ${res.status})`)
       const data = await res.json()
       setCustomers(prev => reset ? data.customers : [...prev, ...data.customers])
       setHasMore(data.hasMore)
@@ -340,14 +344,18 @@ export default function Customers() {
         method: 'POST',
         body: form,
       })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.detail || `Server error (HTTP ${res.status})`)
+      }
       const data = await res.json()
-      setImportMsg(`Imported: ${data.message}`)
+      setImportMsg(`✓ ${data.message}`)
       // Refresh customer list and summary
       fetchCustomers(1, true)
       const sum = await fetch(`${API}/api/customers/qb-data/summary`)
       if (sum.ok) setQbSummary(await sum.json())
     } catch (e) {
-      setImportMsg(`Import failed: ${e.message}`)
+      setImportMsg(`✗ Import failed: ${e.message}`)
     } finally {
       setImportingQb(false)
       e.target.value = ''
@@ -409,7 +417,11 @@ export default function Customers() {
 
       {/* Import message */}
       {importMsg && (
-        <div className="mb-4 p-3 bg-slate-800 border border-slate-700 rounded-lg text-sm text-slate-300">
+        <div className={`mb-4 p-3 rounded-lg text-sm border ${
+          importMsg.startsWith('✓')
+            ? 'bg-green-900/20 border-green-500/20 text-green-300'
+            : 'bg-red-900/20 border-red-500/20 text-red-300'
+        }`}>
           {importMsg}
         </div>
       )}
@@ -457,14 +469,36 @@ export default function Customers() {
 
       {/* Error state */}
       {error && (
-        <div className="mb-4 p-4 bg-red-900/30 border border-red-500/30 rounded-lg text-red-300 text-sm">
-          <strong>Error loading customers:</strong> {error}
-          <button
-            onClick={() => fetchCustomers(1, true)}
-            className="ml-3 underline hover:no-underline"
-          >
-            Retry
-          </button>
+        <div className={`mb-4 p-4 rounded-lg text-sm flex items-start gap-3 ${
+          error.startsWith('not_logged_in:')
+            ? 'bg-yellow-900/30 border border-yellow-500/30 text-yellow-300'
+            : 'bg-red-900/30 border border-red-500/30 text-red-300'
+        }`}>
+          <svg className="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+              d={error.startsWith('not_logged_in:')
+                ? "M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+                : "M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"} />
+          </svg>
+          <div>
+            {error.startsWith('not_logged_in:') ? (
+              <>
+                <strong>Not connected to MyAdmin.</strong>
+                <span className="ml-1">Please log in with your Geotab MyAdmin credentials to sync customers.</span>
+              </>
+            ) : (
+              <>
+                <strong>Error loading customers:</strong>
+                <span className="ml-1">{error}</span>
+                <button
+                  onClick={() => fetchCustomers(1, true)}
+                  className="ml-3 underline hover:no-underline"
+                >
+                  Retry
+                </button>
+              </>
+            )}
+          </div>
         </div>
       )}
 
@@ -501,9 +535,11 @@ export default function Customers() {
             {customers.length === 0 && !loading ? (
               <tr>
                 <td colSpan={8} className="text-center py-16 text-slate-500">
-                  {search || billingFilter
-                    ? 'No customers match your filters.'
-                    : 'Click "Sync from MyAdmin" to load customers.'}
+                  {error?.startsWith('not_logged_in:')
+                    ? 'Log in to your Geotab MyAdmin account to load customers.'
+                    : search || billingFilter
+                      ? 'No customers match your filters.'
+                      : 'Click "Sync from MyAdmin" to load customers.'}
                 </td>
               </tr>
             ) : (

@@ -128,6 +128,7 @@ async def get_customers(
 
 
 # ─── GET /api/customers/qb-data/summary ───────────────────────────────────────
+# IMPORTANT: must be defined BEFORE the /{account_id} wildcard route
 @router.get("/customers/qb-data/summary")
 async def get_qb_summary():
     if not qb_customers:
@@ -150,6 +151,7 @@ async def get_qb_summary():
 
 
 # ─── POST /api/customers/import-qb  (CSV upload) ──────────────────────────────
+# IMPORTANT: must be defined BEFORE the /{account_id} wildcard route
 @router.post("/customers/import-qb")
 async def import_qb_customers(file: UploadFile = File(...)):
     global qb_customers
@@ -239,6 +241,9 @@ async def import_qb_customers(file: UploadFile = File(...)):
 
 
 # ─── GET /api/customers/{id}  (single customer + devices) ────────────────────
+# NOTE: This wildcard route must remain BELOW all fixed-path routes like
+# /customers/import-qb and /customers/qb-data/summary so FastAPI matches
+# those specific paths first.
 @router.get("/customers/{account_id}")
 async def get_customer(account_id: str):
     if not session_store.get("session_id"):
