@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Customers from './Customers'
 
 function Dashboard({ sessionData, onLogout }) {
   const [activePage, setActivePage] = useState('home')
@@ -18,37 +19,37 @@ function Dashboard({ sessionData, onLogout }) {
         {/* Navigation */}
         <nav style={styles.nav}>
           <NavItem
-            icon="🏠"
+            icon="&#9632;"
             label="Dashboard"
             active={activePage === 'home'}
             onClick={() => setActivePage('home')}
           />
           <NavItem
-            icon="👥"
+            icon="&#9632;"
             label="Customers"
             active={activePage === 'customers'}
             onClick={() => setActivePage('customers')}
           />
           <NavItem
-            icon="🧾"
+            icon="&#9632;"
             label="Invoices"
             active={activePage === 'invoices'}
             onClick={() => setActivePage('invoices')}
           />
           <NavItem
-            icon="🔄"
+            icon="&#9632;"
             label="Sync Status"
             active={activePage === 'sync'}
             onClick={() => setActivePage('sync')}
           />
           <NavItem
-            icon="📊"
+            icon="&#9632;"
             label="Reports"
             active={activePage === 'reports'}
             onClick={() => setActivePage('reports')}
           />
           <NavItem
-            icon="⚙️"
+            icon="&#9632;"
             label="Settings"
             active={activePage === 'settings'}
             onClick={() => setActivePage('settings')}
@@ -90,7 +91,7 @@ function Dashboard({ sessionData, onLogout }) {
           </h2>
           <div style={styles.topbarRight}>
             <div style={styles.statusBadge}>
-              🟢 MyAdmin Connected
+              Connected to MyAdmin
             </div>
           </div>
         </div>
@@ -98,7 +99,7 @@ function Dashboard({ sessionData, onLogout }) {
         {/* Page Content */}
         <div style={styles.content}>
           {activePage === 'home' && <HomePage sessionData={sessionData} />}
-          {activePage === 'customers' && <ComingSoon page="Customers" />}
+          {activePage === 'customers' && <Customers />}
           {activePage === 'invoices' && <ComingSoon page="Invoices" />}
           {activePage === 'sync' && <ComingSoon page="Sync Status" />}
           {activePage === 'reports' && <ComingSoon page="Reports" />}
@@ -110,7 +111,7 @@ function Dashboard({ sessionData, onLogout }) {
   )
 }
 
-// ─── Home Page ────────────────────────────────────────────────
+// Home Page
 function HomePage({ sessionData }) {
   return (
     <div style={styles.homePage}>
@@ -118,7 +119,7 @@ function HomePage({ sessionData }) {
       {/* Welcome Banner */}
       <div style={styles.welcomeBanner}>
         <h3 style={styles.welcomeTitle}>
-          Welcome back, {sessionData?.name || 'User'} 👋
+          Welcome back, {sessionData?.name || 'User'}
         </h3>
         <p style={styles.welcomeSubtitle}>
           GeoBridge is connected to Geotab MyAdmin and ready to sync.
@@ -128,30 +129,26 @@ function HomePage({ sessionData }) {
       {/* Stats Cards */}
       <div style={styles.statsGrid}>
         <StatCard
-          icon="📱"
           label="Total Devices"
-          value="—"
+          value="--"
           sub="Loading from MyAdmin..."
           color="#3b82f6"
         />
         <StatCard
-          icon="👥"
           label="Total Customers"
-          value="—"
+          value="--"
           sub="Loading from MyAdmin..."
           color="#8b5cf6"
         />
         <StatCard
-          icon="🧾"
           label="Pending Invoices"
-          value="—"
+          value="--"
           sub="Queued for review"
           color="#f59e0b"
         />
         <StatCard
-          icon="✅"
           label="Synced to QuickBooks"
-          value="—"
+          value="--"
           sub="Last sync: Never"
           color="#10b981"
         />
@@ -162,22 +159,18 @@ function HomePage({ sessionData }) {
         <h4 style={styles.sectionTitle}>Quick Actions</h4>
         <div style={styles.actionsGrid}>
           <ActionCard
-            icon="🔄"
             title="Sync from MyAdmin"
             desc="Pull latest device and customer data"
           />
           <ActionCard
-            icon="🧾"
             title="Generate Invoices"
             desc="Create invoices for the current billing period"
           />
           <ActionCard
-            icon="📤"
             title="Push to QuickBooks"
             desc="Send queued invoices to QuickBooks"
           />
           <ActionCard
-            icon="📊"
             title="View Reports"
             desc="See billing summaries and trends"
           />
@@ -188,25 +181,23 @@ function HomePage({ sessionData }) {
   )
 }
 
-// ─── Reusable Components ──────────────────────────────────────
+// Reusable Components
 function NavItem({ icon, label, active, onClick }) {
   return (
     <button
       onClick={onClick}
       style={active ? styles.navItemActive : styles.navItem}
     >
-      <span style={styles.navIcon}>{icon}</span>
+      <span style={active ? styles.navDotActive : styles.navDot}></span>
       <span>{label}</span>
     </button>
   )
 }
 
-function StatCard({ icon, label, value, sub, color }) {
+function StatCard({ label, value, sub, color }) {
   return (
     <div style={styles.statCard}>
-      <div style={{ ...styles.statIcon, background: color + '22', color }}>
-        {icon}
-      </div>
+      <div style={{ ...styles.statAccent, background: color }}></div>
       <div style={styles.statInfo}>
         <p style={styles.statLabel}>{label}</p>
         <p style={styles.statValue}>{value}</p>
@@ -216,10 +207,9 @@ function StatCard({ icon, label, value, sub, color }) {
   )
 }
 
-function ActionCard({ icon, title, desc }) {
+function ActionCard({ title, desc }) {
   return (
     <div style={styles.actionCard}>
-      <div style={styles.actionIcon}>{icon}</div>
       <h5 style={styles.actionTitle}>{title}</h5>
       <p style={styles.actionDesc}>{desc}</p>
     </div>
@@ -229,7 +219,7 @@ function ActionCard({ icon, title, desc }) {
 function ComingSoon({ page }) {
   return (
     <div style={styles.comingSoon}>
-      <div style={styles.comingSoonIcon}>🚧</div>
+      <div style={styles.comingSoonBadge}>Coming Soon</div>
       <h3 style={styles.comingSoonTitle}>{page}</h3>
       <p style={styles.comingSoonText}>
         This section is being built. Check back soon!
@@ -238,7 +228,7 @@ function ComingSoon({ page }) {
   )
 }
 
-// ─── Styles ───────────────────────────────────────────────────
+// Styles
 const styles = {
   container: {
     display: 'flex',
@@ -247,7 +237,7 @@ const styles = {
     overflow: 'hidden',
   },
   sidebar: {
-    width: '240px',
+    width: '220px',
     background: '#1e293b',
     borderRight: '1px solid #334155',
     display: 'flex',
@@ -277,21 +267,21 @@ const styles = {
     flexShrink: 0,
   },
   logoText: {
-    fontSize: '18px',
+    fontSize: '17px',
     fontWeight: '700',
     color: '#f1f5f9',
   },
   nav: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '4px',
-    padding: '0 12px',
+    gap: '2px',
+    padding: '0 10px',
     flex: 1,
   },
   navItem: {
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
+    gap: '10px',
     padding: '10px 12px',
     borderRadius: '8px',
     border: 'none',
@@ -305,7 +295,7 @@ const styles = {
   navItemActive: {
     display: 'flex',
     alignItems: 'center',
-    gap: '12px',
+    gap: '10px',
     padding: '10px 12px',
     borderRadius: '8px',
     border: 'none',
@@ -317,10 +307,19 @@ const styles = {
     width: '100%',
     fontWeight: '600',
   },
-  navIcon: {
-    fontSize: '16px',
-    width: '20px',
-    textAlign: 'center',
+  navDot: {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    background: '#334155',
+    flexShrink: 0,
+  },
+  navDotActive: {
+    width: '6px',
+    height: '6px',
+    borderRadius: '50%',
+    background: '#3b82f6',
+    flexShrink: 0,
   },
   sidebarFooter: {
     padding: '16px 20px 0',
@@ -334,8 +333,8 @@ const styles = {
     marginBottom: '12px',
   },
   userAvatar: {
-    width: '36px',
-    height: '36px',
+    width: '34px',
+    height: '34px',
     borderRadius: '50%',
     background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
     display: 'flex',
@@ -383,13 +382,13 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: '20px 32px',
+    padding: '18px 32px',
     borderBottom: '1px solid #1e293b',
     background: '#0f172a',
     flexShrink: 0,
   },
   pageTitle: {
-    fontSize: '22px',
+    fontSize: '20px',
     fontWeight: '700',
     color: '#f1f5f9',
     margin: 0,
@@ -400,7 +399,7 @@ const styles = {
     gap: '12px',
   },
   statusBadge: {
-    padding: '6px 12px',
+    padding: '5px 12px',
     borderRadius: '20px',
     background: '#064e3b',
     color: '#6ee7b7',
@@ -411,24 +410,24 @@ const styles = {
   content: {
     flex: 1,
     overflow: 'auto',
-    padding: '32px',
+    padding: '28px 32px',
   },
   homePage: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '32px',
+    gap: '28px',
   },
   welcomeBanner: {
     background: 'linear-gradient(135deg, #1e3a5f, #1e293b)',
     borderRadius: '12px',
-    padding: '28px 32px',
+    padding: '24px 28px',
     border: '1px solid #334155',
   },
   welcomeTitle: {
-    fontSize: '20px',
+    fontSize: '19px',
     fontWeight: '700',
     color: '#f1f5f9',
-    margin: '0 0 8px',
+    margin: '0 0 6px',
   },
   welcomeSubtitle: {
     fontSize: '14px',
@@ -446,17 +445,15 @@ const styles = {
     padding: '20px',
     border: '1px solid #334155',
     display: 'flex',
-    gap: '16px',
+    gap: '14px',
     alignItems: 'flex-start',
+    overflow: 'hidden',
+    position: 'relative',
   },
-  statIcon: {
-    width: '44px',
-    height: '44px',
-    borderRadius: '10px',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontSize: '20px',
+  statAccent: {
+    width: '4px',
+    borderRadius: '4px',
+    alignSelf: 'stretch',
     flexShrink: 0,
   },
   statInfo: {
@@ -470,7 +467,7 @@ const styles = {
     fontWeight: '500',
   },
   statValue: {
-    fontSize: '24px',
+    fontSize: '26px',
     fontWeight: '700',
     color: '#f1f5f9',
     margin: '0 0 2px',
@@ -483,10 +480,10 @@ const styles = {
   section: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '16px',
+    gap: '14px',
   },
   sectionTitle: {
-    fontSize: '16px',
+    fontSize: '15px',
     fontWeight: '600',
     color: '#94a3b8',
     margin: 0,
@@ -502,11 +499,6 @@ const styles = {
     padding: '20px',
     border: '1px solid #334155',
     cursor: 'pointer',
-    transition: 'border-color 0.2s',
-  },
-  actionIcon: {
-    fontSize: '28px',
-    marginBottom: '12px',
   },
   actionTitle: {
     fontSize: '14px',
@@ -526,13 +518,21 @@ const styles = {
     alignItems: 'center',
     justifyContent: 'center',
     height: '400px',
-    gap: '16px',
+    gap: '14px',
   },
-  comingSoonIcon: {
-    fontSize: '48px',
+  comingSoonBadge: {
+    padding: '6px 16px',
+    borderRadius: '20px',
+    background: '#1e3a5f',
+    color: '#60a5fa',
+    fontSize: '12px',
+    fontWeight: '600',
+    border: '1px solid #2563eb',
+    letterSpacing: '0.05em',
+    textTransform: 'uppercase',
   },
   comingSoonTitle: {
-    fontSize: '24px',
+    fontSize: '22px',
     fontWeight: '700',
     color: '#f1f5f9',
     margin: 0,
