@@ -96,6 +96,10 @@ async def get_customers(
             "page":      page - 1,   # MyAdmin is 0-indexed
         })
 
+        # DEBUG - print full MyAdmin response to backend console
+        import json
+        print("DEBUG MyAdmin response:", json.dumps(result, indent=2)[:2000])
+
         raw = result.get("result") or []
         customers = [enrich_customer(c) for c in raw]
 
