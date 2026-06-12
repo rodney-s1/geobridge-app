@@ -47,9 +47,19 @@ def map_billing_type(job_type: str) -> str:
     return "Unknown"
 
 def enrich_customer(customer: dict) -> dict:
-    """Merge MyAdmin customer data with QB data and billing overrides."""
-    cid = str(customer.get("id") or customer.get("accountId") or "")
-    cname = customer.get("name") or customer.get("companyName") or ""
+    """Merge MyAdmin database record with QB data and billing overrides."""
+    # GetOwnDatabases returns: databaseName, accountId, customerName, deviceCount, etc.
+    cid = str(
+        customer.get("accountId") or
+        customer.get("id") or
+        customer.get("databaseName") or ""
+    )
+    cname = (
+        customer.get("customerName") or
+        customer.get("name") or
+        customer.get("companyName") or
+        customer.get("databaseName") or ""
+    )
 
     # Look up QB data by normalized name
     qb = qb_customers.get(normalize(cname)) or {}
@@ -67,7 +77,7 @@ def enrich_customer(customer: dict) -> dict:
         "accountNo":       qb.get("accountNo") or customer.get("accountNo") or "",
         "billingType":     billing_type,
         "primaryDatabase": customer.get("databaseName") or customer.get("primaryDatabase") or "",
-        "deviceCount":     customer.get("deviceCount") or 0,
+        "deviceCount":     customer.get("deviceCount") or customer.get("numberOfDevices") or 0,
         "terms":           qb.get("terms") or "",
         "balance":         float(qb.get("balance") or 0),
         "hasQbData":       bool(qb),
@@ -97,12 +107,12 @@ async def get_customers(
             "account_id": session_store.get("account_id"),
         })
 
-        # apiKey = userId (GUID), accounts = list of accountIds
-        result = await myadmin_call("GetCustomersAsync", {
-            "apiKey":    session_store["user_id"],
-            "sessionId": session_store["session_id"],
-            "accounts":  [session_store["account_id"]],
-            "page":      page - 1,
+        # Use GetOwnDatabases — returns list of customer databases for the account
+        # (GetCustomersAsync requires CONTACT-VIEW role which this account doesn't have)
+        result = await myadmin_call("GetOwnDatabases", {
+            "apiKey":      session_store["user_id"],
+            "sessionId":   session_store["session_id"],
+            "forAccount":  session_store.get("account_id"),
         })
 
         # DEBUG - print full MyAdmin response to backend console
@@ -130,7 +140,7 @@ async def get_customers(
             "customers": customers,
             "page":      page,
             "pageSize":  page_size,
-            "hasMore":   len(raw) >= 50,
+            "hasMore":   False,   # GetOwnDatabases returns all at once
             "total":     len(customers),
         }
 
