@@ -12,7 +12,7 @@ function Login({ onLoginSuccess }) {
     setError('')
 
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/geotab/login', {
+      const response = await fetch('http://127.0.0.1:8001/api/geotab/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password })

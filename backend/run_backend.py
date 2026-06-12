@@ -55,8 +55,8 @@ except Exception as e:
 
 print("")
 print("=" * 60)
-print("  Starting server on http://127.0.0.1:8000")
-print("  Docs:    http://127.0.0.1:8000/docs")
+print("  Starting server on http://127.0.0.1:8001")
+print("  Docs:    http://127.0.0.1:8001/docs")
 print("=" * 60)
 print("")
 
@@ -66,7 +66,7 @@ import uvicorn
 uvicorn.run(
     "main:app",
     host="127.0.0.1",
-    port=8000,
+    port=8001,
     reload=False,
     app_dir=HERE,
     log_level="info",
