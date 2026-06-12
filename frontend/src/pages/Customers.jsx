@@ -341,13 +341,13 @@ export default function Customers() {
         body: form,
       })
       const data = await res.json()
-      setImportMsg(`✅ ${data.message}`)
+      setImportMsg(`Imported: ${data.message}`)
       // Refresh customer list and summary
       fetchCustomers(1, true)
       const sum = await fetch(`${API}/api/customers/qb-data/summary`)
       if (sum.ok) setQbSummary(await sum.json())
     } catch (e) {
-      setImportMsg(`❌ Import failed: ${e.message}`)
+      setImportMsg(`Import failed: ${e.message}`)
     } finally {
       setImportingQb(false)
       e.target.value = ''
@@ -393,10 +393,10 @@ export default function Customers() {
       </div>
 
       {/* QB Summary bar */}
-      {qbSummary && qbSummary.customersLoaded > 0 && (
+      {qbSummary && qbSummary.customersLoaded > 0 && typeof qbSummary.customersLoaded === 'number' && (
         <div className="mb-4 p-3 bg-green-900/20 border border-green-500/20 rounded-lg flex items-center gap-4 flex-wrap text-sm">
           <span className="text-green-400 font-medium">
-            ✓ QB Data Loaded
+            QB Data Loaded
           </span>
           <span className="text-slate-400">{qbSummary.customersLoaded} customers · {qbSummary.itemsLoaded} items</span>
           {Object.entries(qbSummary.billingTypeBreakdown || {}).map(([type, count]) => (
