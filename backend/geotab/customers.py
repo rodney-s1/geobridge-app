@@ -97,11 +97,11 @@ async def get_customers(
             "account_id": session_store.get("account_id"),
         })
 
-        # apiKey = userId (GUID), accountId passed separately
+        # apiKey = userId (GUID), accounts = list of accountIds
         result = await myadmin_call("GetCustomersAsync", {
             "apiKey":    session_store["user_id"],
             "sessionId": session_store["session_id"],
-            "accountId": session_store.get("account_id"),
+            "accounts":  [session_store["account_id"]],
             "page":      page - 1,
         })
 
