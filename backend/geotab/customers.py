@@ -150,6 +150,13 @@ async def get_customers(
             print(f"DEBUG: Page {page_num} returned {len(batch)} contracts")
             if not batch:
                 break
+
+            # ── ONE-TIME: dump first contract so we can see real field names ──
+            if page_num == 1 and batch:
+                sample = batch[0]
+                print("DEBUG SAMPLE CONTRACT KEYS:", list(sample.keys()))
+                print("DEBUG SAMPLE CONTRACT:", json.dumps(sample, default=str)[:2000])
+
             all_contracts.extend(batch)
             if len(batch) < 1000:
                 break
@@ -159,23 +166,43 @@ async def get_customers(
         from collections import defaultdict
         db_map: dict[str, dict] = {}
 
+        # ── ONE-TIME: show first 3 contracts' keys after full fetch ──────────
+        for i, c in enumerate(all_contracts[:3]):
+            print(f"DEBUG contract[{i}] keys={list(c.keys())}  vals={json.dumps(c, default=str)[:400]}")
+
         for c in all_contracts:
-            db_name = c.get("databaseName") or c.get("database") or ""
+            # Try every plausible field name the API might use
+            db_name = (
+                c.get("databaseName") or c.get("DatabaseName") or
+                c.get("database")     or c.get("Database")     or
+                c.get("dbName")       or c.get("DbName")       or ""
+            )
             if not db_name:
                 continue
-            terminated = c.get("isTerminated") or c.get("terminated") or False
+            terminated = (
+                c.get("isTerminated") or c.get("IsTerminated") or
+                c.get("terminated")   or c.get("Terminated")   or False
+            )
 
             if db_name not in db_map:
                 db_map[db_name] = {
                     "databaseName":  db_name,
-                    "customerName":  c.get("customerName") or c.get("companyName") or "",
+                    "customerName":  (
+                        c.get("customerName") or c.get("CustomerName") or
+                        c.get("companyName")  or c.get("CompanyName")  or
+                        c.get("customer")     or c.get("Customer")     or ""
+                    ),
                     "accountId":     (c.get("account") or {}).get("number") or session_store.get("account_id") or "",
                     "activeDevices": 0,
                     "totalDevices":  0,
                 }
             # Use the first non-empty customer name we find
             if not db_map[db_name]["customerName"]:
-                db_map[db_name]["customerName"] = c.get("customerName") or c.get("companyName") or ""
+                db_map[db_name]["customerName"] = (
+                    c.get("customerName") or c.get("CustomerName") or
+                    c.get("companyName")  or c.get("CompanyName")  or
+                    c.get("customer")     or c.get("Customer")     or ""
+                )
 
             db_map[db_name]["totalDevices"] += 1
             if not terminated:
