@@ -90,6 +90,13 @@ async def get_customers(
 
     try:
         # Fetch one page from MyAdmin
+        # DEBUG - show exactly what's in session_store
+        print("DEBUG session_store at sync:", {
+            "user_id": session_store.get("user_id"),
+            "session_id": session_store.get("session_id"),
+            "account_id": session_store.get("account_id"),
+        })
+
         # apiKey = userId (GUID), accountId passed separately
         result = await myadmin_call("GetCustomersAsync", {
             "apiKey":    session_store["user_id"],
