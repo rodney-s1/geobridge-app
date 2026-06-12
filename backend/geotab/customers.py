@@ -96,16 +96,26 @@ async def get_customers(
 
     try:
         # ── Fetch ALL device contracts for the account (paginated 1000 at a time)
+        # Use 120 s timeout per page call — large accounts (CELU01) can have
+        # 5 000+ contracts across 3+ pages, each page taking 10-30 s to return.
         all_contracts = []
         next_id = 0
+        page_num = 0
         while True:
-            result = await myadmin_call("GetDeviceContractsByPage", {
-                "apiKey":     session_store["user_id"],
-                "sessionId":  session_store["session_id"],
-                "forAccount": session_store.get("account_id"),
-                "nextId":     next_id,
-            })
+            page_num += 1
+            print(f"DEBUG: Fetching contracts page {page_num} (nextId={next_id})…")
+            result = await myadmin_call(
+                "GetDeviceContractsByPage",
+                {
+                    "apiKey":     session_store["user_id"],
+                    "sessionId":  session_store["session_id"],
+                    "forAccount": session_store.get("account_id"),
+                    "nextId":     next_id,
+                },
+                timeout=120.0,
+            )
             batch = result.get("result") or []
+            print(f"DEBUG: Page {page_num} returned {len(batch)} contracts")
             if not batch:
                 break
             all_contracts.extend(batch)
@@ -175,9 +185,6 @@ async def get_customers(
     except Exception as e:
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
-        raise
-    except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -309,12 +316,16 @@ async def get_customer(account_id: str):
         next_id = 0
 
         while True:
-            result = await myadmin_call("GetDeviceContractsByPage", {
-                "apiKey":     session_store["user_id"],
-                "sessionId":  session_store["session_id"],
-                "forAccount": account_id,
-                "nextId":     next_id,
-            })
+            result = await myadmin_call(
+                "GetDeviceContractsByPage",
+                {
+                    "apiKey":     session_store["user_id"],
+                    "sessionId":  session_store["session_id"],
+                    "forAccount": account_id,
+                    "nextId":     next_id,
+                },
+                timeout=120.0,
+            )
 
             devices = result.get("result") or []
             if not devices:

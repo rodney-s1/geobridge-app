@@ -24,7 +24,13 @@ class LoginRequest(BaseModel):
     password: str
 
 # ─── Helper: Make MyAdmin API Call ───────────────────────────
-async def myadmin_call(method: str, params: dict):
+async def myadmin_call(method: str, params: dict, timeout: float = 120.0):
+    """
+    Make a JSON-RPC call to the Geotab MyAdmin API.
+    Default timeout is 120 s — long enough for paginated GetDeviceContractsByPage
+    calls across large accounts (CELU01 has 2000+ customers / 5000+ contracts).
+    Pass a custom timeout for one-off calls that need a different limit.
+    """
     payload = {
         "method": method,
         "params": params
@@ -34,7 +40,7 @@ async def myadmin_call(method: str, params: dict):
             MYADMIN_API_URL,
             json=payload,
             headers={"Content-Type": "application/json"},
-            timeout=30.0
+            timeout=timeout
         )
         response.raise_for_status()
         return response.json()

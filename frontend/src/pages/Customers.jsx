@@ -272,6 +272,7 @@ function CustomerRow({ customer, onBillingTypeChange }) {
 export default function Customers() {
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(false)
+  const [loadingStart, setLoadingStart] = useState(null)
   const [error, setError] = useState(null)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
@@ -285,6 +286,7 @@ export default function Customers() {
 
   const fetchCustomers = useCallback(async (pg = 1, reset = false) => {
     setLoading(true)
+    setLoadingStart(Date.now())
     setError(null)
     try {
       const params = new URLSearchParams({
@@ -307,6 +309,7 @@ export default function Customers() {
       setError(e.message)
     } finally {
       setLoading(false)
+      setLoadingStart(null)
     }
   }, [search, billingFilter])
 
@@ -395,7 +398,7 @@ export default function Customers() {
             <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
             </svg>
-            {loading ? 'Loading...' : 'Sync from MyAdmin'}
+            {loading ? 'Syncing… (may take ~1–2 min)' : 'Sync from MyAdmin'}
           </button>
         </div>
       </div>
@@ -555,12 +558,17 @@ export default function Customers() {
             {loading && (
               <tr>
                 <td colSpan={8} className="text-center py-8">
-                  <div className="flex items-center justify-center gap-3 text-slate-400">
-                    <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                    </svg>
-                    Loading customers from MyAdmin...
+                  <div className="flex flex-col items-center justify-center gap-3 text-slate-400">
+                    <div className="flex items-center gap-3">
+                      <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                      </svg>
+                      <span>Fetching device contracts from MyAdmin&hellip;</span>
+                    </div>
+                    <span className="text-xs text-slate-500">
+                      Large accounts (2 000+ customers) may take up to 2 minutes &mdash; please wait.
+                    </span>
                   </div>
                 </td>
               </tr>
