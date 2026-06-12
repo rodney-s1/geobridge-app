@@ -51,10 +51,16 @@ async def login(request: LoginRequest):
 
         session_data = result["result"]
 
+        # DEBUG - print full login response to see exact field names
+        print("DEBUG Authenticate response keys:", list(session_data.keys()) if isinstance(session_data, dict) else session_data)
+        print("DEBUG Full session_data:", json.dumps(session_data, indent=2)[:1000])
+
         # Store session for future API calls
-        session_store["user_id"] = session_data["userId"]
-        session_store["session_id"] = session_data["sessionId"]
-        session_store["username"] = session_data["name"]
+        session_store["user_id"] = session_data.get("userId") or session_data.get("apiKey") or session_data.get("id") or session_data.get("userName")
+        session_store["session_id"] = session_data.get("sessionId") or session_data.get("session") or session_data.get("id")
+        session_store["username"] = session_data.get("name") or session_data.get("userName") or session_data.get("username")
+
+        print("DEBUG session_store after login:", session_store)
 
         return {
             "success": True,
