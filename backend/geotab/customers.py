@@ -7,8 +7,18 @@ import csv
 import io
 import json
 import os
+import sys
 import time
 from .auth import myadmin_call, session_store
+
+# ─── Windows-safe print (avoids CP1252 UnicodeEncodeError on arrow chars) ─────
+def _print(*args, **kwargs):
+    """print() wrapper that replaces un-encodable chars instead of crashing."""
+    msg = " ".join(str(a) for a in args)
+    safe = msg.encode(sys.stdout.encoding or "utf-8", errors="replace").decode(
+        sys.stdout.encoding or "utf-8", errors="replace"
+    )
+    print(safe, **kwargs)
 
 router = APIRouter()
 
@@ -43,6 +53,9 @@ name_to_company_id: dict[str, str]  = {}   # normalize(name) -> companyId, built
 # ─── MyAdmin sync cache ───────────────────────────────────────────────────────
 CACHE_TTL_HOURS = 12
 _sync_cache: dict = _load_json(SYNC_CACHE_FILE, {})
+
+# ─── Sync lock — prevents concurrent fetches when multiple requests arrive ───
+_sync_lock = asyncio.Lock()
 
 _qb_loaded = bool(qb_customers)
 print(f"[customers] QB data: {len(qb_customers)} customers loaded from disk"
@@ -343,8 +356,8 @@ async def _fetch_myadmin_customers() -> list[dict]:
         if v["activeDevices"] > 0
         and not v["customerName"].startswith("* Terminated")
     ]
-    print(f"[sync] {len(all_device_dbs)} device-db records → "
-          f"{len(company_map)} companies → {len(raw)} with active devices")
+    _print(f"[sync] {len(all_device_dbs)} device-db records -> "
+           f"{len(company_map)} companies -> {len(raw)} with active devices")
 
     # ── Rebuild name → companyId lookup ─────────────────────────────────────
     global name_to_company_id
@@ -429,10 +442,25 @@ async def get_customers(
             print(f"[customers] Using cached customer list ({cache_age/3600:.1f}h old)")
             raw = _sync_cache["raw_customers"]
         else:
-            raw = await _fetch_myadmin_customers()
-            _sync_cache["raw_customers"]       = raw
-            _sync_cache["customer_fetched_at"] = time.time()
-            _save_json(SYNC_CACHE_FILE, _sync_cache)
+            # Use a lock so concurrent page-load requests don't all trigger
+            # simultaneous full syncs — only the first one fetches, the rest
+            # wait and then use the freshly-populated cache.
+            async with _sync_lock:
+                # Re-check cache inside the lock (another request may have
+                # just finished fetching while we were waiting)
+                cache_age2 = time.time() - (_sync_cache.get("customer_fetched_at") or 0)
+                if (
+                    not force_refresh
+                    and _sync_cache.get("raw_customers")
+                    and cache_age2 < CACHE_TTL_HOURS * 3600
+                ):
+                    print(f"[customers] Lock: using cache populated by concurrent request ({cache_age2/3600:.1f}h old)")
+                    raw = _sync_cache["raw_customers"]
+                else:
+                    raw = await _fetch_myadmin_customers()
+                    _sync_cache["raw_customers"]       = raw
+                    _sync_cache["customer_fetched_at"] = time.time()
+                    _save_json(SYNC_CACHE_FILE, _sync_cache)
 
         customers = [enrich_customer(c) for c in raw]
 
@@ -547,8 +575,8 @@ async def import_qb_customers(file: UploadFile = File(...)):
         if has_override:
             preserved_billing = existing.get("billingType") or new_billing_type
             protected += 1
-            print(f"[import-qb] Override protected '{name}': "
-                  f"QB='{new_billing_type}' → keeping '{preserved_billing}'")
+            _print(f"[import-qb] Override protected '{name}': "
+               f"QB='{new_billing_type}' -> keeping '{preserved_billing}'")
         else:
             preserved_billing = new_billing_type
 
