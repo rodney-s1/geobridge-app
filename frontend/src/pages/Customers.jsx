@@ -833,6 +833,7 @@ export default function Customers() {
   const [search, setSearch] = useState('')
   const [billingFilter, setBillingFilter] = useState('')
   const [searchInput, setSearchInput] = useState('')
+  const debounceRef = useRef(null)
   const [importingQb, setImportingQb] = useState(false)
   const [importMsg, setImportMsg] = useState('')
   const [qbSummary, setQbSummary] = useState(null)
@@ -974,6 +975,15 @@ export default function Customers() {
     fetchCustomers(1, true)
   }, [search, billingFilter])
 
+  // Debounced live search — update `search` 300ms after the user stops typing
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      setSearch(searchInput)
+    }, 300)
+    return () => clearTimeout(debounceRef.current)
+  }, [searchInput])
+
   // Load QB summary on mount
   useEffect(() => {
     fetch(`${API}/api/customers/qb-data/summary`)
@@ -981,10 +991,6 @@ export default function Customers() {
       .then(d => d && setQbSummary(d))
       .catch(() => {})
   }, [])
-
-  const handleSearch = () => {
-    setSearch(searchInput)
-  }
 
   const handleBillingTypeChange = (customerId, newType) => {
     setCustomers(prev =>
@@ -1109,7 +1115,16 @@ export default function Customers() {
             type="text"
             value={searchInput}
             onChange={e => setSearchInput(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                // Instant search on Enter — cancel the debounce timer
+                if (debounceRef.current) clearTimeout(debounceRef.current)
+                setSearch(searchInput)
+              }
+              if (e.key === 'Escape') {
+                setSearchInput('')
+              }
+            }}
             placeholder="Search customers..."
             className="bg-transparent text-sm text-slate-200 placeholder-slate-500 outline-none flex-1"
           />
@@ -1117,15 +1132,10 @@ export default function Customers() {
             <button
               onClick={() => { setSearchInput(''); setSearch('') }}
               className="text-slate-500 hover:text-slate-300"
+              title="Clear search"
             >✕</button>
           )}
         </div>
-        <button
-          onClick={handleSearch}
-          className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm transition-colors"
-        >
-          Search
-        </button>
 
         {/* Billing type filter */}
         <select
