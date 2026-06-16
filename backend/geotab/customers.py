@@ -444,7 +444,7 @@ async def get_customers(
 
     try:
         cache_age = time.time() - (_sync_cache.get("customer_fetched_at") or 0)
-        use_cache = (
+        use_cache = bool(
             not force_refresh
             and _sync_cache.get("raw_customers")
             and cache_age < CACHE_TTL_HOURS * 3600
