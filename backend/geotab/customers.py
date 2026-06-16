@@ -35,6 +35,12 @@ billing_overrides: dict[str, str] = _load_json(OVERRIDES_FILE, {})
 qb_customers: dict[str, dict]     = _load_json(QB_DATA_FILE, {})
 qb_items: list[dict]              = []
 
+# name_to_company_id: { normalize(customerName) -> companyId }
+# Built whenever customers are synced from MyAdmin. Used by the QB import
+# to check whether a customer already has a GeoBridge billing override,
+# so we never let a QB re-import silently stomp a manual edit.
+name_to_company_id: dict[str, str] = {}
+
 _qb_loaded = bool(qb_customers)
 print(f"[customers] QB data: {len(qb_customers)} customers loaded from disk"
       if _qb_loaded else "[customers] QB data: no saved file — import a CSV to populate")
@@ -194,6 +200,12 @@ async def get_customers(
         ]
         print(f"DEBUG: {len(all_contracts)} contracts → {len(company_map)} companies → {len(raw)} with active devices")
 
+        # ── Build name → companyId lookup (used by QB import protection) ──────
+        for v in raw:
+            key = normalize(v["customerName"])
+            if key:
+                name_to_company_id[key] = v["companyId"]
+
         customers = [enrich_customer(c) for c in raw]
 
         # ── Search filter ─────────────────────────────────────────────────────
@@ -268,8 +280,9 @@ async def import_qb_customers(file: UploadFile = File(...)):
     if not rows:
         raise HTTPException(status_code=400, detail="CSV file is empty")
 
-    imported = 0
-    skipped  = 0
+    imported  = 0
+    skipped   = 0
+    protected = 0   # customers where GeoBridge override blocked QB from changing billingType
 
     for row in rows:
         row = {k.strip(): (v or "").strip() for k, v in row.items()}
@@ -303,25 +316,54 @@ async def import_qb_customers(file: UploadFile = File(...)):
         except ValueError:
             balance = 0.0
 
-        qb_customers[normalize(name)] = {
+        new_billing_type = map_billing_type(job_type)
+
+        # ── Override protection ───────────────────────────────────────────────
+        # If this customer has a manual GeoBridge billing override, do NOT let
+        # the QB import change the billingType stored in qb_customers — the
+        # override in billing_overrides.json already wins at display time, but
+        # keeping qb_customers consistent prevents confusion and ensures the
+        # sync tool always pushes the right value back to QB.
+        norm_name  = normalize(name)
+        company_id = name_to_company_id.get(norm_name, "")
+        has_override = bool(
+            billing_overrides.get(company_id)                          # matched by companyId
+            or (norm_name in qb_customers                              # already in QB store …
+                and billing_overrides.get(normalize(qb_customers[norm_name].get("name", ""))))
+        )
+
+        # Preserve existing billingType if a GeoBridge override exists;
+        # always refresh everything else (balance, terms, accountNo, etc.)
+        existing = qb_customers.get(norm_name) or {}
+        preserved_billing = existing.get("billingType") if has_override else new_billing_type
+
+        qb_customers[norm_name] = {
             "name":        name,
             "accountNo":   account_no,
-            "billingType": map_billing_type(job_type),
+            "billingType": preserved_billing,
             "jobType":     job_type,
             "terms":       terms,
             "balance":     balance,
         }
+        if has_override:
+            print(f"[import-qb] Kept GeoBridge override for '{name}' (QB said '{new_billing_type}', keeping '{preserved_billing}')")
+            protected += 1
         imported += 1
 
     _save_json(QB_DATA_FILE, qb_customers)
     print(f"[import-qb] Saved {len(qb_customers)} QB customers to {QB_DATA_FILE}")
 
+    msg = f"{imported} customers imported, {skipped} skipped"
+    if protected:
+        msg += f", {protected} GeoBridge billing overrides preserved"
+
     return {
-        "success":  True,
-        "message":  f"{imported} customers imported, {skipped} skipped",
-        "imported": imported,
-        "skipped":  skipped,
-        "total":    len(qb_customers),
+        "success":   True,
+        "message":   msg,
+        "imported":  imported,
+        "skipped":   skipped,
+        "protected": protected,
+        "total":     len(qb_customers),
     }
 
 
