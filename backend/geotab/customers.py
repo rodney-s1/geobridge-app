@@ -619,6 +619,20 @@ async def import_qb_customers(file: UploadFile = File(...)):
     }
 
 
+# ─── GET /api/customers/debug-contract  (temp — remove after field names confirmed) ─
+@router.get("/customers/debug-contract")
+async def debug_contract():
+    """Returns the raw keys + values of the first non-terminated cached contract.
+    Use this to confirm the exact field names for activeBillingPlan / ratePlanCode.
+    DELETE this endpoint once field mapping is confirmed.
+    """
+    contracts = _sync_cache.get("contracts") or []
+    for c in contracts:
+        if not c.get("isTerminated"):
+            return {"keys": list(c.keys()), "sample": c}
+    return {"error": "No non-terminated contracts in cache — run a Sync first"}
+
+
 # ─── GET /api/customers/{account_id} ──────────────────────────────────────────
 @router.get("/customers/{account_id}")
 async def get_customer(account_id: str):
@@ -661,15 +675,45 @@ async def get_customer(account_id: str):
             device   = d.get("device") or {}
             dev_id   = str(device.get("id") or "")
             db_name  = device_db_map.get(dev_id) or ""
+
+            # ── Active Billing Plan ────────────────────────────────────────────
+            # MyAdmin returns the plan as a nested object: activeBillingPlan.name
+            # Fallback chain covers different API response shapes.
+            abp_obj  = d.get("activeBillingPlan") or {}
+            if isinstance(abp_obj, dict):
+                active_billing_plan = abp_obj.get("name") or abp_obj.get("description") or ""
+            else:
+                active_billing_plan = str(abp_obj)
+            # Last resort: use productCode if nothing else
+            if not active_billing_plan:
+                active_billing_plan = d.get("productCode") or ""
+
+            # ── Rate Plan Code ─────────────────────────────────────────────────
+            # Returned as ratePlanCode (string) or ratePlan.code (object)
+            rp_obj   = d.get("ratePlan") or {}
+            if isinstance(rp_obj, dict):
+                rate_plan_code = rp_obj.get("code") or rp_obj.get("name") or ""
+            else:
+                rate_plan_code = str(rp_obj) if rp_obj else ""
+            if not rate_plan_code:
+                rate_plan_code = d.get("ratePlanCode") or d.get("productCode") or ""
+
+            # ── Dates: trim to yyyy-mm-dd ──────────────────────────────────────
+            def _date(raw: str) -> str:
+                """Return just the date part (yyyy-mm-dd) from an ISO datetime string."""
+                if not raw:
+                    return ""
+                return raw[:10]
+
             normalized.append({
                 "serialNumber":      device.get("serialNumber") or "",
                 "deviceType":        (device.get("deviceType") or {}).get("name") or "",
-                "activeBillingPlan": d.get("productCode") or "",
-                "ratePlanCode":      d.get("productCode") or "",
+                "activeBillingPlan": active_billing_plan,
+                "ratePlanCode":      rate_plan_code,
                 "database":          db_name,
-                "status":            "Active",   # terminated already filtered out above
-                "contractStartDate": d.get("startDate") or "",
-                "contractEndDate":   d.get("endDate") or "",
+                "status":            "Active",   # terminated already filtered above
+                "contractStartDate": _date(d.get("startDate") or ""),
+                "contractEndDate":   _date(d.get("endDate") or ""),
             })
 
         return {
