@@ -273,6 +273,9 @@ export default function Customers() {
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(false)
   const [loadingStart, setLoadingStart] = useState(null)
+  const [fromCache, setFromCache] = useState(false)
+  const [cacheAgeHours, setCacheAgeHours] = useState(null)
+  const [isForcingRefresh, setIsForcingRefresh] = useState(false)
   const [error, setError] = useState(null)
   const [page, setPage] = useState(1)
   const [hasMore, setHasMore] = useState(false)
@@ -284,9 +287,10 @@ export default function Customers() {
   const [qbSummary, setQbSummary] = useState(null)
   const PAGE_SIZE = 50
 
-  const fetchCustomers = useCallback(async (pg = 1, reset = false) => {
+  const fetchCustomers = useCallback(async (pg = 1, reset = false, forceRefresh = false) => {
     setLoading(true)
     setLoadingStart(Date.now())
+    if (forceRefresh) setIsForcingRefresh(true)
     setError(null)
     try {
       const params = new URLSearchParams({
@@ -294,6 +298,7 @@ export default function Customers() {
         page_size: PAGE_SIZE,
         search,
         billing_type: billingFilter,
+        force_refresh: forceRefresh ? 'true' : 'false',
       })
       const res = await fetch(`${API}/api/customers?${params}`)
       if (res.status === 401) {
@@ -305,11 +310,14 @@ export default function Customers() {
       setCustomers(prev => reset ? data.customers : [...prev, ...data.customers])
       setHasMore(data.hasMore)
       setPage(pg)
+      setFromCache(data.fromCache || false)
+      setCacheAgeHours(data.cacheAgeHours ?? null)
     } catch (e) {
       setError(e.message)
     } finally {
       setLoading(false)
       setLoadingStart(null)
+      setIsForcingRefresh(false)
     }
   }, [search, billingFilter])
 
@@ -390,16 +398,26 @@ export default function Customers() {
             <input type="file" accept=".csv" className="hidden" onChange={handleQbImport} disabled={importingQb} />
           </label>
 
-          <button
-            onClick={() => fetchCustomers(1, true)}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm transition-colors"
-          >
-            <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            {loading ? 'Syncing… (may take ~1–2 min)' : 'Sync from MyAdmin'}
-          </button>
+          <div className="flex flex-col items-end gap-1">
+            <button
+              onClick={() => fetchCustomers(1, true, true)}
+              disabled={loading}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm transition-colors"
+            >
+              <svg className={`w-4 h-4 ${isForcingRefresh ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+              {isForcingRefresh ? 'Syncing… (may take ~2 min)' : 'Sync from MyAdmin'}
+            </button>
+            {fromCache && cacheAgeHours !== null && !loading && (
+              <span className="text-xs text-slate-500">
+                Cached · {cacheAgeHours < 1
+                  ? `${Math.round(cacheAgeHours * 60)}m ago`
+                  : `${cacheAgeHours.toFixed(1)}h ago`
+                }
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
@@ -564,11 +582,13 @@ export default function Customers() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                       </svg>
-                      <span>Fetching device contracts from MyAdmin&hellip;</span>
+                      <span>{isForcingRefresh ? 'Fetching fresh data from MyAdmin…' : 'Loading customers…'}</span>
                     </div>
-                    <span className="text-xs text-slate-500">
-                      Large accounts (2 000+ customers) may take up to 2 minutes &mdash; please wait.
-                    </span>
+                    {isForcingRefresh && (
+                      <span className="text-xs text-slate-500">
+                        First sync fetches all devices &amp; contracts (~2 min). Repeat syncs use a 12-hour cache and are instant.
+                      </span>
+                    )}
                   </div>
                 </td>
               </tr>
