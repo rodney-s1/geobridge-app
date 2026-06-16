@@ -285,12 +285,54 @@ export default function Customers() {
   const [importingQb, setImportingQb] = useState(false)
   const [importMsg, setImportMsg] = useState('')
   const [qbSummary, setQbSummary] = useState(null)
+  const [syncProgress, setSyncProgress] = useState(null)   // SSE progress data
+  const sseRef = useRef(null)   // holds the EventSource so we can close it
   const PAGE_SIZE = 50
+
+  // ── SSE progress connection ────────────────────────────────────────────────
+  const startProgressSSE = useCallback(() => {
+    // Close any existing connection first
+    if (sseRef.current) {
+      sseRef.current.close()
+      sseRef.current = null
+    }
+    setSyncProgress({ active: true, step: 'step1', step_label: 'Connecting…', pct: 0, message: 'Starting sync…' })
+
+    const es = new EventSource(`${API}/api/customers/sync-progress`)
+    sseRef.current = es
+
+    es.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data)
+        setSyncProgress(data)
+        // Auto-close when done or error
+        if (!data.active && (data.step === 'done' || data.step === 'error' || data.step === '')) {
+          es.close()
+          sseRef.current = null
+          // Keep the final 100% state visible for 2s then clear
+          setTimeout(() => setSyncProgress(null), 2000)
+        }
+      } catch (_) {}
+    }
+    es.onerror = () => {
+      es.close()
+      sseRef.current = null
+      setSyncProgress(null)
+    }
+  }, [])
+
+  // Close SSE on unmount
+  useEffect(() => {
+    return () => { if (sseRef.current) sseRef.current.close() }
+  }, [])
 
   const fetchCustomers = useCallback(async (pg = 1, reset = false, forceRefresh = false) => {
     setLoading(true)
     setLoadingStart(Date.now())
-    if (forceRefresh) setIsForcingRefresh(true)
+    if (forceRefresh) {
+      setIsForcingRefresh(true)
+      startProgressSSE()
+    }
     setError(null)
     try {
       const params = new URLSearchParams({
@@ -319,7 +361,7 @@ export default function Customers() {
       setLoadingStart(null)
       setIsForcingRefresh(false)
     }
-  }, [search, billingFilter])
+  }, [search, billingFilter, startProgressSSE])
 
   useEffect(() => {
     fetchCustomers(1, true)
@@ -576,20 +618,55 @@ export default function Customers() {
             {loading && (
               <tr>
                 <td colSpan={8} className="text-center py-8">
-                  <div className="flex flex-col items-center justify-center gap-3 text-slate-400">
-                    <div className="flex items-center gap-3">
+                  {isForcingRefresh && syncProgress ? (
+                    /* ── Real-time progress bar (force-refresh sync) ── */
+                    <div className="flex flex-col items-center gap-3 px-8 max-w-lg mx-auto">
+                      {/* Step label */}
+                      <div className="text-sm text-slate-300 font-medium">
+                        {syncProgress.step_label || 'Syncing…'}
+                      </div>
+
+                      {/* Progress bar track */}
+                      <div className="w-full h-3 bg-slate-700 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500 ease-out"
+                          style={{
+                            width: `${syncProgress.pct || 0}%`,
+                            background: syncProgress.step === 'error'
+                              ? '#ef4444'
+                              : syncProgress.pct >= 100
+                                ? '#22c55e'
+                                : 'linear-gradient(90deg, #3b82f6, #6366f1)',
+                          }}
+                        />
+                      </div>
+
+                      {/* Percentage + message row */}
+                      <div className="flex items-center justify-between w-full text-xs">
+                        <span className="text-slate-400">{syncProgress.message || ''}</span>
+                        <span className={`font-mono font-bold ${
+                          syncProgress.step === 'error' ? 'text-red-400' :
+                          syncProgress.pct >= 100 ? 'text-green-400' : 'text-blue-400'
+                        }`}>
+                          {syncProgress.pct || 0}%
+                        </span>
+                      </div>
+
+                      {/* Hint text */}
+                      <span className="text-xs text-slate-600">
+                        First sync fetches all devices &amp; contracts (~2 min). Repeat syncs use a 12-hour cache and are instant.
+                      </span>
+                    </div>
+                  ) : (
+                    /* ── Simple spinner for cache/filter loads ── */
+                    <div className="flex items-center justify-center gap-3 text-slate-400">
                       <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                       </svg>
-                      <span>{isForcingRefresh ? 'Fetching fresh data from MyAdmin…' : 'Loading customers…'}</span>
+                      <span>Loading customers…</span>
                     </div>
-                    {isForcingRefresh && (
-                      <span className="text-xs text-slate-500">
-                        First sync fetches all devices &amp; contracts (~2 min). Repeat syncs use a 12-hour cache and are instant.
-                      </span>
-                    )}
-                  </div>
+                  )}
                 </td>
               </tr>
             )}
