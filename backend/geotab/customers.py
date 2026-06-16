@@ -673,7 +673,7 @@ async def get_customer(account_id: str):
             # Confirmed from contract inspection: the rate plan code shown in
             # MyAdmin (e.g. "CELU-TP-250", "SWELL-NOINS3") lives at top level
             # as promoCode, not productCode or ratePlanName.
-            rate_plan_code = d.get("promoCode") or ""
+            rate_plan_code = (d.get("promoCode") or "").upper()
 
             # ── Database: latestDeviceDatabase.databaseName ───────────────────
             # Confirmed field from API — directly on the contract, no lookup needed
