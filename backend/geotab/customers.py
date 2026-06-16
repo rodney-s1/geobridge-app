@@ -383,28 +383,37 @@ async def _fetch_myadmin_customers() -> list[dict]:
 async def sync_progress_sse():
     """
     Server-Sent Events endpoint that streams _sync_progress as JSON.
-    The frontend connects here during a force-refresh sync and uses the data
-    to render a real-time progress bar with percentage + step label.
+
+    Timing contract:
+      - The frontend opens this SSE connection BEFORE firing GET /api/customers.
+      - We wait up to 5 s for the sync to become active (active=True).
+      - Once active we stream until done/error, then send a final event and close.
+      - If the sync never becomes active within 5 s we close with the idle state.
     """
     async def event_stream():
-        last_json = None
-        # Stream while active, and send at least one final "done" event.
-        while True:
-            current = dict(_sync_progress)      # snapshot
-            current_json = json.dumps(current)
+        # ── Phase 1: wait for the sync to start (up to 5 s) ──────────────────
+        waited = 0.0
+        while not _sync_progress["active"] and waited < 5.0:
+            yield f"data: {json.dumps(_sync_progress)}\n\n"
+            await asyncio.sleep(0.3)
+            waited += 0.3
 
-            # Only send when state has changed (reduces noise)
+        if not _sync_progress["active"]:
+            # Sync never started — close the stream
+            yield f"data: {json.dumps(_sync_progress)}\n\n"
+            return
+
+        # ── Phase 2: stream while active ─────────────────────────────────────
+        last_json = None
+        while _sync_progress["active"] or _sync_progress["step"] not in ("done", "error", ""):
+            current = dict(_sync_progress)
+            current_json = json.dumps(current)
             if current_json != last_json:
                 yield f"data: {current_json}\n\n"
                 last_json = current_json
+            await asyncio.sleep(0.3)
 
-            # Exit after sending "done" or "error"
-            if not current["active"] and current["step"] in ("done", "error", ""):
-                break
-
-            await asyncio.sleep(0.4)
-
-        # Final flush — ensures the client always gets the terminal state
+        # ── Final flush ───────────────────────────────────────────────────────
         yield f"data: {json.dumps(_sync_progress)}\n\n"
 
     return StreamingResponse(
@@ -412,7 +421,7 @@ async def sync_progress_sse():
         media_type="text/event-stream",
         headers={
             "Cache-Control":               "no-cache",
-            "X-Accel-Buffering":           "no",   # disable nginx buffering
+            "X-Accel-Buffering":           "no",
             "Access-Control-Allow-Origin": "*",
         },
     )

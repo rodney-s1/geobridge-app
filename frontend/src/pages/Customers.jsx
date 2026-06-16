@@ -305,19 +305,24 @@ export default function Customers() {
       try {
         const data = JSON.parse(e.data)
         setSyncProgress(data)
-        // Auto-close when done or error
-        if (!data.active && (data.step === 'done' || data.step === 'error' || data.step === '')) {
+        // Auto-close when the backend signals done or error
+        if (!data.active && (data.step === 'done' || data.step === 'error')) {
           es.close()
           sseRef.current = null
-          // Keep the final 100% state visible for 2s then clear
-          setTimeout(() => setSyncProgress(null), 2000)
+          // Keep the final 100% state visible for 3s then clear
+          setTimeout(() => setSyncProgress(null), 3000)
         }
       } catch (_) {}
     }
     es.onerror = () => {
+      // Stream closed — only wipe progress if it never went active
+      // (avoids blanking the bar on a normal server-side close after "done")
+      setSyncProgress(prev => {
+        if (!prev || !prev.active) return null
+        return prev  // keep showing last known state
+      })
       es.close()
       sseRef.current = null
-      setSyncProgress(null)
     }
   }, [])
 
@@ -331,7 +336,11 @@ export default function Customers() {
     setLoadingStart(Date.now())
     if (forceRefresh) {
       setIsForcingRefresh(true)
+      // Open SSE FIRST so it's listening before the sync sets active=True.
+      // Then wait 200 ms to give the EventSource time to connect before we
+      // fire the data request that will kick off _fetch_myadmin_customers().
       startProgressSSE()
+      await new Promise(r => setTimeout(r, 200))
     }
     setError(null)
     try {
