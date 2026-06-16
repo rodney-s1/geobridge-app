@@ -145,7 +145,7 @@ def enrich_customer(customer: dict) -> dict:
     }
 
 
-async def _fetch_myadmin_customers() -> list[dict]:
+async def _fetch_myadmin_customers(force_refresh: bool = False) -> list[dict]:
     """
     Pull customer + device data from MyAdmin using TWO steps.
 
@@ -217,7 +217,8 @@ async def _fetch_myadmin_customers() -> list[dict]:
     # ── Step 2: GetDeviceContractsByPage ─────────────────────────────────────
     cache_age = time.time() - (_sync_cache.get("fetched_at") or 0)
     cache_ok  = (
-        _sync_cache.get("contracts")
+        not force_refresh
+        and _sync_cache.get("contracts")
         and cache_age < CACHE_TTL_HOURS * 3600
     )
 
@@ -469,7 +470,7 @@ async def get_customers(
                     print(f"[customers] Lock: using cache populated by concurrent request ({cache_age2/3600:.1f}h old)")
                     raw = _sync_cache["raw_customers"]
                 else:
-                    raw = await _fetch_myadmin_customers()
+                    raw = await _fetch_myadmin_customers(force_refresh=force_refresh)
                     _sync_cache["raw_customers"]       = raw
                     _sync_cache["customer_fetched_at"] = time.time()
                     _save_json(SYNC_CACHE_FILE, _sync_cache)
