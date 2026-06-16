@@ -535,13 +535,24 @@ async def get_qb_summary():
 @router.get("/dashboard/stats")
 async def get_dashboard_stats():
     """Return summary counts for the dashboard home page."""
-    customers = _sync_cache.get("customers") or []
-    fetched_at = _sync_cache.get("fetched_at")
+    raw = _sync_cache.get("raw_customers") or []
+    fetched_at = _sync_cache.get("customer_fetched_at")
+
+    if not raw:
+        return {
+            "totalCustomers":   0,
+            "totalDevices":     0,
+            "billingBreakdown": {},
+            "cacheAgeHours":    None,
+            "hasCachedData":    False,
+        }
+
+    # Enrich the same way get_customers() does so billingType + deviceCount are accurate
+    customers = [enrich_customer(c) for c in raw]
 
     total_customers = len(customers)
     total_devices   = sum(c.get("deviceCount") or 0 for c in customers)
 
-    # Billing type breakdown (using enriched billingType field)
     billing_breakdown: dict[str, int] = {}
     for c in customers:
         bt = c.get("billingType") or "Unknown"
@@ -550,11 +561,11 @@ async def get_dashboard_stats():
     cache_age_hours = round((time.time() - fetched_at) / 3600, 1) if fetched_at else None
 
     return {
-        "totalCustomers":    total_customers,
-        "totalDevices":      total_devices,
-        "billingBreakdown":  billing_breakdown,
-        "cacheAgeHours":     cache_age_hours,
-        "hasCachedData":     bool(customers),
+        "totalCustomers":   total_customers,
+        "totalDevices":     total_devices,
+        "billingBreakdown": billing_breakdown,
+        "cacheAgeHours":    cache_age_hours,
+        "hasCachedData":    True,
     }
 
 
