@@ -236,6 +236,42 @@ function CustomerRow({ customer, onBillingTypeChange }) {
             </tr>
           ) : (
             <>
+              {/* ── Rate Plan Code summary panel ─────────────────────────── */}
+              {(() => {
+                // Group devices by ratePlanCode, count each
+                const rpcCounts = {}
+                devices.forEach(d => {
+                  const code = d.ratePlanCode || '(none)'
+                  rpcCounts[code] = (rpcCounts[code] || 0) + 1
+                })
+                const rpcEntries = Object.entries(rpcCounts).sort((a, b) => b[1] - a[1])
+                return (
+                  <tr className="bg-slate-900/80 border-b border-white/10">
+                    <td colSpan={8} className="pl-14 pr-6 py-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-xs text-slate-500 uppercase tracking-wider font-medium mr-1">
+                          Rate Plan Breakdown:
+                        </span>
+                        {rpcEntries.map(([code, count]) => (
+                          <span
+                            key={code}
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-700/60 border border-slate-600/50 text-xs"
+                          >
+                            <span className="font-mono text-slate-200">{code}</span>
+                            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-500/25 text-blue-300 font-bold text-xs">
+                              {count}
+                            </span>
+                          </span>
+                        ))}
+                        <span className="ml-auto text-xs text-slate-600 font-mono">
+                          {devices.length} total device{devices.length !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })()}
+
               {/* Device sub-header */}
               <tr className="bg-slate-900/70">
                 <td colSpan={8} className="px-0 py-0">
