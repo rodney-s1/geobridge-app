@@ -531,6 +531,33 @@ async def get_qb_summary():
     }
 
 
+# ─── GET /api/dashboard/stats ─────────────────────────────────────────────────
+@router.get("/dashboard/stats")
+async def get_dashboard_stats():
+    """Return summary counts for the dashboard home page."""
+    customers = _sync_cache.get("customers") or []
+    fetched_at = _sync_cache.get("fetched_at")
+
+    total_customers = len(customers)
+    total_devices   = sum(c.get("deviceCount") or 0 for c in customers)
+
+    # Billing type breakdown (using enriched billingType field)
+    billing_breakdown: dict[str, int] = {}
+    for c in customers:
+        bt = c.get("billingType") or "Unknown"
+        billing_breakdown[bt] = billing_breakdown.get(bt, 0) + 1
+
+    cache_age_hours = round((time.time() - fetched_at) / 3600, 1) if fetched_at else None
+
+    return {
+        "totalCustomers":    total_customers,
+        "totalDevices":      total_devices,
+        "billingBreakdown":  billing_breakdown,
+        "cacheAgeHours":     cache_age_hours,
+        "hasCachedData":     bool(customers),
+    }
+
+
 # ─── POST /api/customers/import-qb ────────────────────────────────────────────
 @router.post("/customers/import-qb")
 async def import_qb_customers(file: UploadFile = File(...)):

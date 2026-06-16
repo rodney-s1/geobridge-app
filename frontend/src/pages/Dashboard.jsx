@@ -1,5 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Customers from './Customers'
+
+const API = 'http://localhost:8001'
 
 function Dashboard({ sessionData, onLogout }) {
   const [activePage, setActivePage] = useState('home')
@@ -113,6 +115,30 @@ function Dashboard({ sessionData, onLogout }) {
 
 // Home Page
 function HomePage({ sessionData }) {
+  const [stats, setStats] = useState(null)
+  const [statsLoading, setStatsLoading] = useState(true)
+
+  useEffect(() => {
+    setStatsLoading(true)
+    fetch(`${API}/api/dashboard/stats`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (d) setStats(d) })
+      .catch(() => {})
+      .finally(() => setStatsLoading(false))
+  }, [])
+
+  const fmt = (n) => {
+    if (n == null) return '—'
+    if (n >= 1000) return n.toLocaleString()
+    return String(n)
+  }
+
+  const cacheLabel = stats?.cacheAgeHours != null
+    ? (stats.cacheAgeHours < 1
+        ? `Updated ${Math.round(stats.cacheAgeHours * 60)}m ago`
+        : `Updated ${stats.cacheAgeHours.toFixed(1)}h ago`)
+    : 'No sync yet'
+
   return (
     <div style={styles.homePage}>
 
@@ -130,29 +156,47 @@ function HomePage({ sessionData }) {
       <div style={styles.statsGrid}>
         <StatCard
           label="Total Devices"
-          value="--"
-          sub="Loading from MyAdmin..."
+          value={statsLoading ? '…' : fmt(stats?.totalDevices)}
+          sub={statsLoading ? 'Loading…' : (stats?.hasCachedData ? cacheLabel : 'Sync to load')}
           color="#3b82f6"
         />
         <StatCard
           label="Total Customers"
-          value="--"
-          sub="Loading from MyAdmin..."
+          value={statsLoading ? '…' : fmt(stats?.totalCustomers)}
+          sub={statsLoading ? 'Loading…' : (stats?.hasCachedData ? cacheLabel : 'Sync to load')}
           color="#8b5cf6"
         />
         <StatCard
           label="Pending Invoices"
-          value="--"
+          value="—"
           sub="Queued for review"
           color="#f59e0b"
         />
         <StatCard
           label="Synced to QuickBooks"
-          value="--"
+          value="—"
           sub="Last sync: Never"
           color="#10b981"
         />
       </div>
+
+      {/* Billing type breakdown (only when data is loaded) */}
+      {stats?.hasCachedData && stats.billingBreakdown && (
+        <div style={styles.breakdownCard}>
+          <p style={styles.breakdownTitle}>Billing Type Breakdown</p>
+          <div style={styles.breakdownGrid}>
+            {Object.entries(stats.billingBreakdown)
+              .sort((a, b) => b[1] - a[1])
+              .map(([type, count]) => (
+                <div key={type} style={styles.breakdownItem}>
+                  <span style={styles.breakdownCount}>{count.toLocaleString()}</span>
+                  <span style={styles.breakdownLabel}>{type}</span>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div style={styles.section}>
@@ -481,6 +525,43 @@ const styles = {
     display: 'flex',
     flexDirection: 'column',
     gap: '14px',
+  },
+  breakdownCard: {
+    background: '#1e293b',
+    borderRadius: '12px',
+    padding: '20px 24px',
+    border: '1px solid #334155',
+  },
+  breakdownTitle: {
+    fontSize: '13px',
+    fontWeight: '600',
+    color: '#64748b',
+    margin: '0 0 14px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+  },
+  breakdownGrid: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: '10px',
+  },
+  breakdownItem: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    padding: '5px 12px',
+    background: '#0f172a',
+    borderRadius: '8px',
+    border: '1px solid #334155',
+  },
+  breakdownCount: {
+    fontSize: '14px',
+    fontWeight: '700',
+    color: '#f1f5f9',
+  },
+  breakdownLabel: {
+    fontSize: '12px',
+    color: '#64748b',
   },
   sectionTitle: {
     fontSize: '15px',
