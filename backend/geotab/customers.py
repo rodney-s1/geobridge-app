@@ -619,8 +619,8 @@ async def import_qb_customers(file: UploadFile = File(...)):
     }
 
 
-# ─── GET /api/customers/debug-contract  (temp — remove after field names confirmed) ─
-@router.get("/customers/debug-contract")
+# ─── GET /api/debug/contract-fields  (temp — remove after field names confirmed) ─
+@router.get("/debug/contract-fields")
 async def debug_contract():
     """Returns the raw keys + values of the first non-terminated cached contract.
     Use this to confirm the exact field names for activeBillingPlan / ratePlanCode.
