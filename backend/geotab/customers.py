@@ -205,6 +205,8 @@ async def _fetch_myadmin_customers() -> list[dict]:
         next_id = batch[-1].get("Id") or batch[-1].get("id") or 0
 
     print(f"[sync] Step 1 complete: {len(all_device_dbs)} total device-db records")
+    # Persist the device-db map so get_customer() can resolve real DB names
+    _sync_cache["device_db_records"] = all_device_dbs
     _set_progress(
         step="step1",
         step_label="Step 1/2 — Device databases fetched ✓",
@@ -291,8 +293,9 @@ async def _fetch_myadmin_customers() -> list[dict]:
             pct=75,
             message=f"{len(all_contracts):,} total contracts fetched",
         )
-        _sync_cache["contracts"]  = all_contracts
-        _sync_cache["fetched_at"] = time.time()
+        _sync_cache["contracts"]         = all_contracts
+        _sync_cache["fetched_at"]         = time.time()
+        _sync_cache["device_db_records"]  = all_device_dbs   # keep in sync with contracts
         _save_json(SYNC_CACHE_FILE, _sync_cache)
 
     # ── Processing: join + group ───────────────────────────────────────────────
@@ -637,21 +640,34 @@ async def get_customer(account_id: str):
             )
             all_contracts = result.get("result") or []
 
+        # Only include non-terminated contracts (Active + Never Billed)
         matching = [
             c for c in all_contracts
             if str(((c.get("userContact") or {}).get("userCompany") or {}).get("id") or "") == account_id
+            and not c.get("isTerminated", False)
         ]
+
+        # Build a deviceId -> DatabaseName lookup from the cached device-db map
+        # so we can show the real DB name (e.g. "bluearrow") instead of a numeric ID
+        device_db_map: dict[str, str] = {}
+        for rec in (_sync_cache.get("device_db_records") or []):
+            dev_id  = str(rec.get("DeviceId") or rec.get("deviceId") or "")
+            db_name = rec.get("DatabaseName") or rec.get("databaseName") or ""
+            if dev_id and db_name:
+                device_db_map[dev_id] = db_name
 
         normalized = []
         for d in matching:
-            device = d.get("device") or {}
+            device   = d.get("device") or {}
+            dev_id   = str(device.get("id") or "")
+            db_name  = device_db_map.get(dev_id) or ""
             normalized.append({
                 "serialNumber":      device.get("serialNumber") or "",
                 "deviceType":        (device.get("deviceType") or {}).get("name") or "",
                 "activeBillingPlan": d.get("productCode") or "",
                 "ratePlanCode":      d.get("productCode") or "",
-                "database":          str(((d.get("userContact") or {}).get("userCompany") or {}).get("id") or ""),
-                "status":            "Terminated" if d.get("isTerminated") else "Active",
+                "database":          db_name,
+                "status":            "Active",   # terminated already filtered out above
                 "contractStartDate": d.get("startDate") or "",
                 "contractEndDate":   d.get("endDate") or "",
             })
