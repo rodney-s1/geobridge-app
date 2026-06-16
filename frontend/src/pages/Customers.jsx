@@ -343,9 +343,11 @@ export default function Customers() {
     es.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data)
+        console.log('[SSE] message:', data.step, 'active:', data.active, 'pct:', data.pct)
         setSyncProgress(data)
         // Auto-close when the backend signals done or error
         if (!data.active && (data.step === 'done' || data.step === 'error')) {
+          console.log('[SSE] received done/error — closing stream, clearing loading state')
           sseCompletedRef.current = true   // mark as normal completion before close
           es.close()
           sseRef.current = null
@@ -360,6 +362,7 @@ export default function Customers() {
       } catch (_) {}
     }
     es.onerror = () => {
+      console.log('[SSE] onerror fired — sseCompletedRef:', sseCompletedRef.current)
       // onerror fires on both unexpected errors AND normal server-side close.
       // Only treat it as a real error if we never received a done/error message.
       if (!sseCompletedRef.current) {
@@ -385,11 +388,10 @@ export default function Customers() {
     if (forceRefresh) {
       setIsForcingRefresh(true)
       forceSyncingRef.current = true
-      // Open SSE FIRST so it's listening before the sync sets active=True.
-      // Then wait 200 ms to give the EventSource time to connect before we
-      // fire the data request that will kick off _fetch_myadmin_customers().
+      console.log('[sync] forceRefresh=true, opening SSE...')
       startProgressSSE()
       await new Promise(r => setTimeout(r, 200))
+      console.log('[sync] 200ms wait done, firing fetch...')
     }
     setError(null)
     try {
@@ -407,6 +409,7 @@ export default function Customers() {
       }
       if (!res.ok) throw new Error(`Server error (HTTP ${res.status})`)
       const data = await res.json()
+      console.log('[sync] response — fromCache:', data.fromCache, 'forceSyncingRef:', forceSyncingRef.current)
       setCustomers(prev => reset ? data.customers : [...prev, ...data.customers])
       setHasMore(data.hasMore)
       setPage(pg)
@@ -416,12 +419,15 @@ export default function Customers() {
       // If the backend served from cache (no real sync ran), the SSE stream
       // will never go active — clean up loading state immediately.
       if (forceRefresh && data.fromCache) {
+        console.log('[sync] cache hit — cleaning up immediately')
         forceSyncingRef.current = false
         if (sseRef.current) { sseRef.current.close(); sseRef.current = null }
         setLoading(false)
         setLoadingStart(null)
         setIsForcingRefresh(false)
         setSyncProgress(null)
+      } else if (forceRefresh) {
+        console.log('[sync] real sync done — keeping loading=true, waiting for SSE done signal')
       }
     } catch (e) {
       setError(e.message)
@@ -431,6 +437,7 @@ export default function Customers() {
         setIsForcingRefresh(false)
       }
     } finally {
+      console.log('[sync] finally — forceSyncingRef.current:', forceSyncingRef.current)
       // For force-refresh: keep loading=true so the progress bar stays visible.
       // The SSE onmessage handler will call setLoading(false) when sync is done.
       if (!forceSyncingRef.current) {
