@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\" \"wait-on http://localhost:5173 && electron .\"",
     "dev:frontend": "cd frontend && npm run dev",
-    "dev:backend": "cd backend && python3 run_backend.py",
+    "dev:backend": "cd backend && ..\\.venv\\Scripts\\python.exe run_backend.py",
     "build:frontend": "cd frontend && npm run build",
     "build": "npm run build:frontend && electron-builder",
     "start": "electron ."
