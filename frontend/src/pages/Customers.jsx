@@ -287,6 +287,7 @@ export default function Customers() {
   const [qbSummary, setQbSummary] = useState(null)
   const [syncProgress, setSyncProgress] = useState(null)   // SSE progress data
   const sseRef = useRef(null)   // holds the EventSource so we can close it
+  const forceSyncingRef = useRef(false)  // true while a force-refresh sync is in progress
   const PAGE_SIZE = 50
 
   // ── SSE progress connection ────────────────────────────────────────────────
@@ -309,14 +310,22 @@ export default function Customers() {
         if (!data.active && (data.step === 'done' || data.step === 'error')) {
           es.close()
           sseRef.current = null
-          // Keep the final 100% state visible for 3s then clear
+          forceSyncingRef.current = false
+          // Clear the loading state NOW (HTTP request finished long ago)
+          setLoading(false)
+          setLoadingStart(null)
+          setIsForcingRefresh(false)
+          // Keep the final 100% bar visible for 3s then clear
           setTimeout(() => setSyncProgress(null), 3000)
         }
       } catch (_) {}
     }
     es.onerror = () => {
-      // Stream closed — only wipe progress if it never went active
-      // (avoids blanking the bar on a normal server-side close after "done")
+      // Stream closed unexpectedly — clean up loading state
+      forceSyncingRef.current = false
+      setLoading(false)
+      setLoadingStart(null)
+      setIsForcingRefresh(false)
       setSyncProgress(prev => {
         if (!prev || !prev.active) return null
         return prev  // keep showing last known state
@@ -336,6 +345,7 @@ export default function Customers() {
     setLoadingStart(Date.now())
     if (forceRefresh) {
       setIsForcingRefresh(true)
+      forceSyncingRef.current = true
       // Open SSE FIRST so it's listening before the sync sets active=True.
       // Then wait 200 ms to give the EventSource time to connect before we
       // fire the data request that will kick off _fetch_myadmin_customers().
@@ -365,10 +375,19 @@ export default function Customers() {
       setCacheAgeHours(data.cacheAgeHours ?? null)
     } catch (e) {
       setError(e.message)
+      // On error during force-refresh, clean up immediately
+      if (forceRefresh) {
+        forceSyncingRef.current = false
+        setIsForcingRefresh(false)
+      }
     } finally {
-      setLoading(false)
-      setLoadingStart(null)
-      setIsForcingRefresh(false)
+      // For force-refresh: keep loading=true so the progress bar stays visible.
+      // The SSE onmessage handler will call setLoading(false) when sync is done.
+      if (!forceSyncingRef.current) {
+        setLoading(false)
+        setLoadingStart(null)
+        setIsForcingRefresh(false)
+      }
     }
   }, [search, billingFilter, startProgressSSE])
 
