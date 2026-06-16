@@ -619,20 +619,6 @@ async def import_qb_customers(file: UploadFile = File(...)):
     }
 
 
-# ─── GET /api/debug/contract-fields  (temp — remove after field names confirmed) ─
-@router.get("/debug/contract-fields")
-async def debug_contract():
-    """Returns the raw keys + values of the first non-terminated cached contract.
-    Use this to confirm the exact field names for activeBillingPlan / ratePlanCode.
-    DELETE this endpoint once field mapping is confirmed.
-    """
-    contracts = _sync_cache.get("contracts") or []
-    for c in contracts:
-        if not c.get("isTerminated"):
-            return {"keys": list(c.keys()), "sample": c}
-    return {"error": "No non-terminated contracts in cache — run a Sync first"}
-
-
 # ─── GET /api/customers/{account_id} ──────────────────────────────────────────
 @router.get("/customers/{account_id}")
 async def get_customer(account_id: str):
