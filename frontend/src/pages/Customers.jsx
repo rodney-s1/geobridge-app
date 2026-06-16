@@ -63,23 +63,29 @@ function getSubLabel(name) {
 // - If every account in a group is a sub (no plain parent exists), parent is null
 // Standalone accounts (no subs and no {}) appear as { parent: customer, subs: [] }
 function groupCustomers(customers) {
-  const groups = {}  // parentName → { parent: null, subs: [] }
+  const groups = {}     // key (lowercase) → { parentName (display), parent, subs }
+  const keyToDisplay = {}  // tracks the first-seen display name for each key
 
   customers.forEach(c => {
-    const parentName = getParentName(c.name)
-    if (!groups[parentName]) {
-      groups[parentName] = { parentName, parent: null, subs: [] }
+    const rawParent = getParentName(c.name)
+    const key = rawParent.toLowerCase()  // case-insensitive grouping key
+
+    if (!groups[key]) {
+      groups[key] = { parentName: rawParent, parent: null, subs: [] }
+      keyToDisplay[key] = rawParent
     }
     if (isSubAccount(c.name)) {
-      groups[parentName].subs.push(c)
+      groups[key].subs.push(c)
     } else {
-      groups[parentName].parent = c
+      // Prefer the non-sub account's own name as the display name
+      groups[key].parentName = rawParent
+      groups[key].parent = c
     }
   })
 
-  // Sort groups by parentName, subs within each group by their sub label
+  // Sort groups by parentName (case-insensitive), subs within each group by their sub label
   return Object.values(groups)
-    .sort((a, b) => a.parentName.localeCompare(b.parentName))
+    .sort((a, b) => a.parentName.toLowerCase().localeCompare(b.parentName.toLowerCase()))
     .map(g => {
       g.subs.sort((a, b) => a.name.localeCompare(b.name))
       // Combined device count across parent + all subs
