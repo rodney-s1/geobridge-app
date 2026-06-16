@@ -622,25 +622,26 @@ async def import_qb_customers(file: UploadFile = File(...)):
 # ─── GET /api/debug/rate-plan-fields  (temp — find correct rate plan code field) ─
 @router.get("/debug/rate-plan-fields")
 async def debug_rate_plan():
-    """Dumps the full activeRatePlans[0] object from the first non-terminated
-    contract that has rate plans, so we can find which key holds 'CELU-TP-250'.
+    """Dumps the full top-level contract keys + all nested objects for the first
+    few non-terminated contracts so we can locate where 'CELU-TP-250' lives.
     DELETE after field is confirmed."""
     contracts = _sync_cache.get("contracts") or []
     samples = []
     for c in contracts:
         if c.get("isTerminated"):
             continue
-        rps = c.get("activeRatePlans") or []
-        if not rps:
-            continue
-        samples.append({
-            "activeRatePlans_0": rps[0],
-            "activeRatePlans_count": len(rps),
-        })
-        if len(samples) >= 5:   # return 5 different samples to compare
+        # Dump every top-level key and its value (truncate long lists to first item)
+        summary = {}
+        for k, v in c.items():
+            if isinstance(v, list):
+                summary[k] = v[0] if v else []
+            else:
+                summary[k] = v
+        samples.append(summary)
+        if len(samples) >= 3:
             break
     if not samples:
-        return {"error": "No contracts with activeRatePlans found in cache — run a Sync first"}
+        return {"error": "No non-terminated contracts in cache — run a Sync first"}
     return {"samples": samples}
 
 
