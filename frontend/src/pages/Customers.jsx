@@ -112,7 +112,7 @@ function RpcBreakdownRow({ rpcCounts, totalDevices, colSpan = 8, indent = 'pl-14
               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-700/60 border border-slate-600/50 text-xs"
             >
               <span className="font-mono text-slate-200">{code}</span>
-              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-500/25 text-blue-300 font-bold text-xs">
+              <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full bg-blue-500/25 text-blue-300 font-bold text-xs">
                 {count}
               </span>
             </span>
@@ -350,7 +350,7 @@ function SubAccountRow({ customer, devices, loadingDevices, onBillingTypeChange 
 
         {/* Device count */}
         <td className="px-4 py-2.5">
-          <span className="inline-flex items-center justify-center w-8 h-6 bg-slate-700/60 rounded text-xs font-mono text-slate-400">
+          <span className="inline-flex items-center justify-center min-w-[2rem] h-6 px-1.5 bg-slate-700/60 rounded text-xs font-mono text-slate-400">
             {expanded && devices ? devices.length : customer.deviceCount || '—'}
           </span>
         </td>
@@ -569,7 +569,7 @@ function ParentGroupRow({ group, onBillingTypeChange }) {
                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-700/80 border border-slate-600/40 text-xs"
                   >
                     <span className="font-mono text-slate-200">{code}</span>
-                    <span className="w-4 h-4 rounded-full bg-blue-500/25 text-blue-300 font-bold text-xs flex items-center justify-center">
+                    <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full bg-blue-500/25 text-blue-300 font-bold text-xs">
                       {count}
                     </span>
                   </span>
@@ -605,7 +605,7 @@ function ParentGroupRow({ group, onBillingTypeChange }) {
         {/* Combined device count */}
         <td className="px-4 py-3">
           <div className="flex items-center gap-1">
-            <span className="inline-flex items-center justify-center w-8 h-6 bg-indigo-600/20 border border-indigo-500/20 rounded text-xs font-mono text-indigo-300">
+            <span className="inline-flex items-center justify-center min-w-[2rem] h-6 px-1.5 bg-indigo-600/20 border border-indigo-500/20 rounded text-xs font-mono text-indigo-300">
               {combinedDeviceCount}
             </span>
             {hasSubs && (
@@ -783,7 +783,7 @@ function CustomerRow({ customer, onBillingTypeChange }) {
 
         {/* Device count */}
         <td className="px-4 py-3">
-          <span className="inline-flex items-center justify-center w-8 h-6 bg-slate-700 rounded text-xs font-mono text-slate-300">
+          <span className="inline-flex items-center justify-center min-w-[2rem] h-6 px-1.5 bg-slate-700 rounded text-xs font-mono text-slate-300">
             {expanded ? devices.length : customer.deviceCount || '—'}
           </span>
         </td>
@@ -1065,7 +1065,7 @@ export default function Customers() {
               <svg className={`w-4 h-4 ${isForcingRefresh ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              {isForcingRefresh ? 'Syncing… (may take ~2 min)' : 'Sync from MyAdmin'}
+              {isForcingRefresh ? 'Syncing… (may take ~5 min)' : 'Sync from MyAdmin'}
             </button>
             {fromCache && cacheAgeHours !== null && !loading && (
               <span className="text-xs text-slate-500">
@@ -1277,7 +1277,7 @@ export default function Customers() {
 
                           {/* Hint text */}
                           <span className="text-xs text-slate-600">
-                            First sync fetches all devices &amp; contracts (~2 min). Repeat syncs use a 12-hour cache and are instant.
+                            First sync fetches all devices &amp; contracts (~5 min). Repeat syncs use a 12-hour cache and are instant.
                           </span>
                         </div>
                       )
