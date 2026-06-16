@@ -1033,6 +1033,50 @@ export default function Customers() {
 
   return (
     <div className="flex flex-col h-full">
+      {/* ── Sync progress banner — sticky top, shown during force-refresh ── */}
+      {isForcingRefresh && (() => {
+        const p = syncProgress || { step: 'step1', step_label: 'Connecting to MyAdmin…', pct: 0, message: 'Starting sync…' }
+        return (
+          <div className="sticky top-0 z-20 mb-4 rounded-xl border border-slate-600/60 bg-slate-800/95 backdrop-blur-sm px-6 py-4 shadow-lg">
+            {/* Step label + percentage */}
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-slate-200">
+                {p.step_label || 'Syncing…'}
+              </span>
+              <span className={`text-sm font-mono font-bold ${
+                p.step === 'error' ? 'text-red-400' :
+                p.pct >= 100 ? 'text-green-400' : 'text-blue-400'
+              }`}>
+                {p.pct || 0}%
+              </span>
+            </div>
+
+            {/* Progress bar */}
+            <div className="w-full h-2.5 bg-slate-700 rounded-full overflow-hidden mb-2">
+              <div
+                className="h-full rounded-full transition-all duration-500 ease-out"
+                style={{
+                  width: `${p.pct || 0}%`,
+                  background: p.step === 'error'
+                    ? '#ef4444'
+                    : p.pct >= 100
+                      ? '#22c55e'
+                      : 'linear-gradient(90deg, #3b82f6, #6366f1)',
+                }}
+              />
+            </div>
+
+            {/* Message + hint */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400">{p.message || ''}</span>
+              <span className="text-xs text-slate-600">
+                First sync ~5 min · repeat syncs use 12-hour cache
+              </span>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
@@ -1235,63 +1279,17 @@ export default function Customers() {
               ))
             )}
 
-            {loading && (
+            {loading && !isForcingRefresh && (
               <tr>
                 <td colSpan={8} className="text-center py-8">
-                  {isForcingRefresh ? (
-                    /* ── Real-time progress bar (force-refresh sync) ── */
-                    (() => {
-                      const p = syncProgress || { step: 'step1', step_label: 'Connecting to MyAdmin…', pct: 0, message: 'Starting sync…' }
-                      return (
-                        <div className="flex flex-col items-center gap-3 px-8 max-w-lg mx-auto">
-                          {/* Step label */}
-                          <div className="text-sm text-slate-300 font-medium">
-                            {p.step_label || 'Syncing…'}
-                          </div>
-
-                          {/* Progress bar track */}
-                          <div className="w-full h-3 bg-slate-700 rounded-full overflow-hidden">
-                            <div
-                              className="h-full rounded-full transition-all duration-500 ease-out"
-                              style={{
-                                width: `${p.pct || 0}%`,
-                                background: p.step === 'error'
-                                  ? '#ef4444'
-                                  : p.pct >= 100
-                                    ? '#22c55e'
-                                    : 'linear-gradient(90deg, #3b82f6, #6366f1)',
-                              }}
-                            />
-                          </div>
-
-                          {/* Percentage + message row */}
-                          <div className="flex items-center justify-between w-full text-xs">
-                            <span className="text-slate-400">{p.message || ''}</span>
-                            <span className={`font-mono font-bold ${
-                              p.step === 'error' ? 'text-red-400' :
-                              p.pct >= 100 ? 'text-green-400' : 'text-blue-400'
-                            }`}>
-                              {p.pct || 0}%
-                            </span>
-                          </div>
-
-                          {/* Hint text */}
-                          <span className="text-xs text-slate-600">
-                            First sync fetches all devices &amp; contracts (~5 min). Repeat syncs use a 12-hour cache and are instant.
-                          </span>
-                        </div>
-                      )
-                    })()
-                  ) : (
-                    /* ── Simple spinner for cache/filter loads ── */
-                    <div className="flex items-center justify-center gap-3 text-slate-400">
-                      <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                      </svg>
-                      <span>Loading customers…</span>
-                    </div>
-                  )}
+                  {/* Simple spinner for cache/filter loads (progress bar is in the top banner) */}
+                  <div className="flex items-center justify-center gap-3 text-slate-400">
+                    <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                    <span>Loading customers…</span>
+                  </div>
                 </td>
               </tr>
             )}

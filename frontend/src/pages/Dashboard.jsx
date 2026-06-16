@@ -101,7 +101,11 @@ function Dashboard({ sessionData, onLogout }) {
         {/* Page Content */}
         <div style={styles.content}>
           {activePage === 'home' && <HomePage sessionData={sessionData} />}
-          {activePage === 'customers' && <Customers />}
+          {/* Customers is always mounted (never unmounted) so sync state
+              survives navigation away and back. Hidden via display:none. */}
+          <div style={{ display: activePage === 'customers' ? 'contents' : 'none' }}>
+            <Customers />
+          </div>
           {activePage === 'invoices' && <ComingSoon page="Invoices" />}
           {activePage === 'sync' && <ComingSoon page="Sync Status" />}
           {activePage === 'reports' && <ComingSoon page="Reports" />}
