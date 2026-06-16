@@ -345,19 +345,13 @@ export default function Customers() {
         const data = JSON.parse(e.data)
         console.log('[SSE] message:', data.step, 'active:', data.active, 'pct:', data.pct)
         setSyncProgress(data)
-        // Auto-close when the backend signals done or error
+        // Mark done so onerror knows this was a clean server-side close
         if (!data.active && (data.step === 'done' || data.step === 'error')) {
-          console.log('[SSE] received done/error — closing stream, clearing loading state')
-          sseCompletedRef.current = true   // mark as normal completion before close
-          es.close()
-          sseRef.current = null
-          forceSyncingRef.current = false
-          // Clear the loading state NOW (HTTP request finished long ago)
-          setLoading(false)
-          setLoadingStart(null)
-          setIsForcingRefresh(false)
-          // Keep the final 100% bar visible for 3s then clear
-          setTimeout(() => setSyncProgress(null), 3000)
+          console.log('[SSE] received done/error — marking complete, stream will close')
+          sseCompletedRef.current = true
+          // DON'T clear loading/isForcingRefresh here.
+          // fetchCustomers() is still awaiting the HTTP response and will
+          // clean up in its own finally block once the response arrives.
         }
       } catch (_) {}
     }
@@ -366,12 +360,14 @@ export default function Customers() {
       // onerror fires on both unexpected errors AND normal server-side close.
       // Only treat it as a real error if we never received a done/error message.
       if (!sseCompletedRef.current) {
+        // Unexpected connection failure — abort the whole sync
         forceSyncingRef.current = false
         setLoading(false)
         setLoadingStart(null)
         setIsForcingRefresh(false)
         setSyncProgress(null)
       }
+      // On clean close (sseCompletedRef=true), do nothing — fetchCustomers handles cleanup
       es.close()
       sseRef.current = null
     }
@@ -419,6 +415,7 @@ export default function Customers() {
       // If the backend served from cache (no real sync ran), the SSE stream
       // will never go active — clean up loading state immediately.
       if (forceRefresh && data.fromCache) {
+        // Cache hit — SSE never went active, clean up immediately
         console.log('[sync] cache hit — cleaning up immediately')
         forceSyncingRef.current = false
         if (sseRef.current) { sseRef.current.close(); sseRef.current = null }
@@ -427,7 +424,17 @@ export default function Customers() {
         setIsForcingRefresh(false)
         setSyncProgress(null)
       } else if (forceRefresh) {
-        console.log('[sync] real sync done — keeping loading=true, waiting for SSE done signal')
+        // Real sync completed — SSE has been streaming progress.
+        // Now that we have the HTTP response, clean up loading state
+        // and keep the final progress bar visible briefly.
+        console.log('[sync] real sync HTTP response received — cleaning up loading state')
+        forceSyncingRef.current = false
+        if (sseRef.current) { sseRef.current.close(); sseRef.current = null }
+        setLoading(false)
+        setLoadingStart(null)
+        setIsForcingRefresh(false)
+        // Keep 100% bar visible for 3s then clear
+        setTimeout(() => setSyncProgress(null), 3000)
       }
     } catch (e) {
       setError(e.message)
