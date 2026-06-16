@@ -13,14 +13,11 @@ router = APIRouter()
 MYADMIN_ACCOUNT = "CELU01"
 
 # ─── Disk persistence paths ───────────────────────────────────────────────────
-# Store QB data right next to this file (backend/geotab/) so it survives
-# backend restarts without any database setup.
 _HERE = os.path.dirname(os.path.abspath(__file__))
-QB_DATA_FILE       = os.path.join(_HERE, "qb_customers.json")
-OVERRIDES_FILE     = os.path.join(_HERE, "billing_overrides.json")
+QB_DATA_FILE   = os.path.join(_HERE, "qb_customers.json")
+OVERRIDES_FILE = os.path.join(_HERE, "billing_overrides.json")
 
 def _load_json(path: str, default):
-    """Load JSON from disk; return default if missing or corrupt."""
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
@@ -28,41 +25,35 @@ def _load_json(path: str, default):
         return default
 
 def _save_json(path: str, data) -> None:
-    """Atomically write JSON to disk."""
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, path)  # atomic on all platforms
+    os.replace(tmp, path)
 
-# ─── In-memory stores — pre-loaded from disk on import ───────────────────────
-# billing_overrides: { customer_id -> billing_type }
+# ─── In-memory stores — pre-loaded from disk on startup ──────────────────────
 billing_overrides: dict[str, str] = _load_json(OVERRIDES_FILE, {})
-
-# qb_customers: { normalized_name -> { accountNo, billingType, terms, balance, ... } }
-qb_customers: dict[str, dict] = _load_json(QB_DATA_FILE, {})
-
-# qb_items: list of item/price records (not yet persisted — extend later if needed)
-qb_items: list[dict] = []
+qb_customers: dict[str, dict]     = _load_json(QB_DATA_FILE, {})
+qb_items: list[dict]              = []
 
 _qb_loaded = bool(qb_customers)
 print(f"[customers] QB data: {len(qb_customers)} customers loaded from disk"
-      if _qb_loaded else "[customers] QB data: no saved file found — import a CSV to populate")
+      if _qb_loaded else "[customers] QB data: no saved file — import a CSV to populate")
 
 # ─── Billing type map from QB Job Type field ───────────────────────────────────
 QB_JOB_TYPE_MAP = {
-    "standard":               "Standard",
-    "cua":                    "CUA",
-    "sourcewell":             "Sourcewell",
-    "hanover":                "Hanover",
-    "han-cs":                 "Han-CS",
-    "hancs":                  "Han-CS",
-    "charge upon activation": "Charge Upon Activation",
+    "standard":                     "Standard",
+    "cua":                          "CUA",
+    "sourcewell":                   "Sourcewell",
+    "hanover":                      "Hanover",
+    "han-cs":                       "Han-CS",
+    "hancs":                        "Han-CS",
+    "charge upon activation":       "Charge Upon Activation",
     "cua - charge upon activation": "Charge Upon Activation",
-    "check before sending":   "Check Before Sending",
-    "reseller":               "Reseller",
-    "in collections":         "In Collections",
-    "collections":            "In Collections",
-    "terminated":             "Terminated",
+    "check before sending":         "Check Before Sending",
+    "reseller":                     "Reseller",
+    "in collections":               "In Collections",
+    "collections":                  "In Collections",
+    "terminated":                   "Terminated",
 }
 
 def normalize(name: str) -> str:
@@ -78,20 +69,19 @@ def map_billing_type(job_type: str) -> str:
     return "Unknown"
 
 def enrich_customer(customer: dict) -> dict:
-    """Merge MyAdmin device contract record with QB data and billing overrides."""
-    db_name = customer.get("databaseName") or ""
-    cid = str(customer.get("accountId") or customer.get("id") or db_name)
+    """Merge grouped MyAdmin record with QB data and billing overrides."""
+    company_id   = str(customer.get("companyId")   or "")
+    company_name = customer.get("customerName") or ""
 
-    # customerName comes directly from MyAdmin device contracts
-    customer_name = customer.get("customerName") or customer.get("companyName") or ""
+    # Match QB data by normalized company name
+    qb = qb_customers.get(normalize(company_name)) or {}
 
-    # Look up QB data by normalized name (exact match preferred)
-    qb = qb_customers.get(normalize(customer_name)) or {}
+    # Prefer QB's canonical name if matched, otherwise use MyAdmin name
+    display_name = qb.get("name") or company_name or f"Company {company_id}"
 
-    # If QB match found, use QB's proper name (most accurate)
-    display_name = qb.get("name") or customer_name or db_name.replace("_", " ").title()
+    # Stable ID for overrides: use companyId (numeric, stable) as key
+    cid = company_id or normalize(company_name)
 
-    # Determine billing type: override > QB job type > Unknown
     billing_type = (
         billing_overrides.get(cid)
         or qb.get("billingType")
@@ -103,7 +93,7 @@ def enrich_customer(customer: dict) -> dict:
         "name":            display_name,
         "accountNo":       qb.get("accountNo") or "",
         "billingType":     billing_type,
-        "primaryDatabase": db_name,
+        "primaryDatabase": company_id,          # shown in "Primary Database" col
         "deviceCount":     customer.get("activeDevices") or 0,
         "terms":           qb.get("terms") or "",
         "balance":         float(qb.get("balance") or 0),
@@ -114,7 +104,7 @@ def enrich_customer(customer: dict) -> dict:
     }
 
 
-# ─── GET /api/customers  (search, billing filter) ────────────────────────────
+# ─── GET /api/customers ────────────────────────────────────────────────────────
 @router.get("/customers")
 async def get_customers(
     page: int = Query(1, ge=1),
@@ -126,16 +116,23 @@ async def get_customers(
         raise HTTPException(status_code=401, detail="Not logged in")
 
     try:
-        # ── Fetch ALL device contracts for CELU01 (paginated 1000 at a time)
-        # CELU01 is the only account we need; using the constant avoids any
-        # dependency on the user having selected an account from the picker.
-        # Use 120 s timeout per page — CELU01 has 2000+ customers / 5000+ contracts.
+        # ── Fetch ALL device contracts for CELU01 ────────────────────────────
+        # Real API response structure (confirmed from debug output):
+        #   contract["id"]                               → contract id (int)
+        #   contract["account"]["accountId"]             → "CELU01"
+        #   contract["device"]["serialNumber"]           → device serial
+        #   contract["device"]["deviceType"]["name"]     → "GO" etc.
+        #   contract["userContact"]["userCompany"]["id"] → company id (int, stable grouping key)
+        #   contract["userContact"]["userCompany"]["name"] → customer/company name
+        #   contract["isTerminated"]                     → bool
+        #   contract["startDate"] / contract["endDate"]
+        #   contract["productCode"]
         all_contracts = []
         next_id = 0
         page_num = 0
         while True:
             page_num += 1
-            print(f"DEBUG: Fetching contracts page {page_num} (nextId={next_id}, account={MYADMIN_ACCOUNT})…")
+            print(f"DEBUG: Fetching page {page_num} (nextId={next_id}, account={MYADMIN_ACCOUNT})…")
             result = await myadmin_call(
                 "GetDeviceContractsByPage",
                 {
@@ -150,71 +147,56 @@ async def get_customers(
             print(f"DEBUG: Page {page_num} returned {len(batch)} contracts")
             if not batch:
                 break
-
-            # ── ONE-TIME: dump first contract so we can see real field names ──
-            if page_num == 1 and batch:
-                sample = batch[0]
-                print("DEBUG SAMPLE CONTRACT KEYS:", list(sample.keys()))
-                print("DEBUG SAMPLE CONTRACT:", json.dumps(sample, default=str)[:2000])
-
             all_contracts.extend(batch)
             if len(batch) < 1000:
                 break
             next_id = batch[-1].get("id", 0)
 
-        # ── Group contracts by databaseName, collect active device counts
-        from collections import defaultdict
-        db_map: dict[str, dict] = {}
-
-        # ── ONE-TIME: show first 3 contracts' keys after full fetch ──────────
-        for i, c in enumerate(all_contracts[:3]):
-            print(f"DEBUG contract[{i}] keys={list(c.keys())}  vals={json.dumps(c, default=str)[:400]}")
+        # ── Group by userCompany id → one entry per customer ─────────────────
+        # Key = userCompany["id"] (numeric, stable).
+        # Name = userCompany["name"] (shown to user, matched against QB).
+        company_map: dict[str, dict] = {}
 
         for c in all_contracts:
-            # Try every plausible field name the API might use
-            db_name = (
-                c.get("databaseName") or c.get("DatabaseName") or
-                c.get("database")     or c.get("Database")     or
-                c.get("dbName")       or c.get("DbName")       or ""
-            )
-            if not db_name:
-                continue
-            terminated = (
-                c.get("isTerminated") or c.get("IsTerminated") or
-                c.get("terminated")   or c.get("Terminated")   or False
-            )
+            user_contact = c.get("userContact") or {}
+            user_company = user_contact.get("userCompany") or {}
+            company_id   = str(user_company.get("id") or "")
+            company_name = user_company.get("name") or ""
+            terminated   = bool(c.get("isTerminated"))
 
-            if db_name not in db_map:
-                db_map[db_name] = {
-                    "databaseName":  db_name,
-                    "customerName":  (
-                        c.get("customerName") or c.get("CustomerName") or
-                        c.get("companyName")  or c.get("CompanyName")  or
-                        c.get("customer")     or c.get("Customer")     or ""
-                    ),
-                    "accountId":     (c.get("account") or {}).get("number") or session_store.get("account_id") or "",
+            # Skip contracts with no company info
+            key = company_id or company_name
+            if not key:
+                continue
+
+            if key not in company_map:
+                company_map[key] = {
+                    "companyId":     company_id,
+                    "customerName":  company_name,
                     "activeDevices": 0,
                     "totalDevices":  0,
                 }
-            # Use the first non-empty customer name we find
-            if not db_map[db_name]["customerName"]:
-                db_map[db_name]["customerName"] = (
-                    c.get("customerName") or c.get("CustomerName") or
-                    c.get("companyName")  or c.get("CompanyName")  or
-                    c.get("customer")     or c.get("Customer")     or ""
-                )
 
-            db_map[db_name]["totalDevices"] += 1
+            # Use best name we've seen (prefer non-empty)
+            if not company_map[key]["customerName"] and company_name:
+                company_map[key]["customerName"] = company_name
+
+            company_map[key]["totalDevices"] += 1
             if not terminated:
-                db_map[db_name]["activeDevices"] += 1
+                company_map[key]["activeDevices"] += 1
 
-        # ── Filter out customers with ONLY terminated devices
-        raw = [v for v in db_map.values() if v["activeDevices"] > 0]
-        print(f"DEBUG: {len(all_contracts)} contracts → {len(db_map)} databases → {len(raw)} with active devices")
+        # ── Filter out companies with ONLY terminated devices ─────────────────
+        # Also skip the special "* Terminated Devices" catch-all company
+        raw = [
+            v for v in company_map.values()
+            if v["activeDevices"] > 0
+            and not v["customerName"].startswith("* Terminated")
+        ]
+        print(f"DEBUG: {len(all_contracts)} contracts → {len(company_map)} companies → {len(raw)} with active devices")
 
         customers = [enrich_customer(c) for c in raw]
 
-        # ── Apply search filter
+        # ── Search filter ─────────────────────────────────────────────────────
         if search:
             s = search.lower()
             customers = [
@@ -224,11 +206,11 @@ async def get_customers(
                 or s in (c["primaryDatabase"] or "").lower()
             ]
 
-        # ── Apply billing type filter
+        # ── Billing type filter ───────────────────────────────────────────────
         if billing_type:
             customers = [c for c in customers if c["billingType"] == billing_type]
 
-        # ── Sort by name
+        # ── Sort by name ──────────────────────────────────────────────────────
         customers.sort(key=lambda c: c["name"].lower())
 
         return {
@@ -248,13 +230,12 @@ async def get_customers(
 
 
 # ─── GET /api/customers/qb-data/summary ───────────────────────────────────────
-# IMPORTANT: must be defined BEFORE the /{account_id} wildcard route
 @router.get("/customers/qb-data/summary")
 async def get_qb_summary():
     if not qb_customers:
         return {
-            "customersLoaded": 0,
-            "itemsLoaded":     len(qb_items),
+            "customersLoaded":      0,
+            "itemsLoaded":          len(qb_items),
             "billingTypeBreakdown": {},
         }
 
@@ -264,41 +245,35 @@ async def get_qb_summary():
         breakdown[bt] = breakdown.get(bt, 0) + 1
 
     return {
-        "customersLoaded":     len(qb_customers),
-        "itemsLoaded":         len(qb_items),
+        "customersLoaded":      len(qb_customers),
+        "itemsLoaded":          len(qb_items),
         "billingTypeBreakdown": breakdown,
     }
 
 
-# ─── POST /api/customers/import-qb  (CSV upload) ──────────────────────────────
-# IMPORTANT: must be defined BEFORE the /{account_id} wildcard route
+# ─── POST /api/customers/import-qb ────────────────────────────────────────────
 @router.post("/customers/import-qb")
 async def import_qb_customers(file: UploadFile = File(...)):
     global qb_customers
     content = await file.read()
 
     try:
-        text = content.decode("utf-8-sig")  # handles BOM from QB exports
+        text = content.decode("utf-8-sig")   # handles BOM from QB exports
     except UnicodeDecodeError:
         text = content.decode("latin-1")
 
     reader = csv.DictReader(io.StringIO(text))
-    rows = list(reader)
+    rows   = list(reader)
 
     if not rows:
         raise HTTPException(status_code=400, detail="CSV file is empty")
-
-    # Detect QB Customer List format vs other formats
-    headers = [h.strip() for h in (reader.fieldnames or [])]
 
     imported = 0
     skipped  = 0
 
     for row in rows:
-        # Strip whitespace from all values
         row = {k.strip(): (v or "").strip() for k, v in row.items()}
 
-        # QB Customer List export columns (may vary slightly by QB version)
         name = (
             row.get("Customer")
             or row.get("Name")
@@ -310,12 +285,7 @@ async def import_qb_customers(file: UploadFile = File(...)):
             skipped += 1
             continue
 
-        job_type = (
-            row.get("Job Type")
-            or row.get("Customer Type")
-            or row.get("Type")
-            or ""
-        )
+        job_type   = row.get("Job Type") or row.get("Customer Type") or row.get("Type") or ""
         account_no = (
             row.get("Account No.")
             or row.get("Account Number")
@@ -323,14 +293,8 @@ async def import_qb_customers(file: UploadFile = File(...)):
             or row.get("Acct No")
             or ""
         )
-        terms = row.get("Terms") or row.get("Payment Terms") or ""
-        balance_str = (
-            row.get("Balance Total")
-            or row.get("Balance")
-            or row.get("Current Balance")
-            or "0"
-        )
-        # Clean up balance — remove $, commas, parens for negatives
+        terms       = row.get("Terms") or row.get("Payment Terms") or ""
+        balance_str = row.get("Balance Total") or row.get("Balance") or row.get("Current Balance") or "0"
         balance_str = balance_str.replace("$", "").replace(",", "").strip()
         if balance_str.startswith("(") and balance_str.endswith(")"):
             balance_str = "-" + balance_str[1:-1]
@@ -339,44 +303,38 @@ async def import_qb_customers(file: UploadFile = File(...)):
         except ValueError:
             balance = 0.0
 
-        billing_type = map_billing_type(job_type)
-
         qb_customers[normalize(name)] = {
             "name":        name,
             "accountNo":   account_no,
-            "billingType": billing_type,
+            "billingType": map_billing_type(job_type),
             "jobType":     job_type,
             "terms":       terms,
             "balance":     balance,
         }
         imported += 1
 
-    # ── Persist to disk so the data survives backend restarts ──────────────
     _save_json(QB_DATA_FILE, qb_customers)
     print(f"[import-qb] Saved {len(qb_customers)} QB customers to {QB_DATA_FILE}")
 
     return {
-        "success": True,
-        "message": f"{imported} customers imported, {skipped} skipped",
+        "success":  True,
+        "message":  f"{imported} customers imported, {skipped} skipped",
         "imported": imported,
         "skipped":  skipped,
         "total":    len(qb_customers),
     }
 
 
-# ─── GET /api/customers/{id}  (single customer + devices) ────────────────────
-# NOTE: This wildcard route must remain BELOW all fixed-path routes like
-# /customers/import-qb and /customers/qb-data/summary so FastAPI matches
-# those specific paths first.
+# ─── GET /api/customers/{account_id} ──────────────────────────────────────────
+# NOTE: wildcard — must stay BELOW all fixed routes above
 @router.get("/customers/{account_id}")
 async def get_customer(account_id: str):
     if not session_store.get("session_id"):
         raise HTTPException(status_code=401, detail="Not logged in")
 
     try:
-        # Fetch device contracts for this customer
         all_devices = []
-        next_id = 0
+        next_id     = 0
 
         while True:
             result = await myadmin_call(
@@ -384,34 +342,36 @@ async def get_customer(account_id: str):
                 {
                     "apiKey":     session_store["user_id"],
                     "sessionId":  session_store["session_id"],
-                    "forAccount": account_id,
+                    "forAccount": MYADMIN_ACCOUNT,
                     "nextId":     next_id,
                 },
                 timeout=120.0,
             )
-
             devices = result.get("result") or []
             if not devices:
                 break
-
-            all_devices.extend(devices)
-
+            # Filter to this company only (account_id is the companyId string)
+            for d in devices:
+                uc = d.get("userContact") or {}
+                cid = str((uc.get("userCompany") or {}).get("id") or "")
+                if cid == account_id:
+                    all_devices.append(d)
             if len(devices) < 1000:
                 break
             next_id = devices[-1].get("id", 0)
 
-        # Normalize device fields for frontend
         normalized = []
         for d in all_devices:
+            device = d.get("device") or {}
             normalized.append({
-                "serialNumber":      d.get("serialNumber") or d.get("SerialNumber") or "",
-                "deviceType":        d.get("productName") or d.get("deviceType") or "",
-                "activeBillingPlan": d.get("activeBillingPlan") or d.get("ratePlanName") or "",
-                "ratePlanCode":      d.get("ratePlanCode") or d.get("planCode") or "",
-                "database":          d.get("databaseName") or d.get("database") or "",
-                "status":            "Active" if d.get("isActive", True) else "Inactive",
-                "contractStartDate": d.get("contractStartDate") or "",
-                "contractEndDate":   d.get("contractEndDate") or "",
+                "serialNumber":      device.get("serialNumber") or "",
+                "deviceType":        (device.get("deviceType") or {}).get("name") or device.get("deviceType") or "",
+                "activeBillingPlan": d.get("productCode") or "",
+                "ratePlanCode":      d.get("productCode") or "",
+                "database":          str((d.get("userContact") or {}).get("userCompany", {}).get("id") or ""),
+                "status":            "Terminated" if d.get("isTerminated") else "Active",
+                "contractStartDate": d.get("startDate") or "",
+                "contractEndDate":   d.get("endDate") or "",
             })
 
         return {
@@ -426,7 +386,7 @@ async def get_customer(account_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ─── POST /api/customers/{id}/billing-type ────────────────────────────────────
+# ─── POST /api/customers/{account_id}/billing-type ───────────────────────────
 class BillingTypeUpdate(BaseModel):
     billing_type: str
 
@@ -445,7 +405,7 @@ async def set_billing_type(account_id: str, body: BillingTypeUpdate):
     return {"success": True, "customerId": account_id, "billingType": body.billing_type}
 
 
-# ─── GET /api/customers/{id}/devices  (alias for detail endpoint) ─────────────
+# ─── GET /api/customers/{account_id}/devices ─────────────────────────────────
 @router.get("/customers/{account_id}/devices")
 async def get_customer_devices(account_id: str):
     return await get_customer(account_id)
