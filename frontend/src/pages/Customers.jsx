@@ -287,7 +287,8 @@ export default function Customers() {
   const [qbSummary, setQbSummary] = useState(null)
   const [syncProgress, setSyncProgress] = useState(null)   // SSE progress data
   const sseRef = useRef(null)   // holds the EventSource so we can close it
-  const forceSyncingRef = useRef(false)  // true while a force-refresh sync is in progress
+  const forceSyncingRef = useRef(false)   // true while a force-refresh sync is in progress
+  const sseCompletedRef = useRef(false)   // true once SSE received done/error (normal close)
   const PAGE_SIZE = 50
 
   // ── SSE progress connection ────────────────────────────────────────────────
@@ -298,6 +299,7 @@ export default function Customers() {
       sseRef.current = null
     }
     setSyncProgress({ active: true, step: 'step1', step_label: 'Connecting…', pct: 0, message: 'Starting sync…' })
+    sseCompletedRef.current = false
 
     const es = new EventSource(`${API}/api/customers/sync-progress`)
     sseRef.current = es
@@ -308,6 +310,7 @@ export default function Customers() {
         setSyncProgress(data)
         // Auto-close when the backend signals done or error
         if (!data.active && (data.step === 'done' || data.step === 'error')) {
+          sseCompletedRef.current = true   // mark as normal completion before close
           es.close()
           sseRef.current = null
           forceSyncingRef.current = false
@@ -321,15 +324,15 @@ export default function Customers() {
       } catch (_) {}
     }
     es.onerror = () => {
-      // Stream closed unexpectedly — clean up loading state
-      forceSyncingRef.current = false
-      setLoading(false)
-      setLoadingStart(null)
-      setIsForcingRefresh(false)
-      setSyncProgress(prev => {
-        if (!prev || !prev.active) return null
-        return prev  // keep showing last known state
-      })
+      // onerror fires on both unexpected errors AND normal server-side close.
+      // Only treat it as a real error if we never received a done/error message.
+      if (!sseCompletedRef.current) {
+        forceSyncingRef.current = false
+        setLoading(false)
+        setLoadingStart(null)
+        setIsForcingRefresh(false)
+        setSyncProgress(null)
+      }
       es.close()
       sseRef.current = null
     }
@@ -373,6 +376,17 @@ export default function Customers() {
       setPage(pg)
       setFromCache(data.fromCache || false)
       setCacheAgeHours(data.cacheAgeHours ?? null)
+
+      // If the backend served from cache (no real sync ran), the SSE stream
+      // will never go active — clean up loading state immediately.
+      if (forceRefresh && data.fromCache) {
+        forceSyncingRef.current = false
+        if (sseRef.current) { sseRef.current.close(); sseRef.current = null }
+        setLoading(false)
+        setLoadingStart(null)
+        setIsForcingRefresh(false)
+        setSyncProgress(null)
+      }
     } catch (e) {
       setError(e.message)
       // On error during force-refresh, clean up immediately
