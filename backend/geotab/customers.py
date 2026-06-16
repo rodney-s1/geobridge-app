@@ -619,30 +619,6 @@ async def import_qb_customers(file: UploadFile = File(...)):
     }
 
 
-# ─── GET /api/debug/rate-plan-fields  (temp — find correct rate plan code field) ─
-@router.get("/debug/rate-plan-fields")
-async def debug_rate_plan():
-    """Dumps the full top-level contract keys + all nested objects for the first
-    few non-terminated contracts so we can locate where 'CELU-TP-250' lives.
-    DELETE after field is confirmed."""
-    contracts = _sync_cache.get("contracts") or []
-    samples = []
-    for c in contracts:
-        if c.get("isTerminated"):
-            continue
-        # Dump every top-level key and its value (truncate long lists to first item)
-        summary = {}
-        for k, v in c.items():
-            if isinstance(v, list):
-                summary[k] = v[0] if v else []
-            else:
-                summary[k] = v
-        samples.append(summary)
-        if len(samples) >= 3:
-            break
-    if not samples:
-        return {"error": "No non-terminated contracts in cache — run a Sync first"}
-    return {"samples": samples}
 
 
 # ─── GET /api/customers/{account_id} ──────────────────────────────────────────
@@ -693,14 +669,12 @@ async def get_customer(account_id: str):
             adp = d.get("activeDevicePlan") or {}
             active_billing_plan = adp.get("name") or ""
 
-            # ── Rate Plan Code: activeRatePlans[0].ratePlan.ratePlanName ──────
-            # Confirmed field from API: d["activeRatePlans"][0]["ratePlan"]["ratePlanName"]
-            # e.g. "Pro Plan [1600]", "GO9LTE-EARLYRELEASE"
-            rate_plan_code = ""
-            rate_plans = d.get("activeRatePlans") or []
-            if rate_plans and isinstance(rate_plans[0], dict):
-                rp = rate_plans[0].get("ratePlan") or {}
-                rate_plan_code = rp.get("ratePlanName") or rp.get("name") or ""
+            # ── Rate Plan Code: productCode ───────────────────────────────────
+            # Confirmed from full contract inspection: the short rate plan code
+            # (e.g. "CELU-TP-250", "GO63GTMO") lives at top level as productCode.
+            # activeRatePlans.ratePlan.ratePlanName is the human-readable plan name
+            # ("Third Party Plan [0250]") — NOT the code shown in MyAdmin UI.
+            rate_plan_code = d.get("productCode") or ""
 
             # ── Database: latestDeviceDatabase.databaseName ───────────────────
             # Confirmed field from API — directly on the contract, no lookup needed
