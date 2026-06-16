@@ -710,45 +710,50 @@ export default function Customers() {
             {loading && (
               <tr>
                 <td colSpan={8} className="text-center py-8">
-                  {isForcingRefresh && syncProgress ? (
+                  {isForcingRefresh ? (
                     /* ── Real-time progress bar (force-refresh sync) ── */
-                    <div className="flex flex-col items-center gap-3 px-8 max-w-lg mx-auto">
-                      {/* Step label */}
-                      <div className="text-sm text-slate-300 font-medium">
-                        {syncProgress.step_label || 'Syncing…'}
-                      </div>
+                    (() => {
+                      const p = syncProgress || { step: 'step1', step_label: 'Connecting to MyAdmin…', pct: 0, message: 'Starting sync…' }
+                      return (
+                        <div className="flex flex-col items-center gap-3 px-8 max-w-lg mx-auto">
+                          {/* Step label */}
+                          <div className="text-sm text-slate-300 font-medium">
+                            {p.step_label || 'Syncing…'}
+                          </div>
 
-                      {/* Progress bar track */}
-                      <div className="w-full h-3 bg-slate-700 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-500 ease-out"
-                          style={{
-                            width: `${syncProgress.pct || 0}%`,
-                            background: syncProgress.step === 'error'
-                              ? '#ef4444'
-                              : syncProgress.pct >= 100
-                                ? '#22c55e'
-                                : 'linear-gradient(90deg, #3b82f6, #6366f1)',
-                          }}
-                        />
-                      </div>
+                          {/* Progress bar track */}
+                          <div className="w-full h-3 bg-slate-700 rounded-full overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500 ease-out"
+                              style={{
+                                width: `${p.pct || 0}%`,
+                                background: p.step === 'error'
+                                  ? '#ef4444'
+                                  : p.pct >= 100
+                                    ? '#22c55e'
+                                    : 'linear-gradient(90deg, #3b82f6, #6366f1)',
+                              }}
+                            />
+                          </div>
 
-                      {/* Percentage + message row */}
-                      <div className="flex items-center justify-between w-full text-xs">
-                        <span className="text-slate-400">{syncProgress.message || ''}</span>
-                        <span className={`font-mono font-bold ${
-                          syncProgress.step === 'error' ? 'text-red-400' :
-                          syncProgress.pct >= 100 ? 'text-green-400' : 'text-blue-400'
-                        }`}>
-                          {syncProgress.pct || 0}%
-                        </span>
-                      </div>
+                          {/* Percentage + message row */}
+                          <div className="flex items-center justify-between w-full text-xs">
+                            <span className="text-slate-400">{p.message || ''}</span>
+                            <span className={`font-mono font-bold ${
+                              p.step === 'error' ? 'text-red-400' :
+                              p.pct >= 100 ? 'text-green-400' : 'text-blue-400'
+                            }`}>
+                              {p.pct || 0}%
+                            </span>
+                          </div>
 
-                      {/* Hint text */}
-                      <span className="text-xs text-slate-600">
-                        First sync fetches all devices &amp; contracts (~2 min). Repeat syncs use a 12-hour cache and are instant.
-                      </span>
-                    </div>
+                          {/* Hint text */}
+                          <span className="text-xs text-slate-600">
+                            First sync fetches all devices &amp; contracts (~2 min). Repeat syncs use a 12-hour cache and are instant.
+                          </span>
+                        </div>
+                      )
+                    })()
                   ) : (
                     /* ── Simple spinner for cache/filter loads ── */
                     <div className="flex items-center justify-center gap-3 text-slate-400">
