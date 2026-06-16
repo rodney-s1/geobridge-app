@@ -33,6 +33,93 @@ function BillingBadge({ type }) {
   )
 }
 
+// ─── Sub-account grouping helpers ─────────────────────────────────────────────
+// Returns the parent name: strips " {anything}" suffix from the end.
+// "City of Raleigh {Cameras}" → "City of Raleigh"
+// "City of Raleigh - Solid Waste {Cameras}" → "City of Raleigh - Solid Waste"
+// "Acme Corp" → "Acme Corp"  (unchanged — it IS the parent)
+function getParentName(name) {
+  const idx = name.indexOf('{')
+  if (idx === -1) return name
+  return name.slice(0, idx).trimEnd()
+}
+
+function isSubAccount(name) {
+  return name.includes('{')
+}
+
+// Returns the sub-account label: the part inside {…}
+// "City of Raleigh {Cameras}" → "Cameras"
+function getSubLabel(name) {
+  const m = name.match(/\{([^}]+)\}/)
+  return m ? m[1] : ''
+}
+
+// Groups a flat customer list into parent groups.
+// Returns an array of:
+//   { parentName, parent: customer|null, subs: customer[], combinedDeviceCount }
+// - parent is the account whose name exactly matches the parentName (no {…})
+// - subs are accounts whose stripped name matches parentName
+// - If every account in a group is a sub (no plain parent exists), parent is null
+// Standalone accounts (no subs and no {}) appear as { parent: customer, subs: [] }
+function groupCustomers(customers) {
+  const groups = {}  // parentName → { parent: null, subs: [] }
+
+  customers.forEach(c => {
+    const parentName = getParentName(c.name)
+    if (!groups[parentName]) {
+      groups[parentName] = { parentName, parent: null, subs: [] }
+    }
+    if (isSubAccount(c.name)) {
+      groups[parentName].subs.push(c)
+    } else {
+      groups[parentName].parent = c
+    }
+  })
+
+  // Sort groups by parentName, subs within each group by their sub label
+  return Object.values(groups)
+    .sort((a, b) => a.parentName.localeCompare(b.parentName))
+    .map(g => {
+      g.subs.sort((a, b) => a.name.localeCompare(b.name))
+      // Combined device count across parent + all subs
+      g.combinedDeviceCount =
+        (g.parent?.deviceCount || 0) + g.subs.reduce((s, c) => s + (c.deviceCount || 0), 0)
+      return g
+    })
+}
+
+// ─── Rate Plan Breakdown pill row ─────────────────────────────────────────────
+function RpcBreakdownRow({ rpcCounts, totalDevices, colSpan = 8, indent = 'pl-14' }) {
+  const entries = Object.entries(rpcCounts).sort((a, b) => b[1] - a[1])
+  if (entries.length === 0) return null
+  return (
+    <tr className="bg-slate-900/80 border-b border-white/10">
+      <td colSpan={colSpan} className={`${indent} pr-6 py-3`}>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs text-slate-500 uppercase tracking-wider font-medium mr-1">
+            Rate Plan Breakdown:
+          </span>
+          {entries.map(([code, count]) => (
+            <span
+              key={code}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-700/60 border border-slate-600/50 text-xs"
+            >
+              <span className="font-mono text-slate-200">{code}</span>
+              <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-500/25 text-blue-300 font-bold text-xs">
+                {count}
+              </span>
+            </span>
+          ))}
+          <span className="ml-auto text-xs text-slate-600 font-mono">
+            {totalDevices} total device{totalDevices !== 1 ? 's' : ''}
+          </span>
+        </div>
+      </td>
+    </tr>
+  )
+}
+
 // ─── Device row inside expanded customer ─────────────────────────────────────
 function DeviceRow({ device }) {
   return (
@@ -59,32 +146,11 @@ function DeviceRow({ device }) {
   )
 }
 
-// ─── Single expandable customer row ──────────────────────────────────────────
-function CustomerRow({ customer, onBillingTypeChange }) {
-  const [expanded, setExpanded] = useState(false)
-  const [devices, setDevices] = useState([])
-  const [loadingDevices, setLoadingDevices] = useState(false)
+// ─── Shared billing-type editor (used by CustomerRow and SubAccountRow) ───────
+function BillingTypeEditor({ customer, onBillingTypeChange, stopPropagation = true }) {
   const [editingBilling, setEditingBilling] = useState(false)
   const [selectedType, setSelectedType] = useState(customer.billingType)
   const [savingType, setSavingType] = useState(false)
-
-  const toggleExpand = async () => {
-    if (!expanded && devices.length === 0) {
-      setLoadingDevices(true)
-      try {
-        const res = await fetch(`${API}/api/customers/${customer.id}`)
-        if (res.ok) {
-          const data = await res.json()
-          setDevices(data.devices || [])
-        }
-      } catch (e) {
-        console.error('Failed to load devices:', e)
-      } finally {
-        setLoadingDevices(false)
-      }
-    }
-    setExpanded(!expanded)
-  }
 
   const saveBillingType = async () => {
     setSavingType(true)
@@ -103,6 +169,557 @@ function CustomerRow({ customer, onBillingTypeChange }) {
     } finally {
       setSavingType(false)
     }
+  }
+
+  // sp = handler that also calls stopPropagation when needed
+  const sp = (fn) => stopPropagation
+    ? (e) => { e.stopPropagation(); fn() }
+    : () => fn()
+
+  if (editingBilling) {
+    return (
+      <div className="flex items-center gap-1">
+        <select
+          value={selectedType}
+          onChange={e => setSelectedType(e.target.value)}
+          className="bg-slate-700 text-slate-200 text-xs rounded px-2 py-1 border border-slate-600 focus:outline-none focus:border-blue-500"
+          onClick={stopPropagation ? e => e.stopPropagation() : undefined}
+        >
+          {VALID_BILLING_TYPES.map(t => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+        <button
+          onClick={sp(saveBillingType)}
+          disabled={savingType}
+          className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded disabled:opacity-50"
+        >
+          {savingType ? '...' : '✓'}
+        </button>
+        <button
+          onClick={sp(() => { setEditingBilling(false); setSelectedType(customer.billingType) })}
+          className="px-2 py-1 bg-slate-600 hover:bg-slate-500 text-white text-xs rounded"
+        >
+          ✕
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="flex items-center gap-2 group cursor-pointer"
+      onClick={stopPropagation ? e => { e.stopPropagation(); setEditingBilling(true) } : () => setEditingBilling(true)}
+      title="Click to change billing type"
+    >
+      <BillingBadge type={customer.billingType} />
+      <svg className="w-3 h-3 text-slate-600 group-hover:text-slate-400 transition-colors opacity-0 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+      </svg>
+    </div>
+  )
+}
+
+// ─── Inline device sub-table (used inside both CustomerRow and SubAccountRow) ──
+function DeviceSubTable({ devices }) {
+  if (devices.length === 0) {
+    return (
+      <tr className="border-b border-white/5 bg-slate-900/50">
+        <td colSpan={8} className="pl-14 pr-4 py-4 text-xs text-slate-500 italic">
+          No device contracts found for this customer.
+        </td>
+      </tr>
+    )
+  }
+
+  const rpcCounts = {}
+  devices.forEach(d => {
+    const code = d.ratePlanCode || '(none)'
+    rpcCounts[code] = (rpcCounts[code] || 0) + 1
+  })
+
+  return (
+    <>
+      <RpcBreakdownRow rpcCounts={rpcCounts} totalDevices={devices.length} />
+      <tr className="bg-slate-900/70">
+        <td colSpan={8} className="px-0 py-0">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-white/10">
+                <th className="pl-14 pr-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Serial Number</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Device Type</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Active Billing Plan</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Rate Plan Code</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Database</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Start Date</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">End Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {devices.map((d, i) => (
+                <DeviceRow key={`${d.serialNumber}-${i}`} device={d} />
+              ))}
+            </tbody>
+          </table>
+        </td>
+      </tr>
+    </>
+  )
+}
+
+// ─── Sub-account row (indented, inside an expanded parent group) ──────────────
+// devices prop is pre-loaded by the parent; expandable to show the device table.
+function SubAccountRow({ customer, devices, loadingDevices, onBillingTypeChange }) {
+  const [expanded, setExpanded] = useState(false)
+  const subLabel = getSubLabel(customer.name)
+
+  return (
+    <>
+      {/* Sub-account row */}
+      <tr
+        className={`border-b border-white/5 hover:bg-white/[0.04] transition-colors cursor-pointer ${
+          expanded ? 'bg-white/[0.03]' : ''
+        }`}
+        onClick={() => setExpanded(e => !e)}
+      >
+        {/* Indent + expand toggle */}
+        <td className="w-10 pl-4 py-2.5">
+          <div className="flex items-center">
+            {/* Tree connector line */}
+            <div className="w-4 flex-shrink-0 flex flex-col items-center mr-1">
+              <div className="w-px h-2 bg-slate-600/50" />
+              <div className="w-3 h-px bg-slate-600/50 self-end" />
+            </div>
+            <button
+              onClick={e => { e.stopPropagation(); setExpanded(ex => !ex) }}
+              className="text-slate-600 hover:text-slate-400 transition-colors"
+            >
+              {loadingDevices ? (
+                <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+              ) : expanded ? (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              ) : (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              )}
+            </button>
+          </div>
+        </td>
+
+        {/* Sub-account name — show label + full name dimmed */}
+        <td className="px-4 py-2.5">
+          <div className="flex items-center gap-2 pl-4">
+            <span className="text-slate-500 text-xs select-none">└</span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-slate-300">
+                  {subLabel || customer.name}
+                </span>
+                {customer.hasQbData && (
+                  <span className="text-xs text-green-500" title="QB data loaded">QB</span>
+                )}
+                <span className="text-xs text-slate-600 font-mono">{customer.name}</span>
+              </div>
+              {customer.accountNo && (
+                <div className="text-xs text-slate-600 mt-0.5">Acct #{customer.accountNo}</div>
+              )}
+            </div>
+          </div>
+        </td>
+
+        {/* Billing type */}
+        <td className="px-4 py-2.5" onClick={e => e.stopPropagation()}>
+          <BillingTypeEditor customer={customer} onBillingTypeChange={onBillingTypeChange} />
+        </td>
+
+        {/* Primary database */}
+        <td className="px-4 py-2.5 text-sm text-slate-500">{customer.primaryDatabase || '—'}</td>
+
+        {/* Device count */}
+        <td className="px-4 py-2.5">
+          <span className="inline-flex items-center justify-center w-8 h-6 bg-slate-700/60 rounded text-xs font-mono text-slate-400">
+            {expanded && devices ? devices.length : customer.deviceCount || '—'}
+          </span>
+        </td>
+
+        {/* Terms */}
+        <td className="px-4 py-2.5 text-xs text-slate-600">{customer.terms || '—'}</td>
+
+        {/* Balance */}
+        <td className="px-4 py-2.5 text-xs font-mono">
+          {customer.balance > 0 ? (
+            <span className="text-amber-400/80">${Number(customer.balance).toFixed(2)}</span>
+          ) : (
+            <span className="text-slate-700">$0.00</span>
+          )}
+        </td>
+
+        {/* Actions */}
+        <td className="px-4 py-2.5">
+          <button
+            onClick={e => { e.stopPropagation() }}
+            className="text-xs text-blue-500/60 hover:text-blue-400 transition-colors"
+          >
+            Detail →
+          </button>
+        </td>
+      </tr>
+
+      {/* Expanded device table for this sub-account */}
+      {expanded && devices && (
+        <DeviceSubTable devices={devices} />
+      )}
+    </>
+  )
+}
+
+// ─── Parent group row (with optional sub-accounts) ───────────────────────────
+// When expanded, fetches all sub-accounts' devices in parallel,
+// then shows a combined RPC breakdown + indented sub-account rows.
+function ParentGroupRow({ group, onBillingTypeChange }) {
+  const { parentName, parent, subs, combinedDeviceCount } = group
+  const hasSubs = subs.length > 0
+
+  // Expanded = subs panel open (for groups with subs)
+  const [subsExpanded, setSubsExpanded] = useState(false)
+  // Per-customer device lists, keyed by customer.id
+  const [devicesByCustomer, setDevicesByCustomer] = useState({})
+  const [loadingDevices, setLoadingDevices] = useState(false)
+
+  // Parent row's own device expansion (for the parent account's own devices, if it has any)
+  const [parentExpanded, setParentExpanded] = useState(false)
+  const [parentDevices, setParentDevices] = useState([])
+  const [loadingParentDevices, setLoadingParentDevices] = useState(false)
+
+  // Fetch devices for all sub-accounts in parallel
+  const fetchAllSubDevices = async () => {
+    setLoadingDevices(true)
+    const results = {}
+    await Promise.all(
+      subs.map(async (sub) => {
+        if (devicesByCustomer[sub.id]) {
+          results[sub.id] = devicesByCustomer[sub.id]
+          return
+        }
+        try {
+          const res = await fetch(`${API}/api/customers/${sub.id}`)
+          if (res.ok) {
+            const data = await res.json()
+            results[sub.id] = data.devices || []
+          } else {
+            results[sub.id] = []
+          }
+        } catch {
+          results[sub.id] = []
+        }
+      })
+    )
+    setDevicesByCustomer(prev => ({ ...prev, ...results }))
+    setLoadingDevices(false)
+  }
+
+  // Fetch parent's own devices
+  const fetchParentDevices = async () => {
+    if (!parent) return
+    setLoadingParentDevices(true)
+    try {
+      const res = await fetch(`${API}/api/customers/${parent.id}`)
+      if (res.ok) {
+        const data = await res.json()
+        setParentDevices(data.devices || [])
+      }
+    } catch (e) {
+      console.error('Failed to load parent devices:', e)
+    } finally {
+      setLoadingParentDevices(false)
+    }
+  }
+
+  const toggleSubs = async () => {
+    if (!subsExpanded && hasSubs) {
+      await fetchAllSubDevices()
+    }
+    setSubsExpanded(e => !e)
+  }
+
+  const toggleParentDevices = async () => {
+    if (!parentExpanded && parentDevices.length === 0 && parent) {
+      await fetchParentDevices()
+    }
+    setParentExpanded(e => !e)
+  }
+
+  // Combined RPC breakdown across all loaded sub devices (+ parent devices if loaded)
+  const combinedRpcCounts = {}
+  if (subsExpanded) {
+    subs.forEach(sub => {
+      const devs = devicesByCustomer[sub.id] || []
+      devs.forEach(d => {
+        const code = d.ratePlanCode || '(none)'
+        combinedRpcCounts[code] = (combinedRpcCounts[code] || 0) + 1
+      })
+    })
+  }
+  if (parentExpanded) {
+    parentDevices.forEach(d => {
+      const code = d.ratePlanCode || '(none)'
+      combinedRpcCounts[code] = (combinedRpcCounts[code] || 0) + 1
+    })
+  }
+  const hasCombinedRpc = Object.keys(combinedRpcCounts).length > 0
+
+  // Total loaded devices (for combined RPC row denominator)
+  const totalLoadedDevices = Object.values(devicesByCustomer).reduce((s, a) => s + a.length, 0)
+    + (parentExpanded ? parentDevices.length : 0)
+
+  // ── If no subs, render as a plain CustomerRow ──────────────────────────────
+  if (!hasSubs) {
+    return (
+      <CustomerRow
+        customer={parent}
+        onBillingTypeChange={onBillingTypeChange}
+      />
+    )
+  }
+
+  // ── Group row (parent has subs) ────────────────────────────────────────────
+  return (
+    <>
+      {/* ── Parent account header row ── */}
+      <tr
+        className={`border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer ${
+          subsExpanded ? 'bg-indigo-950/30' : ''
+        }`}
+        onClick={hasSubs ? toggleSubs : undefined}
+      >
+        {/* Sub-accounts expand toggle */}
+        <td className="w-10 pl-4 py-3">
+          {hasSubs && (
+            <button
+              onClick={e => { e.stopPropagation(); toggleSubs() }}
+              className="text-indigo-400 hover:text-indigo-300 transition-colors"
+              title={`${subsExpanded ? 'Collapse' : 'Expand'} sub-accounts`}
+            >
+              {loadingDevices ? (
+                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+              ) : subsExpanded ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              )}
+            </button>
+          )}
+        </td>
+
+        {/* Parent name + sub-account count badge */}
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Parent name */}
+            {parent ? (
+              <span className="text-sm font-semibold text-slate-100">{parent.name}</span>
+            ) : (
+              <span className="text-sm font-semibold text-slate-300 italic">{parentName}</span>
+            )}
+            {parent?.hasQbData && (
+              <span className="text-xs text-green-500" title="QB data loaded">QB</span>
+            )}
+            {/* Sub-account count pill */}
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-500/15 border border-indigo-500/25 text-indigo-300 text-xs font-medium"
+              title={`${subs.length} sub-account${subs.length !== 1 ? 's' : ''}: ${subs.map(s => getSubLabel(s.name)).join(', ')}`}
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              {subs.length} sub
+            </span>
+            {parent?.accountNo && (
+              <span className="text-xs text-slate-600 font-mono">#{parent.accountNo}</span>
+            )}
+          </div>
+          {/* Combined RPC pill badges — visible once any devices are loaded */}
+          {hasCombinedRpc && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span className="text-xs text-slate-600 mr-0.5">Combined RPC:</span>
+              {Object.entries(combinedRpcCounts)
+                .sort((a, b) => b[1] - a[1])
+                .map(([code, count]) => (
+                  <span
+                    key={code}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-slate-700/80 border border-slate-600/40 text-xs"
+                  >
+                    <span className="font-mono text-slate-200">{code}</span>
+                    <span className="w-4 h-4 rounded-full bg-blue-500/25 text-blue-300 font-bold text-xs flex items-center justify-center">
+                      {count}
+                    </span>
+                  </span>
+                ))
+              }
+              <span className="text-xs text-slate-600 font-mono ml-1">
+                ({totalLoadedDevices} devices loaded)
+              </span>
+            </div>
+          )}
+          {/* Hint when collapsed */}
+          {!subsExpanded && !hasCombinedRpc && hasSubs && (
+            <div className="text-xs text-slate-600 mt-0.5">
+              {combinedDeviceCount} total devices across {subs.length + (parent ? 1 : 0)} accounts · expand to see RPC breakdown
+            </div>
+          )}
+        </td>
+
+        {/* Billing type (parent's own, if it exists) */}
+        <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
+          {parent ? (
+            <BillingTypeEditor customer={parent} onBillingTypeChange={onBillingTypeChange} />
+          ) : (
+            <span className="text-xs text-slate-600">—</span>
+          )}
+        </td>
+
+        {/* Primary database */}
+        <td className="px-4 py-3 text-sm text-slate-400">
+          {parent?.primaryDatabase || '—'}
+        </td>
+
+        {/* Combined device count */}
+        <td className="px-4 py-3">
+          <div className="flex items-center gap-1">
+            <span className="inline-flex items-center justify-center w-8 h-6 bg-indigo-600/20 border border-indigo-500/20 rounded text-xs font-mono text-indigo-300">
+              {combinedDeviceCount}
+            </span>
+            {hasSubs && (
+              <span className="text-xs text-slate-600">combined</span>
+            )}
+          </div>
+        </td>
+
+        {/* Terms */}
+        <td className="px-4 py-3 text-xs text-slate-500">{parent?.terms || '—'}</td>
+
+        {/* Balance (parent only) */}
+        <td className="px-4 py-3 text-xs font-mono">
+          {parent?.balance > 0 ? (
+            <span className="text-amber-400">${Number(parent.balance).toFixed(2)}</span>
+          ) : (
+            <span className="text-slate-600">$0.00</span>
+          )}
+        </td>
+
+        {/* Actions */}
+        <td className="px-4 py-3">
+          <button
+            onClick={e => { e.stopPropagation() }}
+            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+          >
+            Detail →
+          </button>
+        </td>
+      </tr>
+
+      {/* ── Expanded: combined RPC breakdown header (when both subs + parent loaded) ── */}
+      {subsExpanded && hasCombinedRpc && (parent === null || parentExpanded) && (
+        <RpcBreakdownRow
+          rpcCounts={combinedRpcCounts}
+          totalDevices={totalLoadedDevices}
+          indent="pl-8"
+        />
+      )}
+
+      {/* ── Expanded: parent's own device rows (if parent has its own account) ── */}
+      {subsExpanded && parent && (
+        <>
+          {/* Parent own-devices expand bar */}
+          <tr
+            className={`border-b border-white/5 hover:bg-white/[0.04] transition-colors cursor-pointer bg-slate-900/30 ${
+              parentExpanded ? 'bg-white/[0.02]' : ''
+            }`}
+            onClick={toggleParentDevices}
+          >
+            <td className="w-10 pl-4 py-2">
+              <button
+                onClick={e => { e.stopPropagation(); toggleParentDevices() }}
+                className="text-slate-500 hover:text-slate-300 transition-colors"
+              >
+                {loadingParentDevices ? (
+                  <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                ) : parentExpanded ? (
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                ) : (
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                )}
+              </button>
+            </td>
+            <td colSpan={7} className="px-4 py-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400 font-medium">{parent.name}</span>
+                <span className="text-xs text-slate-600">(primary account · {parent.deviceCount || 0} devices)</span>
+              </div>
+            </td>
+          </tr>
+          {parentExpanded && (
+            <DeviceSubTable devices={parentDevices} />
+          )}
+        </>
+      )}
+
+      {/* ── Expanded: sub-account rows ── */}
+      {subsExpanded && subs.map(sub => (
+        <SubAccountRow
+          key={sub.id}
+          customer={sub}
+          devices={devicesByCustomer[sub.id] || null}
+          loadingDevices={loadingDevices && !devicesByCustomer[sub.id]}
+          onBillingTypeChange={onBillingTypeChange}
+        />
+      ))}
+    </>
+  )
+}
+
+// ─── Single expandable customer row (standalone, no sub-account grouping) ─────
+function CustomerRow({ customer, onBillingTypeChange }) {
+  const [expanded, setExpanded] = useState(false)
+  const [devices, setDevices] = useState([])
+  const [loadingDevices, setLoadingDevices] = useState(false)
+
+  const toggleExpand = async () => {
+    if (!expanded && devices.length === 0) {
+      setLoadingDevices(true)
+      try {
+        const res = await fetch(`${API}/api/customers/${customer.id}`)
+        if (res.ok) {
+          const data = await res.json()
+          setDevices(data.devices || [])
+        }
+      } catch (e) {
+        console.error('Failed to load devices:', e)
+      } finally {
+        setLoadingDevices(false)
+      }
+    }
+    setExpanded(!expanded)
   }
 
   return (
@@ -152,44 +769,7 @@ function CustomerRow({ customer, onBillingTypeChange }) {
 
         {/* Billing type (editable) */}
         <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
-          {editingBilling ? (
-            <div className="flex items-center gap-1">
-              <select
-                value={selectedType}
-                onChange={e => setSelectedType(e.target.value)}
-                className="bg-slate-700 text-slate-200 text-xs rounded px-2 py-1 border border-slate-600 focus:outline-none focus:border-blue-500"
-                onClick={e => e.stopPropagation()}
-              >
-                {VALID_BILLING_TYPES.map(t => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
-              <button
-                onClick={saveBillingType}
-                disabled={savingType}
-                className="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded disabled:opacity-50"
-              >
-                {savingType ? '...' : '✓'}
-              </button>
-              <button
-                onClick={() => { setEditingBilling(false); setSelectedType(customer.billingType) }}
-                className="px-2 py-1 bg-slate-600 hover:bg-slate-500 text-white text-xs rounded"
-              >
-                ✕
-              </button>
-            </div>
-          ) : (
-            <div
-              className="flex items-center gap-2 group cursor-pointer"
-              onClick={() => setEditingBilling(true)}
-              title="Click to change billing type"
-            >
-              <BillingBadge type={customer.billingType} />
-              <svg className="w-3 h-3 text-slate-600 group-hover:text-slate-400 transition-colors opacity-0 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-            </div>
-          )}
+          <BillingTypeEditor customer={customer} onBillingTypeChange={onBillingTypeChange} />
         </td>
 
         {/* Primary database */}
@@ -227,78 +807,7 @@ function CustomerRow({ customer, onBillingTypeChange }) {
 
       {/* Expanded device sub-table */}
       {expanded && (
-        <>
-          {devices.length === 0 ? (
-            <tr className="border-b border-white/5 bg-slate-900/50">
-              <td colSpan={8} className="pl-14 pr-4 py-4 text-xs text-slate-500 italic">
-                No device contracts found for this customer.
-              </td>
-            </tr>
-          ) : (
-            <>
-              {/* ── Rate Plan Code summary panel ─────────────────────────── */}
-              {(() => {
-                // Group devices by ratePlanCode, count each
-                const rpcCounts = {}
-                devices.forEach(d => {
-                  const code = d.ratePlanCode || '(none)'
-                  rpcCounts[code] = (rpcCounts[code] || 0) + 1
-                })
-                const rpcEntries = Object.entries(rpcCounts).sort((a, b) => b[1] - a[1])
-                return (
-                  <tr className="bg-slate-900/80 border-b border-white/10">
-                    <td colSpan={8} className="pl-14 pr-6 py-3">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-xs text-slate-500 uppercase tracking-wider font-medium mr-1">
-                          Rate Plan Breakdown:
-                        </span>
-                        {rpcEntries.map(([code, count]) => (
-                          <span
-                            key={code}
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-700/60 border border-slate-600/50 text-xs"
-                          >
-                            <span className="font-mono text-slate-200">{code}</span>
-                            <span className="flex items-center justify-center w-5 h-5 rounded-full bg-blue-500/25 text-blue-300 font-bold text-xs">
-                              {count}
-                            </span>
-                          </span>
-                        ))}
-                        <span className="ml-auto text-xs text-slate-600 font-mono">
-                          {devices.length} total device{devices.length !== 1 ? 's' : ''}
-                        </span>
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })()}
-
-              {/* Device sub-header */}
-              <tr className="bg-slate-900/70">
-                <td colSpan={8} className="px-0 py-0">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-white/10">
-                        <th className="pl-14 pr-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Serial Number</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Device Type</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Active Billing Plan</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Rate Plan Code</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Database</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Start Date</th>
-                        <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">End Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {devices.map((d, i) => (
-                        <DeviceRow key={`${d.serialNumber}-${i}`} device={d} />
-                      ))}
-                    </tbody>
-                  </table>
-                </td>
-              </tr>
-            </>
-          )}
-        </>
+        <DeviceSubTable devices={devices} />
       )}
     </>
   )
@@ -507,6 +1016,9 @@ export default function Customers() {
     }
   }
 
+  // Group customers into parent/sub-account hierarchy
+  const customerGroups = groupCustomers(customers)
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -698,10 +1210,10 @@ export default function Customers() {
                 </td>
               </tr>
             ) : (
-              customers.map(c => (
-                <CustomerRow
-                  key={c.id}
-                  customer={c}
+              customerGroups.map(group => (
+                <ParentGroupRow
+                  key={group.parentName}
+                  group={group}
                   onBillingTypeChange={handleBillingTypeChange}
                 />
               ))
@@ -786,7 +1298,10 @@ export default function Customers() {
       {/* Footer count */}
       {customers.length > 0 && (
         <div className="mt-3 text-xs text-slate-600 text-center">
-          Showing {customers.length} customers · Click any row to expand devices · Click billing badge to edit
+          Showing {customers.length} customers · {customerGroups.filter(g => g.subs.length > 0).length > 0
+            ? `${customerGroups.filter(g => g.subs.length > 0).length} grouped parent account${customerGroups.filter(g => g.subs.length > 0).length !== 1 ? 's' : ''} · `
+            : ''
+          }Click any row to expand · Click billing badge to edit
         </div>
       )}
     </div>
