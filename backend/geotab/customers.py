@@ -672,38 +672,33 @@ async def get_customer(account_id: str):
 
         normalized = []
         for d in matching:
-            device   = d.get("device") or {}
-            dev_id   = str(device.get("id") or "")
-            db_name  = device_db_map.get(dev_id) or ""
+            device = d.get("device") or {}
+            dev_id = str(device.get("id") or "")
 
-            # ── Active Billing Plan ────────────────────────────────────────────
-            # MyAdmin returns the plan as a nested object: activeBillingPlan.name
-            # Fallback chain covers different API response shapes.
-            abp_obj  = d.get("activeBillingPlan") or {}
-            if isinstance(abp_obj, dict):
-                active_billing_plan = abp_obj.get("name") or abp_obj.get("description") or ""
-            else:
-                active_billing_plan = str(abp_obj)
-            # Last resort: use productCode if nothing else
-            if not active_billing_plan:
-                active_billing_plan = d.get("productCode") or ""
+            # ── Active Billing Plan: activeDevicePlan.name ────────────────────
+            # Confirmed field from API: d["activeDevicePlan"]["name"]
+            # e.g. "Pro Mode", "Base Mode: Live"
+            adp = d.get("activeDevicePlan") or {}
+            active_billing_plan = adp.get("name") or ""
 
-            # ── Rate Plan Code ─────────────────────────────────────────────────
-            # Returned as ratePlanCode (string) or ratePlan.code (object)
-            rp_obj   = d.get("ratePlan") or {}
-            if isinstance(rp_obj, dict):
-                rate_plan_code = rp_obj.get("code") or rp_obj.get("name") or ""
-            else:
-                rate_plan_code = str(rp_obj) if rp_obj else ""
-            if not rate_plan_code:
-                rate_plan_code = d.get("ratePlanCode") or d.get("productCode") or ""
+            # ── Rate Plan Code: activeRatePlans[0].ratePlan.ratePlanName ──────
+            # Confirmed field from API: d["activeRatePlans"][0]["ratePlan"]["ratePlanName"]
+            # e.g. "Pro Plan [1600]", "GO9LTE-EARLYRELEASE"
+            rate_plan_code = ""
+            rate_plans = d.get("activeRatePlans") or []
+            if rate_plans and isinstance(rate_plans[0], dict):
+                rp = rate_plans[0].get("ratePlan") or {}
+                rate_plan_code = rp.get("ratePlanName") or rp.get("name") or ""
 
-            # ── Dates: trim to yyyy-mm-dd ──────────────────────────────────────
+            # ── Database: latestDeviceDatabase.databaseName ───────────────────
+            # Confirmed field from API — directly on the contract, no lookup needed
+            # e.g. "wray_roofing"
+            ldd = d.get("latestDeviceDatabase") or {}
+            db_name = ldd.get("databaseName") or device_db_map.get(dev_id) or ""
+
+            # ── Dates: trim ISO datetime to yyyy-mm-dd ────────────────────────
             def _date(raw: str) -> str:
-                """Return just the date part (yyyy-mm-dd) from an ISO datetime string."""
-                if not raw:
-                    return ""
-                return raw[:10]
+                return (raw or "")[:10]
 
             normalized.append({
                 "serialNumber":      device.get("serialNumber") or "",
