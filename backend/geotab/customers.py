@@ -669,12 +669,11 @@ async def get_customer(account_id: str):
             adp = d.get("activeDevicePlan") or {}
             active_billing_plan = adp.get("name") or ""
 
-            # ── Rate Plan Code: productCode ───────────────────────────────────
-            # Confirmed from full contract inspection: the short rate plan code
-            # (e.g. "CELU-TP-250", "GO63GTMO") lives at top level as productCode.
-            # activeRatePlans.ratePlan.ratePlanName is the human-readable plan name
-            # ("Third Party Plan [0250]") — NOT the code shown in MyAdmin UI.
-            rate_plan_code = d.get("productCode") or ""
+            # ── Rate Plan Code: promoCode ─────────────────────────────────────
+            # Confirmed from contract inspection: the rate plan code shown in
+            # MyAdmin (e.g. "CELU-TP-250", "SWELL-NOINS3") lives at top level
+            # as promoCode, not productCode or ratePlanName.
+            rate_plan_code = d.get("promoCode") or ""
 
             # ── Database: latestDeviceDatabase.databaseName ───────────────────
             # Confirmed field from API — directly on the contract, no lookup needed
