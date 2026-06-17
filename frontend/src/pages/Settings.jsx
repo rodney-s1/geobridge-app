@@ -220,101 +220,116 @@ function SkuCatalogTab({ catalog, onRefresh }) {
         </div>
       )}
 
-      {/* Grouped table */}
-      {Object.keys(groups).sort().map(cat => (
-        <div key={cat} className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
-          <div className="px-4 py-2 bg-slate-750 border-b border-slate-700 flex items-center justify-between">
-            <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">{cat}</span>
-            <Badge color="slate">{groups[cat].length}</Badge>
-          </div>
-          <table className="w-full text-sm">
+      {/* Single table with category subheadings — fixed column layout */}
+      {filtered.length === 0 ? (
+        <div className="text-center py-12 text-slate-500">No SKUs match your search.</div>
+      ) : (
+        <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+          <table className="w-full table-fixed text-sm">
+            {/* Fixed column proportions shared across ALL category groups */}
+            <colgroup>
+              <col style={{ width: '44%' }} />
+              <col style={{ width: '26%' }} className="hidden md:table-column" />
+              <col style={{ width: '16%' }} />
+              <col style={{ width: '14%' }} />
+            </colgroup>
             <thead>
-              <tr className="text-xs text-slate-500 border-b border-slate-700">
-                <th className="text-left px-4 py-2 font-medium">SKU Name</th>
-                <th className="text-left px-4 py-2 font-medium hidden md:table-cell">Category</th>
-                <th className="text-right px-4 py-2 font-medium">Default Price</th>
-                <th className="px-4 py-2"></th>
+              <tr className="text-xs text-slate-500 border-b border-slate-700 bg-slate-900/40">
+                <th className="text-left px-4 py-2.5 font-medium">SKU Name</th>
+                <th className="text-left px-4 py-2.5 font-medium hidden md:table-cell">Category</th>
+                <th className="text-right px-4 py-2.5 font-medium">Default Price</th>
+                <th className="px-4 py-2.5"></th>
               </tr>
             </thead>
             <tbody>
-              {groups[cat].map(sku => (
-                editKey === sku.skuKey ? (
-                  <tr key={sku.skuKey} className="border-b border-slate-700/50 bg-slate-750">
-                    <td className="px-4 py-2" colSpan={4}>
-                      <div className="grid grid-cols-2 gap-3 mb-2">
-                        <div>
-                          <label className="block text-xs text-slate-400 mb-1">SKU Key</label>
-                          <input value={editForm.skuKey} readOnly
-                            className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm text-slate-300 cursor-not-allowed" />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-slate-400 mb-1">Default Price</label>
-                          <input type="number" step="0.01" value={editForm.defaultPrice}
-                            onChange={e => setEditForm(f => ({ ...f, defaultPrice: e.target.value }))}
-                            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
-                        </div>
-                        <div className="col-span-2">
-                          <label className="block text-xs text-slate-400 mb-1">Full QB Path (col P)</label>
-                          <input value={editForm.fullPath}
-                            onChange={e => setEditForm(f => ({ ...f, fullPath: e.target.value }))}
-                            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-slate-400 mb-1">Description (QB memo)</label>
-                          <input value={editForm.desc || ''}
-                            onChange={e => setEditForm(f => ({ ...f, desc: e.target.value }))}
-                            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button disabled={saving}
-                          onClick={() => saveSku({ ...editForm, defaultPrice: parseFloat(editForm.defaultPrice) || 0, desc: editForm.desc || '' })}
-                          className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded font-medium">
-                          {saving ? 'Saving…' : 'Save'}
-                        </button>
-                        <button onClick={() => setEditKey(null)} className="px-3 py-1 text-slate-400 hover:text-white text-sm">Cancel</button>
+              {Object.keys(groups).sort().map(cat => (
+                <>
+                  {/* Category subheading row */}
+                  <tr key={`hdr-${cat}`} className="border-t border-slate-700 bg-slate-900/60">
+                    <td colSpan={4} className="px-4 py-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{cat}</span>
+                        <span className="text-xs text-slate-600">{groups[cat].length}</span>
                       </div>
                     </td>
                   </tr>
-                ) : (
-                  <tr key={sku.skuKey} className="border-b border-slate-700/50 hover:bg-slate-750 transition-colors group">
-                    <td className="px-4 py-2.5">
-                      <div>
-                        <span className="font-mono text-xs text-slate-200 bg-slate-700 px-1.5 py-0.5 rounded cursor-help" title={sku.fullPath}>
-                          {sku.skuKey}
-                        </span>
-                        {sku.desc && (
-                          <div className="text-xs text-slate-500 mt-0.5 pl-0.5">{sku.desc}</div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-2.5 text-slate-400 text-xs hidden md:table-cell max-w-xs truncate" title={sku.fullPath}>
-                      {sku.category}
-                    </td>
-                    <td className="px-4 py-2.5 text-right font-mono text-slate-200">
-                      {fmtPrice(sku.defaultPrice)}
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => { setEditKey(sku.skuKey); setEditForm({ ...sku }) }}
-                          className="text-xs px-2 py-0.5 text-blue-400 hover:text-blue-300"
-                        >
-                          Edit
-                        </button>
-                        <DeleteBtn small onConfirm={() => deleteSku(sku.skuKey)} />
-                      </div>
-                    </td>
-                  </tr>
-                )
+                  {/* SKU rows for this category */}
+                  {groups[cat].map(sku => (
+                    editKey === sku.skuKey ? (
+                      <tr key={sku.skuKey} className="border-b border-slate-700/50 bg-slate-750">
+                        <td className="px-4 py-3" colSpan={4}>
+                          <div className="grid grid-cols-2 gap-3 mb-2">
+                            <div>
+                              <label className="block text-xs text-slate-400 mb-1">SKU Name</label>
+                              <input value={editForm.skuKey} readOnly
+                                className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm text-slate-300 cursor-not-allowed" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-slate-400 mb-1">Default Price</label>
+                              <input type="number" step="0.01" value={editForm.defaultPrice}
+                                onChange={e => setEditForm(f => ({ ...f, defaultPrice: e.target.value }))}
+                                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                            </div>
+                            <div className="col-span-2">
+                              <label className="block text-xs text-slate-400 mb-1">Full QB Path (col P)</label>
+                              <input value={editForm.fullPath}
+                                onChange={e => setEditForm(f => ({ ...f, fullPath: e.target.value }))}
+                                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-slate-400 mb-1">Description (QB memo)</label>
+                              <input value={editForm.desc || ''}
+                                onChange={e => setEditForm(f => ({ ...f, desc: e.target.value }))}
+                                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button disabled={saving}
+                              onClick={() => saveSku({ ...editForm, defaultPrice: parseFloat(editForm.defaultPrice) || 0, desc: editForm.desc || '' })}
+                              className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded font-medium">
+                              {saving ? 'Saving…' : 'Save'}
+                            </button>
+                            <button onClick={() => setEditKey(null)} className="px-3 py-1 text-slate-400 hover:text-white text-sm">Cancel</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : (
+                      <tr key={sku.skuKey} className="border-b border-slate-700/30 hover:bg-slate-750/60 transition-colors group">
+                        <td className="px-4 py-2.5 overflow-hidden">
+                          <div>
+                            <span className="font-mono text-xs text-slate-200 bg-slate-700/80 px-1.5 py-0.5 rounded cursor-help" title={sku.fullPath}>
+                              {sku.skuKey}
+                            </span>
+                            {sku.desc && sku.desc !== sku.skuKey && (
+                              <div className="text-xs text-slate-500 mt-0.5 pl-0.5 truncate" title={sku.desc}>{sku.desc}</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5 text-slate-400 text-xs hidden md:table-cell truncate" title={sku.category}>
+                          {sku.category}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-mono text-slate-200 whitespace-nowrap">
+                          {fmtPrice(sku.defaultPrice)}
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => { setEditKey(sku.skuKey); setEditForm({ ...sku }) }}
+                              className="text-xs px-2 py-0.5 text-blue-400 hover:text-blue-300"
+                            >
+                              Edit
+                            </button>
+                            <DeleteBtn small onConfirm={() => deleteSku(sku.skuKey)} />
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  ))}
+                </>
               ))}
             </tbody>
           </table>
         </div>
-      ))}
-
-      {filtered.length === 0 && (
-        <div className="text-center py-12 text-slate-500">No SKUs match your search.</div>
       )}
     </div>
   )
@@ -492,7 +507,14 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh }) {
 
       {/* Mappings table */}
       <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+        <table className="w-full table-fixed text-sm">
+          <colgroup>
+            <col style={{ width: '20%' }} />
+            <col style={{ width: '34%' }} />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '23%' }} className="hidden lg:table-column" />
+            <col style={{ width: '10%' }} />
+          </colgroup>
           <thead>
             <tr className="text-xs text-slate-500 border-b border-slate-700 bg-slate-750">
               <th className="text-left px-4 py-3 font-medium">Rate Plan Code</th>
@@ -557,20 +579,20 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh }) {
                 </tr>
               ) : (
                 <tr key={m.ratePlanCode} className="border-b border-slate-700/50 hover:bg-slate-750 transition-colors group">
-                  <td className="px-4 py-2.5">
-                    <span className="font-mono text-xs bg-slate-700 text-amber-300 px-1.5 py-0.5 rounded">
+                  <td className="px-4 py-2.5 overflow-hidden">
+                    <span className="font-mono text-xs bg-slate-700 text-amber-300 px-1.5 py-0.5 rounded block truncate" title={m.ratePlanCode}>
                       {m.ratePlanCode}
                     </span>
                   </td>
-                  <td className="px-4 py-2.5">
-                    <span className="font-mono text-xs bg-slate-700 text-blue-300 px-1.5 py-0.5 rounded">
+                  <td className="px-4 py-2.5 overflow-hidden">
+                    <span className="font-mono text-xs bg-slate-700 text-blue-300 px-1.5 py-0.5 rounded block truncate" title={m.skuKey}>
                       {m.skuKey}
                     </span>
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono text-slate-200">
                     {fmtPrice(m.defaultPrice)}
                   </td>
-                  <td className="px-4 py-2.5 text-slate-400 text-xs hidden lg:table-cell">{m.notes || '—'}</td>
+                  <td className="px-4 py-2.5 text-slate-400 text-xs hidden lg:table-cell truncate" title={m.notes}>{m.notes || '—'}</td>
                   <td className="px-4 py-2.5 text-right">
                     <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button onClick={() => { setEditCode(m.ratePlanCode); setEditForm({ ...m }) }}
@@ -719,7 +741,14 @@ function CustomerOverridesTab({ overrides, catalog, onRefresh }) {
             </div>
           )}
         </div>
-        <table className="w-full text-sm">
+        <table className="w-full table-fixed text-sm">
+          <colgroup>
+            <col style={{ width: '32%' }} />
+            <col style={{ width: '34%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '12%' }} className="hidden sm:table-column" />
+            <col style={{ width: '10%' }} />
+          </colgroup>
           <thead>
             <tr className="text-xs text-slate-500 border-b border-slate-700">
               <th className="text-left px-4 py-2 font-medium">Customer Name</th>
@@ -739,9 +768,9 @@ function CustomerOverridesTab({ overrides, catalog, onRefresh }) {
               const isCustom = catalogEntry && o.price !== catalogEntry.defaultPrice
               return (
                 <tr key={o.id} className="border-b border-slate-700/50 hover:bg-slate-750 transition-colors group">
-                  <td className="px-4 py-2.5 text-slate-200 text-sm">{o.customerName}</td>
-                  <td className="px-4 py-2.5">
-                    <span className="font-mono text-xs bg-slate-700 text-blue-300 px-1.5 py-0.5 rounded">
+                  <td className="px-4 py-2.5 text-slate-200 text-sm truncate" title={o.customerName}>{o.customerName}</td>
+                  <td className="px-4 py-2.5 overflow-hidden">
+                    <span className="font-mono text-xs bg-slate-700 text-blue-300 px-1.5 py-0.5 rounded block truncate" title={o.skuKey}>
                       {o.skuKey}
                     </span>
                   </td>
