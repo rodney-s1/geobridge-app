@@ -95,30 +95,106 @@ function groupCustomers(customers) {
     })
 }
 
+// ─── Copy-to-clipboard helper ────────────────────────────────────────────────
+function useCopySerials() {
+  const [copied, setCopied] = React.useState(false)
+  const copy = React.useCallback((serials) => {
+    const text = serials.filter(Boolean).join('\n')
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }).catch(() => {
+      // fallback for Electron/non-secure contexts
+      const el = document.createElement('textarea')
+      el.value = text
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }, [])
+  return [copied, copy]
+}
+
 // ─── Rate Plan Breakdown pill row ─────────────────────────────────────────────
-function RpcBreakdownRow({ rpcCounts, totalDevices, colSpan = 8, indent = 'pl-14' }) {
+function RpcBreakdownRow({ rpcCounts, totalDevices, colSpan = 8, indent = 'pl-14',
+                           activeFilter = null, onFilterChange = null,
+                           filteredSerials = [], allSerials = [] }) {
   const entries = Object.entries(rpcCounts).sort((a, b) => b[1] - a[1])
   if (entries.length === 0) return null
+
+  const [copied, copy] = useCopySerials()
+  const serialsToCopy  = activeFilter ? filteredSerials : allSerials
+  const copyLabel      = activeFilter
+    ? `Copy ${filteredSerials.length} serial${filteredSerials.length !== 1 ? 's' : ''}`
+    : `Copy all ${allSerials.length} serial${allSerials.length !== 1 ? 's' : ''}`
+
   return (
     <tr className="bg-slate-900/80 border-b border-white/10">
-      <td colSpan={colSpan} className={`${indent} pr-6 py-3`}>
+      <td colSpan={colSpan} className={`${indent} pr-4 py-2.5`}>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-xs text-slate-500 uppercase tracking-wider font-medium mr-1">
             Rate Plan Breakdown:
           </span>
-          {entries.map(([code, count]) => (
-            <span
-              key={code}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-700/60 border border-slate-600/50 text-xs"
+          {entries.map(([code, count]) => {
+            const isActive = activeFilter === code
+            return (
+              <button
+                key={code}
+                onClick={e => {
+                  e.stopPropagation()
+                  onFilterChange && onFilterChange(isActive ? null : code)
+                }}
+                title={onFilterChange ? (isActive ? 'Click to clear filter' : `Click to filter to ${code} devices`) : undefined}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs transition-all ${
+                  isActive
+                    ? 'bg-blue-600/40 border-blue-500/70 ring-1 ring-blue-500/50 scale-105'
+                    : onFilterChange
+                      ? 'bg-slate-700/60 border-slate-600/50 hover:bg-slate-600/60 hover:border-slate-500/60 cursor-pointer'
+                      : 'bg-slate-700/60 border-slate-600/50'
+                }`}
+              >
+                <span className="font-mono text-slate-200">{code}</span>
+                <span className={`inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full font-bold text-xs ${
+                  isActive ? 'bg-blue-500/50 text-blue-200' : 'bg-blue-500/25 text-blue-300'
+                }`}>
+                  {count}
+                </span>
+              </button>
+            )
+          })}
+
+          {/* Copy serials button */}
+          {allSerials.length > 0 && (
+            <button
+              onClick={e => { e.stopPropagation(); copy(serialsToCopy) }}
+              title={copyLabel}
+              className={`ml-1 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs transition-all ${
+                copied
+                  ? 'bg-emerald-800/50 border-emerald-600/50 text-emerald-300'
+                  : 'bg-slate-800/60 border-slate-600/40 text-slate-400 hover:text-slate-200 hover:border-slate-500/60'
+              }`}
             >
-              <span className="font-mono text-slate-200">{code}</span>
-              <span className="inline-flex items-center justify-center min-w-[1.25rem] h-5 px-1 rounded-full bg-blue-500/25 text-blue-300 font-bold text-xs">
-                {count}
-              </span>
-            </span>
-          ))}
+              {copied ? (
+                <><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg> Copied!</>
+              ) : (
+                <><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg> {copyLabel}</>
+              )}
+            </button>
+          )}
+
           <span className="ml-auto text-xs text-slate-600 font-mono">
-            {totalDevices} total device{totalDevices !== 1 ? 's' : ''}
+            {activeFilter
+              ? <>{filteredSerials.length} of {totalDevices} device{totalDevices !== 1 ? 's' : ''} <span className="text-blue-400">(filtered)</span></>
+              : <>{totalDevices} total device{totalDevices !== 1 ? 's' : ''}</>
+            }
           </span>
         </div>
       </td>
@@ -228,6 +304,8 @@ function BillingTypeEditor({ customer, onBillingTypeChange, stopPropagation = tr
 
 // ─── Inline device sub-table (used inside both CustomerRow and SubAccountRow) ──
 function DeviceSubTable({ devices }) {
+  const [filterCode, setFilterCode] = useState(null)
+
   if (devices.length === 0) {
     return (
       <tr className="border-b border-white/5 bg-slate-900/50">
@@ -244,9 +322,22 @@ function DeviceSubTable({ devices }) {
     rpcCounts[code] = (rpcCounts[code] || 0) + 1
   })
 
+  const allSerials      = devices.map(d => d.serialNumber).filter(Boolean)
+  const visibleDevices  = filterCode
+    ? devices.filter(d => (d.ratePlanCode || '(none)') === filterCode)
+    : devices
+  const filteredSerials = visibleDevices.map(d => d.serialNumber).filter(Boolean)
+
   return (
     <>
-      <RpcBreakdownRow rpcCounts={rpcCounts} totalDevices={devices.length} />
+      <RpcBreakdownRow
+        rpcCounts={rpcCounts}
+        totalDevices={devices.length}
+        activeFilter={filterCode}
+        onFilterChange={setFilterCode}
+        filteredSerials={filteredSerials}
+        allSerials={allSerials}
+      />
       <tr className="bg-slate-900/70">
         <td colSpan={8} className="px-0 py-0">
           <table className="w-full">
@@ -263,7 +354,7 @@ function DeviceSubTable({ devices }) {
               </tr>
             </thead>
             <tbody>
-              {devices.map((d, i) => (
+              {visibleDevices.map((d, i) => (
                 <DeviceRow key={`${d.serialNumber}-${i}`} device={d} />
               ))}
             </tbody>
@@ -404,6 +495,9 @@ function ParentGroupRow({ group, onBillingTypeChange, onDetail }) {
   const [parentDevices, setParentDevices] = useState([])
   const [loadingParentDevices, setLoadingParentDevices] = useState(false)
 
+  // Combined RPC filter for the cross-account breakdown bar
+  const [combinedFilterCode, setCombinedFilterCode] = useState(null)
+
   // Fetch devices for all sub-accounts in parallel
   const fetchAllSubDevices = async () => {
     setLoadingDevices(true)
@@ -484,6 +578,17 @@ function ParentGroupRow({ group, onBillingTypeChange, onDetail }) {
   // Total loaded devices (for combined RPC row denominator)
   const totalLoadedDevices = Object.values(devicesByCustomer).reduce((s, a) => s + a.length, 0)
     + (parentExpanded ? parentDevices.length : 0)
+
+  // All serials across loaded devices (for copy button in combined RPC row)
+  const allCombinedDevices = [
+    ...Object.values(devicesByCustomer).flat(),
+    ...(parentExpanded ? parentDevices : []),
+  ]
+  const allCombinedSerials      = allCombinedDevices.map(d => d.serialNumber).filter(Boolean)
+  const filteredCombinedSerials = combinedFilterCode
+    ? allCombinedDevices.filter(d => (d.ratePlanCode || '(none)') === combinedFilterCode)
+        .map(d => d.serialNumber).filter(Boolean)
+    : allCombinedSerials
 
   // ── If no subs, render as a plain CustomerRow ──────────────────────────────
   if (!hasSubs) {
@@ -643,6 +748,10 @@ function ParentGroupRow({ group, onBillingTypeChange, onDetail }) {
           rpcCounts={combinedRpcCounts}
           totalDevices={totalLoadedDevices}
           indent="pl-8"
+          activeFilter={combinedFilterCode}
+          onFilterChange={setCombinedFilterCode}
+          filteredSerials={filteredCombinedSerials}
+          allSerials={allCombinedSerials}
         />
       )}
 

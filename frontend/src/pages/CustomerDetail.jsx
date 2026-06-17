@@ -15,6 +15,28 @@ function fmtDelta(v) {
   return (n >= 0 ? '+' : '') + '$' + n.toFixed(2)
 }
 
+// ─── Copy-to-clipboard helper ─────────────────────────────────────────────────
+function useCopySerials() {
+  const [copied, setCopied] = useState(false)
+  const copy = useCallback((serials) => {
+    const text = serials.filter(Boolean).join('\n')
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }).catch(() => {
+      const el = document.createElement('textarea')
+      el.value = text
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }, [])
+  return [copied, copy]
+}
+
 // ─── Status chip (reused from Reconciliation palette) ────────────────────────
 const STATUS_META = {
   ok:        { label: 'OK',           cls: 'bg-emerald-900/50 text-emerald-300 border-emerald-700/40' },
@@ -62,9 +84,11 @@ function InfoRow({ label, value, mono = false }) {
 
 // ─── Devices tab ─────────────────────────────────────────────────────────────
 function DevicesTab({ customerId }) {
-  const [devices, setDevices] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error,   setError]   = useState(null)
+  const [devices,    setDevices]    = useState(null)
+  const [loading,    setLoading]    = useState(true)
+  const [error,      setError]      = useState(null)
+  const [filterCode, setFilterCode] = useState(null)
+  const [copied,     copy]          = useCopySerials()
 
   useEffect(() => {
     setLoading(true)
@@ -93,23 +117,73 @@ function DevicesTab({ customerId }) {
     <div className="py-12 text-center text-slate-500 text-sm">No active device contracts found.</div>
   )
 
-  // Rate plan summary
+  // Rate plan counts
   const rpcCounts = {}
   devices.forEach(d => { const r = d.ratePlanCode || '(none)'; rpcCounts[r] = (rpcCounts[r] || 0) + 1 })
 
+  const allSerials      = devices.map(d => d.serialNumber).filter(Boolean)
+  const visibleDevices  = filterCode
+    ? devices.filter(d => (d.ratePlanCode || '(none)') === filterCode)
+    : devices
+  const filteredSerials = visibleDevices.map(d => d.serialNumber).filter(Boolean)
+  const serialsToCopy   = filterCode ? filteredSerials : allSerials
+  const copyLabel       = filterCode
+    ? `Copy ${filteredSerials.length} serial${filteredSerials.length !== 1 ? 's' : ''}`
+    : `Copy all ${allSerials.length} serial${allSerials.length !== 1 ? 's' : ''}`
+
   return (
     <div className="space-y-4">
-      {/* RPC pill summary */}
-      <div className="flex flex-wrap gap-2 items-center">
-        <span className="text-xs text-slate-500">Rate plans:</span>
-        {Object.entries(rpcCounts).sort((a,b) => b[1]-a[1]).map(([code, count]) => (
-          <span key={code} className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg
-            bg-slate-700/80 border border-slate-600/40 text-xs">
-            <span className="font-mono text-slate-200">{code}</span>
-            <span className="bg-blue-500/30 text-blue-300 rounded-full px-1.5 py-0.5 text-xs font-bold">{count}</span>
-          </span>
-        ))}
-        <span className="text-xs text-slate-600 ml-1">{devices.length} total devices</span>
+      {/* RPC pill summary — clickable to filter */}
+      <div className="flex flex-wrap gap-2 items-center bg-slate-900/60 border border-slate-700/40 rounded-xl px-4 py-3">
+        <span className="text-xs text-slate-500 uppercase tracking-wider font-medium mr-1">Rate Plan Breakdown:</span>
+        {Object.entries(rpcCounts).sort((a,b) => b[1]-a[1]).map(([code, count]) => {
+          const isActive = filterCode === code
+          return (
+            <button
+              key={code}
+              onClick={() => setFilterCode(isActive ? null : code)}
+              title={isActive ? 'Click to clear filter' : `Show only ${code} devices`}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs transition-all ${
+                isActive
+                  ? 'bg-blue-600/40 border-blue-500/70 ring-1 ring-blue-500/50 scale-105'
+                  : 'bg-slate-700/80 border-slate-600/40 hover:bg-slate-600/60 hover:border-slate-500/60 cursor-pointer'
+              }`}
+            >
+              <span className="font-mono text-slate-200">{code}</span>
+              <span className={`inline-flex items-center justify-center min-w-[1.1rem] h-[1.1rem] px-1 rounded-full font-bold text-xs ${
+                isActive ? 'bg-blue-500/50 text-blue-200' : 'bg-blue-500/30 text-blue-300'
+              }`}>{count}</span>
+            </button>
+          )
+        })}
+
+        {/* Copy serials button */}
+        <button
+          onClick={() => copy(serialsToCopy)}
+          title={copyLabel}
+          className={`ml-1 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs transition-all ${
+            copied
+              ? 'bg-emerald-800/50 border-emerald-600/50 text-emerald-300'
+              : 'bg-slate-800/60 border-slate-600/40 text-slate-400 hover:text-slate-200 hover:border-slate-500/60'
+          }`}
+        >
+          {copied ? (
+            <><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg> Copied!</>
+          ) : (
+            <><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg> {copyLabel}</>
+          )}
+        </button>
+
+        <span className="ml-auto text-xs text-slate-600 font-mono">
+          {filterCode
+            ? <>{filteredSerials.length} of {devices.length} devices <span className="text-blue-400">(filtered)</span></>
+            : <>{devices.length} total devices</>}
+        </span>
       </div>
 
       {/* Device table */}
@@ -132,7 +206,7 @@ function DevicesTab({ customerId }) {
             </tr>
           </thead>
           <tbody>
-            {devices.map((d, i) => (
+            {visibleDevices.map((d, i) => (
               <tr key={`${d.serialNumber}-${i}`} className="border-t border-slate-700/30 hover:bg-slate-700/20">
                 <td className="px-3 py-2 font-mono text-slate-300">{d.serialNumber || '—'}</td>
                 <td className="px-3 py-2 text-slate-400">{d.deviceType || '—'}</td>
