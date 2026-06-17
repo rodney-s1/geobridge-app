@@ -42,10 +42,11 @@ def _load(path, default):
 
 def _get_stores():
     """Load fresh copies from disk each call so restarts aren't needed."""
-    catalog   = _load(os.path.join(_HERE, "sku_catalog.json"),            [])
-    mappings  = _load(os.path.join(_HERE, "sku_mappings.json"),           [])
-    overrides = _load(os.path.join(_HERE, "sku_customer_overrides.json"), [])
-    return catalog, mappings, overrides
+    catalog      = _load(os.path.join(_HERE, "sku_catalog.json"),                    [])
+    mappings     = _load(os.path.join(_HERE, "sku_mappings.json"),                   [])
+    cust_maps    = _load(os.path.join(_HERE, "customer_rate_plan_mappings.json"),     [])
+    overrides    = _load(os.path.join(_HERE, "sku_customer_overrides.json"),          [])
+    return catalog, mappings, cust_maps, overrides
 
 
 def _normalize(s: str) -> str:
@@ -135,7 +136,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     device_db_records = _sync_cache.get("device_db_records") or []
 
     # -- Build indexes ---------------------------------------------------------
-    catalog, mappings, overrides = _get_stores()
+    catalog, mappings, cust_maps, overrides = _get_stores()
 
     # skuKey -> defaultPrice
     catalog_index: Dict[str, float] = {
@@ -148,7 +149,14 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         for s in catalog
     }
 
-    # ratePlanCode (upper) -> skuKey
+    # Tier 1: (norm_customerName, ratePlanCode_upper) -> skuKey
+    # Customer-specific rate plan mappings take priority over global mappings.
+    cust_mapping_index: Dict[tuple, str] = {
+        (_normalize(m["customerName"]), (m.get("ratePlanCode") or "").upper()): m.get("skuKey") or ""
+        for m in cust_maps
+    }
+
+    # Tier 2: ratePlanCode (upper) -> skuKey  (global default)
     # Accept both field names: new schema uses ratePlanCode, old schema used promoCode
     mapping_index: Dict[str, str] = {
         (m.get("ratePlanCode") or m.get("promoCode") or "").upper(): m.get("skuKey") or ""
@@ -218,10 +226,24 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         device_rows = []
 
         for dev in devices:
-            rate_plan = dev["ratePlanCode"]
-            sku_key   = mapping_index.get(rate_plan, "")
+            rate_plan  = dev["ratePlanCode"]
+            norm_cname = _normalize(cname)
 
-            if not rate_plan or rate_plan not in mapping_index:
+            # --- 3-tier SKU lookup -------------------------------------------
+            # Tier 1: customer-specific rate plan mapping (highest priority)
+            sku_key = cust_mapping_index.get((norm_cname, rate_plan), None)
+            mapping_tier = "customer"
+            # Tier 2: global rate plan mapping
+            if sku_key is None:
+                sku_key = mapping_index.get(rate_plan, None)
+                mapping_tier = "global"
+            # Tier 3: unmapped
+            if sku_key is None:
+                sku_key = ""
+                mapping_tier = "none"
+            # -----------------------------------------------------------------
+
+            if not rate_plan or mapping_tier == "none":
                 # No mapping at all
                 device_rows.append({
                     "serialNumber": dev["serialNumber"],
@@ -238,7 +260,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 continue
 
             if not sku_key:
-                # Mapping exists but no SKU assigned yet
+                # Mapping exists (customer or global) but SKU not assigned yet
                 device_rows.append({
                     "serialNumber": dev["serialNumber"],
                     "ratePlanCode": rate_plan,

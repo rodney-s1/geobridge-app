@@ -971,27 +971,239 @@ function ImportCsvTab({ onRefresh }) {
 }
 
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// ===============================================================================
+//  TAB 5 — Customer-Specific Rate Plan Mappings
+//  Maps (customerName + ratePlanCode) -> skuKey, overriding the global mapping.
+// ===============================================================================
+function CustRatePlanTab({ custMappings, catalog, onRefresh }) {
+  const [search, setSearch]     = useState('')
+  const [adding, setAdding]     = useState(false)
+  const [addCust, setAddCust]   = useState('')
+  const [addCode, setAddCode]   = useState('')
+  const [addSku,  setAddSku]    = useState('')
+  const [addPrice, setAddPrice] = useState('')
+  const [addNotes, setAddNotes] = useState('')
+  const [saving, setSaving]     = useState(false)
+  const [msg, setMsg]           = useState(null)
+
+  const skuOptions = catalog.map(s => s.skuKey).sort()
+
+  const filtered = custMappings.filter(m =>
+    !search ||
+    m.customerName.toLowerCase().includes(search.toLowerCase()) ||
+    m.ratePlanCode.toLowerCase().includes(search.toLowerCase()) ||
+    (m.skuKey || '').toLowerCase().includes(search.toLowerCase())
+  )
+
+  function onAddSkuChange(key) {
+    setAddSku(key)
+    const found = catalog.find(s => s.skuKey === key)
+    if (found) setAddPrice(String(found.defaultPrice))
+  }
+
+  async function saveMapping() {
+    setSaving(true)
+    try {
+      const r = await fetch(`${API}/api/settings/customer-rate-plan-mappings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName:  addCust.trim(),
+          ratePlanCode:  addCode.trim().toUpperCase(),
+          skuKey:        addSku,
+          defaultPrice:  parseFloat(addPrice) || 0,
+          notes:         addNotes,
+        }),
+      })
+      if (!r.ok) throw new Error(await r.text())
+      setMsg({ type: 'ok', text: 'Customer mapping saved.' })
+      setAdding(false)
+      setAddCust(''); setAddCode(''); setAddSku(''); setAddPrice(''); setAddNotes('')
+      onRefresh()
+    } catch (e) {
+      setMsg({ type: 'err', text: e.message })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function deleteMapping(id) {
+    try {
+      await fetch(`${API}/api/settings/customer-rate-plan-mappings/${encodeURIComponent(id)}`, { method: 'DELETE' })
+      onRefresh()
+    } catch (e) {
+      setMsg({ type: 'err', text: e.message })
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Explainer */}
+      <div className="bg-blue-900/20 border border-blue-700/40 rounded-xl px-4 py-3 text-sm text-blue-300">
+        <span className="font-semibold text-blue-200">Customer-specific overrides</span>
+        {' '}— when the same promo code means different SKUs for different customers,
+        add an entry here. These take priority over the global Rate Plan Mappings.
+      </div>
+
+      {msg && (
+        <div className={`px-4 py-2 rounded-lg text-sm ${msg.type === 'ok' ? 'bg-emerald-900/50 text-emerald-300' : 'bg-red-900/50 text-red-300'}`}>
+          {msg.text}
+          <button onClick={() => setMsg(null)} className="ml-3 text-slate-400 hover:text-white">x</button>
+        </div>
+      )}
+
+      {/* Toolbar */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <input
+          value={search} onChange={e => setSearch(e.target.value)}
+          placeholder="Search by customer, rate plan code, or SKU..."
+          className="flex-1 min-w-[240px] bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+        />
+        <button onClick={() => setAdding(true)}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg font-medium transition-colors">
+          + Add Override
+        </button>
+      </div>
+
+      {/* Add form */}
+      {adding && (
+        <div className="bg-slate-800 border border-blue-500/40 rounded-xl p-4 space-y-3">
+          <div className="text-sm font-semibold text-blue-300 mb-1">New Customer Rate Plan Override</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="block text-xs text-slate-400 mb-1">Customer Name * (exact QB name)</label>
+              <input value={addCust} onChange={e => setAddCust(e.target.value)}
+                placeholder="e.g. Enterprise Holdings"
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Rate Plan Code * (promo code)</label>
+              <input value={addCode} onChange={e => setAddCode(e.target.value.toUpperCase())}
+                placeholder="e.g. CELU-TP-250"
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 font-mono focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">QB SKU *</label>
+              <select value={addSku} onChange={e => onAddSkuChange(e.target.value)}
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+                <option value="">-- select SKU --</option>
+                {skuOptions.map(k => <option key={k} value={k}>{k}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Default Price</label>
+              <input type="number" step="0.01" value={addPrice} onChange={e => setAddPrice(e.target.value)}
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Notes</label>
+              <input value={addNotes} onChange={e => setAddNotes(e.target.value)}
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button disabled={saving || !addCust.trim() || !addCode.trim() || !addSku}
+              onClick={saveMapping}
+              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded-lg font-medium">
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+            <button onClick={() => { setAdding(false); setAddCust(''); setAddCode(''); setAddSku(''); setAddPrice(''); setAddNotes('') }}
+              className="px-4 py-1.5 text-slate-400 hover:text-white text-sm">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Table */}
+      <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+        <div className="px-4 py-2 border-b border-slate-700">
+          <span className="text-xs text-slate-400">
+            {filtered.length.toLocaleString()} customer-specific mapping{filtered.length !== 1 ? 's' : ''}
+            {search ? ' (filtered)' : ''}
+          </span>
+        </div>
+        <table className="w-full table-fixed text-sm">
+          <colgroup>
+            <col style={{ width: '26%' }} />
+            <col style={{ width: '16%' }} />
+            <col style={{ width: '26%' }} />
+            <col style={{ width: '10%' }} />
+            <col style={{ width: '14%' }} className="hidden lg:table-column" />
+            <col style={{ width: '8%' }} />
+          </colgroup>
+          <thead>
+            <tr className="text-xs text-slate-500 border-b border-slate-700 bg-slate-900/40">
+              <th className="text-left px-4 py-2.5 font-medium">Customer Name</th>
+              <th className="text-left px-4 py-2.5 font-medium">Rate Plan Code</th>
+              <th className="text-left px-4 py-2.5 font-medium">QB SKU</th>
+              <th className="text-right px-4 py-2.5 font-medium">Price</th>
+              <th className="text-left px-4 py-2.5 font-medium hidden lg:table-cell">Notes</th>
+              <th className="px-4 py-2.5"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
+                  {custMappings.length === 0
+                    ? 'No customer-specific overrides yet. Add one above when a promo code maps to different SKUs per customer.'
+                    : 'No results.'}
+                </td>
+              </tr>
+            ) : filtered.map(m => (
+              <React.Fragment key={m.id}>
+                <tr className="border-b border-slate-700/30 hover:bg-slate-750/60 transition-colors group">
+                  <td className="px-4 py-2.5 text-slate-200 text-sm truncate" title={m.customerName}>{m.customerName}</td>
+                  <td className="px-4 py-2.5">
+                    <span className="font-mono text-xs bg-slate-700 text-amber-300 px-1.5 py-0.5 rounded">{m.ratePlanCode}</span>
+                  </td>
+                  <td className="px-4 py-2.5 overflow-hidden">
+                    {m.skuKey ? (
+                      <span className="font-mono text-xs bg-slate-700 text-blue-300 px-1.5 py-0.5 rounded block truncate" title={m.skuKey}>{m.skuKey}</span>
+                    ) : (
+                      <span className="text-slate-600 text-xs italic">not set</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-mono text-slate-200 whitespace-nowrap">{fmtPrice(m.defaultPrice)}</td>
+                  <td className="px-4 py-2.5 text-slate-400 text-xs hidden lg:table-cell truncate" title={m.notes}>{m.notes || '--'}</td>
+                  <td className="px-4 py-2.5 text-right">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <DeleteBtn small onConfirm={() => deleteMapping(m.id)} />
+                    </div>
+                  </td>
+                </tr>
+              </React.Fragment>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+
+// ===============================================================================
 //  ROOT COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('catalog')
   const [catalog,   setCatalog]   = useState([])
   const [mappings,  setMappings]  = useState([])
-  const [overrides, setOverrides] = useState([])
-  const [unmapped,  setUnmapped]  = useState([])
-  const [summary,   setSummary]   = useState(null)
-  const [loading,   setLoading]   = useState(true)
+  const [overrides,    setOverrides]    = useState([])
+  const [custMappings, setCustMappings] = useState([])
+  const [unmapped,     setUnmapped]     = useState([])
+  const [summary,      setSummary]      = useState(null)
+  const [loading,      setLoading]      = useState(true)
 
   const [fetchError, setFetchError] = useState(null)
 
   const fetchAll = useCallback(async () => {
     setFetchError(null)
     // Use allSettled so one failing endpoint doesn't cancel the others
-    const [catR, mapR, ovrR, unmR, sumR] = await Promise.allSettled([
+    const [catR, mapR, ovrR, crpR, unmR, sumR] = await Promise.allSettled([
       fetch(`${API}/api/settings/sku-catalog`),
       fetch(`${API}/api/settings/sku-mappings`),
       fetch(`${API}/api/settings/customer-overrides`),
+      fetch(`${API}/api/settings/customer-rate-plan-mappings`),
       fetch(`${API}/api/settings/unmapped-rate-plans`),
       fetch(`${API}/api/settings/summary`),
     ])
@@ -1009,14 +1221,18 @@ export default function Settings() {
       else errors.push(`overrides: ${ovrR.reason?.message || 'HTTP ' + ovrR.value?.status}`)
     } catch(e) { errors.push(`overrides parse: ${e.message}`) }
     try {
+      if (crpR.status === 'fulfilled' && crpR.value.ok) setCustMappings(await crpR.value.json())
+      // customer rate plan mappings non-critical — don't surface as error
+    } catch(e) { /* non-critical */ }
+    try {
       if (unmR.status === 'fulfilled' && unmR.value.ok) {
         const d = await unmR.value.json(); setUnmapped(d.unmapped || [])
       }
-      // unmapped failing is non-critical — don't add to errors
+      // unmapped failing is non-critical
     } catch(e) { /* non-critical */ }
     try {
       if (sumR.status === 'fulfilled' && sumR.value.ok) setSummary(await sumR.value.json())
-      // summary failing is non-critical — don't add to errors
+      // summary failing is non-critical
     } catch(e) { /* non-critical */ }
     if (errors.length) setFetchError(`Fetch errors — ${errors.join(', ')}`)
     setLoading(false)
@@ -1051,11 +1267,12 @@ export default function Settings() {
 
       {/* Summary stat cards */}
       {summary && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <StatCard icon="📦" label="SKUs in Catalog" value={summary.skuCount} color="blue" />
           <StatCard icon="🔗" label="Rate Plan Mappings" value={summary.mappingCount} color="green" />
+          <StatCard icon="👤" label="Customer Rate Plans" value={summary.custMappingCount ?? 0} color="amber" />
           <StatCard icon="💲" label="Customer Overrides" value={summary.overrideCount.toLocaleString()} color="purple" />
-          <StatCard icon="⚠" label="Unmapped Codes" value={summary.unmappedCount} color={summary.unmappedCount > 0 ? 'amber' : 'green'} />
+          <StatCard icon="⚠" label="Unmapped Codes" value={summary.unmappedCount} color={summary.unmappedCount > 0 ? 'red' : 'green'} />
         </div>
       )}
 
@@ -1070,6 +1287,7 @@ export default function Settings() {
             </span>
           )}
         </TabBtn>
+        <TabBtn active={activeTab === 'custRatePlans'} onClick={() => setActiveTab('custRatePlans')}>Customer Rate Plans</TabBtn>
         <TabBtn active={activeTab === 'overrides'} onClick={() => setActiveTab('overrides')}>Customer Prices</TabBtn>
         <TabBtn active={activeTab === 'import'}    onClick={() => setActiveTab('import')}>Import CSV</TabBtn>
       </div>
@@ -1087,6 +1305,7 @@ export default function Settings() {
         <>
           {activeTab === 'catalog'   && <SkuCatalogTab      catalog={catalog}   onRefresh={fetchAll} />}
           {activeTab === 'mappings'  && <RatePlanMappingsTab mappings={mappings} catalog={catalog} unmapped={unmapped} onRefresh={fetchAll} />}
+          {activeTab === 'custRatePlans' && <CustRatePlanTab custMappings={custMappings} catalog={catalog} onRefresh={fetchAll} />}
           {activeTab === 'overrides' && <CustomerOverridesTab overrides={overrides} catalog={catalog} onRefresh={fetchAll} />}
           {activeTab === 'import'    && <ImportCsvTab        onRefresh={fetchAll} />}
         </>

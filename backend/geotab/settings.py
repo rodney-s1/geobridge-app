@@ -39,6 +39,7 @@ router = APIRouter()
 _HERE = os.path.dirname(os.path.abspath(__file__))
 SKU_CATALOG_FILE        = os.path.join(_HERE, "sku_catalog.json")
 SKU_MAPPINGS_FILE       = os.path.join(_HERE, "sku_mappings.json")
+CUST_RATE_PLAN_FILE     = os.path.join(_HERE, "customer_rate_plan_mappings.json")
 CUSTOMER_OVERRIDES_FILE = os.path.join(_HERE, "sku_customer_overrides.json")
 MYADMIN_CACHE_FILE      = os.path.join(_HERE, "myadmin_cache.json")
 
@@ -81,9 +82,10 @@ def _save(path, data):
 # For a local desktop app with <1000 items in each file, disk reads on every
 # GET are effectively instant and far safer than module-level caching.
 
-def _catalog()  -> list: return _load(SKU_CATALOG_FILE,        [])
-def _overrides()-> list: return _load(CUSTOMER_OVERRIDES_FILE, [])
-def _myadmin_cache() -> dict: return _load(MYADMIN_CACHE_FILE, {})
+def _catalog()       -> list: return _load(SKU_CATALOG_FILE,       [])
+def _cust_mappings() -> list: return _load(CUST_RATE_PLAN_FILE,    [])
+def _overrides()     -> list: return _load(CUSTOMER_OVERRIDES_FILE,[])
+def _myadmin_cache() -> dict: return _load(MYADMIN_CACHE_FILE,     {})
 
 
 def _normalize_mapping(m: dict) -> dict:
@@ -133,12 +135,15 @@ def _mappings() -> list:
 
 # Keep module-level references for write operations so imports/upserts
 # don't need to reload from disk mid-operation.
-sku_catalog:  list = _catalog()
-sku_mappings: list = _mappings()
-cust_ovr:     list = _overrides()
+sku_catalog:     list = _catalog()
+sku_mappings:    list = _mappings()
+cust_rate_plans: list = _cust_mappings()
+cust_ovr:        list = _overrides()
 
 print(f"[settings] SKU catalog: {len(sku_catalog)} SKUs, "
-      f"{len(sku_mappings)} mappings, {len(cust_ovr)} overrides")
+      f"{len(sku_mappings)} global mappings, "
+      f"{len(cust_rate_plans)} customer-specific mappings, "
+      f"{len(cust_ovr)} price overrides")
 
 
 # ================================================================================
@@ -224,6 +229,66 @@ async def delete_mapping(rate_plan_code: str):
     sku_mappings = [m for m in sku_mappings if m["ratePlanCode"].upper() != rate_plan_code.upper()]
     _save(SKU_MAPPINGS_FILE, sku_mappings)
     return {"success": True, "removed": before - len(sku_mappings)}
+
+
+# ================================================================================
+#  CUSTOMER-SPECIFIC RATE PLAN MAPPINGS
+#  { id, customerName, ratePlanCode, skuKey, defaultPrice, notes }
+#  Lookup: (customer, ratePlanCode) -> skuKey overrides the global mapping.
+#  Used by reconciliation as the highest-priority tier.
+# ================================================================================
+
+class CustRatePlanUpsert(BaseModel):
+    customerName: str
+    ratePlanCode: str
+    skuKey: str
+    defaultPrice: float = 0.0
+    notes: str = ""
+
+
+def _crp_id(customer_name: str, rate_plan_code: str) -> str:
+    return f"{customer_name.strip()}|{rate_plan_code.strip().upper()}"
+
+
+@router.get("/settings/customer-rate-plan-mappings")
+async def list_cust_rate_plan_mappings():
+    data = _cust_mappings()
+    return sorted(data, key=lambda x: (
+        x.get("customerName", "").lower(),
+        x.get("ratePlanCode", "").lower()
+    ))
+
+
+@router.post("/settings/customer-rate-plan-mappings")
+async def upsert_cust_rate_plan(body: CustRatePlanUpsert):
+    global cust_rate_plans
+    cust_rate_plans = _cust_mappings()
+    oid = _crp_id(body.customerName, body.ratePlanCode)
+    existing = next((m for m in cust_rate_plans if m["id"] == oid), None)
+    data = {
+        "id":            oid,
+        "customerName":  body.customerName.strip(),
+        "ratePlanCode":  body.ratePlanCode.strip().upper(),
+        "skuKey":        body.skuKey,
+        "defaultPrice":  body.defaultPrice,
+        "notes":         body.notes,
+    }
+    if existing:
+        existing.update(data)
+    else:
+        cust_rate_plans.append(data)
+    _save(CUST_RATE_PLAN_FILE, cust_rate_plans)
+    return {"success": True, "mapping": data}
+
+
+@router.delete("/settings/customer-rate-plan-mappings/{mapping_id:path}")
+async def delete_cust_rate_plan(mapping_id: str):
+    global cust_rate_plans
+    cust_rate_plans = _cust_mappings()
+    before = len(cust_rate_plans)
+    cust_rate_plans = [m for m in cust_rate_plans if m["id"] != mapping_id]
+    _save(CUST_RATE_PLAN_FILE, cust_rate_plans)
+    return {"success": True, "removed": before - len(cust_rate_plans)}
 
 
 # ================================================================================
@@ -625,9 +690,10 @@ async def get_settings_summary():
     try:
         cache        = _myadmin_cache()
         raw          = cache.get("raw_customers") or []
-        catalog_now  = _catalog()
-        mappings_now = _mappings()
-        overrides_now= _overrides()
+        catalog_now       = _catalog()
+        mappings_now      = _mappings()
+        cust_maps_now     = _cust_mappings()
+        overrides_now     = _overrides()
 
         seen_codes: set = set()
         for c in raw:
@@ -640,11 +706,12 @@ async def get_settings_summary():
         unmapped_count = len(seen_codes - mapped_codes)
 
         return {
-            "skuCount":      len(catalog_now),
-            "mappingCount":  len(mappings_now),
-            "overrideCount": len(overrides_now),
-            "unmappedCount": unmapped_count,
-            "hasCachedData": bool(raw),
+            "skuCount":         len(catalog_now),
+            "mappingCount":     len(mappings_now),
+            "custMappingCount": len(cust_maps_now),
+            "overrideCount":    len(overrides_now),
+            "unmappedCount":    unmapped_count,
+            "hasCachedData":    bool(raw),
         }
     except Exception as e:
         import traceback
@@ -653,11 +720,12 @@ async def get_settings_summary():
         # Return disk counts even on error so the page still shows data
         try:
             return {
-                "skuCount":      len(_catalog()),
-                "mappingCount":  len(_mappings()),
-                "overrideCount": len(_overrides()),
-                "unmappedCount": 0,
-                "hasCachedData": False,
+                "skuCount":         len(_catalog()),
+                "mappingCount":     len(_mappings()),
+                "custMappingCount": len(_cust_mappings()),
+                "overrideCount":    len(_overrides()),
+                "unmappedCount":    0,
+                "hasCachedData":    False,
                 "_error": str(e),
             }
         except Exception:
