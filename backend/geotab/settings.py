@@ -79,6 +79,7 @@ class SkuUpsert(BaseModel):
     defaultPrice: float = 0.0
     category: str = ""
     desc: str = ""
+    cost: float = 0.0
 
 
 @router.get("/settings/sku-catalog")
@@ -359,6 +360,127 @@ async def import_qb_skus(file: UploadFile = File(...)):
         "ovrUpdated":   ovr_updated,
         "totalSkus":    len(sku_catalog),
         "totalCustomers": len(parsed['customers']),
+    }
+
+
+# ════════════════════════════════════════════════════════════════════════════════
+#  IMPORT ITEM PRICE LIST CSV  →  fill $0 gaps + add new SKUs, never override
+# ════════════════════════════════════════════════════════════════════════════════
+
+def _parse_price(s: str) -> float | None:
+    s = s.strip().replace(',', '')
+    try:    return float(s)
+    except: return None
+
+
+def _parse_price_list_csv(content: str) -> list[dict]:
+    """
+    Parse a QB Item Price List CSV (doubled-comma format).
+    Col 2 = Item (Group:SKU Name), Col 4 = Description, Col 6 = Cost, Col 8 = Price
+
+    Skips parent/category rows (no ':' in Item column).
+    Returns list of {skuKey, fullPath, category, desc, cost, defaultPrice}
+    """
+    reader = csv.reader(io.StringIO(content))
+    rows   = list(reader)
+    items  = []
+
+    for row in rows[1:]:          # skip header
+        if len(row) < 9:
+            continue
+        item_raw  = row[2].strip()
+        desc_raw  = row[4].strip()
+        cost_raw  = row[6].strip()
+        price_raw = row[8].strip()
+
+        if not item_raw or ':' not in item_raw:
+            continue              # skip category parent rows
+
+        price = _parse_price(price_raw)
+        cost  = _parse_price(cost_raw)
+        if price is None:
+            continue
+
+        colon    = item_raw.index(':')
+        group    = item_raw[:colon].strip()
+        sku_name = item_raw[colon + 1:].strip()
+        if not sku_name:
+            continue
+
+        items.append({
+            'skuKey':       sku_name,
+            'fullPath':     item_raw,
+            'category':     group,
+            'desc':         desc_raw,
+            'cost':         cost or 0.0,
+            'defaultPrice': price,
+        })
+
+    return items
+
+
+@router.post("/settings/import-price-list")
+async def import_price_list(file: UploadFile = File(...)):
+    """
+    Upload a QB Item Price List CSV.
+
+    Rules:
+      - If SKU not in catalog → ADD it (new SKU).
+      - If SKU in catalog with defaultPrice == 0 → UPDATE price (fill the gap).
+      - If SKU in catalog with defaultPrice > 0  → SKIP (never override
+        customer-specific pricing derived from invoice imports).
+    """
+    global sku_catalog
+
+    content = (await file.read()).decode("utf-8-sig", errors="replace")
+    items   = _parse_price_list_csv(content)
+
+    if not items:
+        raise HTTPException(status_code=400, detail="No valid items found in price list CSV.")
+
+    catalog_index = {s['skuKey']: s for s in sku_catalog}
+
+    added   = 0
+    updated = 0
+    skipped = 0
+
+    for item in items:
+        existing = catalog_index.get(item['skuKey'])
+        if existing is None:
+            # Brand-new SKU — add to catalog
+            new_entry = {
+                'skuKey':       item['skuKey'],
+                'fullPath':     item['fullPath'],
+                'defaultPrice': item['defaultPrice'],
+                'category':     item['category'],
+                'desc':         item['desc'],
+                'cost':         item['cost'],
+            }
+            sku_catalog.append(new_entry)
+            catalog_index[item['skuKey']] = new_entry
+            added += 1
+        elif (existing.get('defaultPrice') or 0.0) == 0.0 and item['defaultPrice'] > 0:
+            # Existing SKU with $0 price — fill the gap
+            existing['defaultPrice'] = item['defaultPrice']
+            if item.get('cost'):
+                existing['cost'] = item['cost']
+            if not existing.get('desc') and item.get('desc'):
+                existing['desc'] = item['desc']
+            updated += 1
+        else:
+            # Existing SKU with a real price already — do not touch
+            skipped += 1
+
+    sku_catalog.sort(key=lambda x: x.get('skuKey', '').lower())
+    _save(SKU_CATALOG_FILE, sku_catalog)
+
+    return {
+        "success":    True,
+        "added":      added,
+        "updated":    updated,
+        "skipped":    skipped,
+        "totalItems": len(items),
+        "totalSkus":  len(sku_catalog),
     }
 
 

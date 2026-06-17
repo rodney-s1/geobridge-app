@@ -21,11 +21,214 @@
     "desc": "Service Fee Geotab (GO) BUNDLE"
   },
   {
+    "skuKey": "1095692",
+    "fullPath": "Force America Equipment:1095692",
+    "defaultPrice": 20.0,
+    "category": "Force America Equipment",
+    "desc": "Cable, Serial, Male to Female, 15Ft..55286A001"
+  },
+  {
+    "skuKey": "16 PIN-PROGRAM",
+    "fullPath": "Pressure Pro Equipment:16 PIN-PROGRAM",
+    "defaultPrice": 130.0,
+    "category": "Pressure Pro Equipment",
+    "desc": "Pressure Pro 16 Pin Programming Cable"
+  },
+  {
+    "skuKey": "2.4A USB Charger",
+    "fullPath": "GPS LockBox Equipment:2.4A USB Charger",
+    "defaultPrice": 0.0,
+    "category": "GPS LockBox Equipment",
+    "desc": "2.4A Single USB CLA Bullet Charger w/Quickcharge 3.0"
+  },
+  {
+    "skuKey": "2.4A Wiring Harness",
+    "fullPath": "GPS LockBox Equipment:2.4A Wiring Harness",
+    "defaultPrice": 20.0,
+    "category": "GPS LockBox Equipment",
+    "desc": "2.4A Wiring Harness w/ 3.0 quick charge, ignition sense (1 hr delay power turnoff), and signle USB connector Arkon"
+  },
+  {
+    "skuKey": "32 GB SD Card",
+    "fullPath": "Smartwitness Equipment:32 GB SD Card",
+    "defaultPrice": 0.0,
+    "category": "Smartwitness Equipment",
+    "desc": "32 GB SD Card for Smartwitness Cameras"
+  },
+  {
+    "skuKey": "4C720",
+    "fullPath": "FleetCam Equipment:4C720",
+    "defaultPrice": 20.0,
+    "category": "FleetCam Equipment",
+    "desc": "Cables & Wiring: OBDII Splitter Cable"
+  },
+  {
+    "skuKey": "5G Connectivity",
+    "fullPath": "eSquared Service:5G Connectivity",
+    "defaultPrice": 15.0,
+    "category": "eSquared Service",
+    "desc": "1 GB Data"
+  },
+  {
+    "skuKey": "6\" Mount",
+    "fullPath": "GPS LockBox Equipment:6\" Mount",
+    "defaultPrice": 20.0,
+    "category": "GPS LockBox Equipment",
+    "desc": "6\" Heavy duty car dash or wall mounting pedestal with AMPS drill base and head - no security hardware (metal base & head)"
+  },
+  {
+    "skuKey": "6' Center Post",
+    "fullPath": "GPS LockBox Equipment:6' Center Post",
+    "defaultPrice": 0.0,
+    "category": "GPS LockBox Equipment",
+    "desc": "6' Center Post"
+  },
+  {
+    "skuKey": "630-LE Enforcement Series",
+    "fullPath": "Mobileye Equipment:630-LE Enforcement Series",
+    "defaultPrice": 0.0,
+    "category": "Mobileye Equipment",
+    "desc": "Enforcement Features"
+  },
+  {
+    "skuKey": "64GB SDHC Card",
+    "fullPath": "Smartwitness Equipment:64GB SDHC Card",
+    "defaultPrice": 55.0,
+    "category": "Smartwitness Equipment",
+    "desc": "64 GB SDHC Card used for KP1S, CP1, CP2, and CP4"
+  },
+  {
+    "skuKey": "8' Tablet Holder",
+    "fullPath": "RAM Mount Equipment:8' Tablet Holder",
+    "defaultPrice": 26.49,
+    "category": "RAM Mount Equipment",
+    "desc": "RAM Tab-Tite Spring Loaded Holder for 8' Tablets"
+  },
+  {
+    "skuKey": "815UH",
+    "fullPath": "Rosco Equipment:815UH",
+    "defaultPrice": 350.0,
+    "category": "Rosco Equipment",
+    "desc": "8\" x 15\" dual mirror, upright mount, motorized, 12 or 24 volt, Heated"
+  },
+  {
+    "skuKey": "9PIN Harness",
+    "fullPath": "VideoProtects Equipment:9PIN Harness",
+    "defaultPrice": 0.0,
+    "category": "VideoProtects Equipment",
+    "desc": "9 PIN Harness"
+  },
+  {
     "skuKey": "AA Lithium",
     "fullPath": "Batteries:AA Lithium (1.5 V AA Lithium Battery)",
     "defaultPrice": 0.0,
     "category": "Batteries",
     "desc": "1.5 V AA Lithium Battery"
+  },
+  {
+    "skuKey": "AAA Lithium Battery",
+    "fullPath": "Batteries:AAA Lithium Battery",
+    "defaultPrice": 0.0,
+    "category": "Batteries",
+    "desc": "AAA Lithium Battery"
+  },
+  {
+    "skuKey": "ACC-RMS2XAMPS-MET-SH",
+    "fullPath": "GPS LockBox Equipment:ACC-RMS2XAMPS-MET-SH",
+    "defaultPrice": 27.95,
+    "category": "GPS LockBox Equipment",
+    "desc": "GPS Lockbox: 4\" (Total Length) Heavy-Duty Mounting Pedestal (Post) with Metal 4-hole AMPS drill base and head"
+  },
+  {
+    "skuKey": "ACC-SP25MM25",
+    "fullPath": "GPS LockBox Equipment:ACC-SP25MM25",
+    "defaultPrice": 9.95,
+    "category": "GPS LockBox Equipment",
+    "desc": "Double Ball Extension"
+  },
+  {
+    "skuKey": "ACC-SPRM023",
+    "fullPath": "GPS LockBox Equipment:ACC-SPRM023",
+    "defaultPrice": 39.95,
+    "category": "GPS LockBox Equipment",
+    "desc": "Cup Holder Mounts"
+  },
+  {
+    "skuKey": "ACC-SPRM250",
+    "fullPath": "GPS LockBox Equipment:ACC-SPRM250",
+    "defaultPrice": 9.95,
+    "category": "GPS LockBox Equipment",
+    "desc": "3.75\" Composite Post"
+  },
+  {
+    "skuKey": "ACT-SAT",
+    "fullPath": "Geoforce Service:ACT-SAT",
+    "defaultPrice": 25.0,
+    "category": "Geoforce Service",
+    "desc": "Device Activation & Provisioning Fee, Satellite Network"
+  },
+  {
+    "skuKey": "Actsoft Classic",
+    "fullPath": "Actsoft Services:Actsoft Classic",
+    "defaultPrice": 10.0,
+    "category": "Actsoft Services",
+    "desc": "Actsoft Classic Services"
+  },
+  {
+    "skuKey": "Actsoft Enterprise",
+    "fullPath": "Actsoft Services:Actsoft Enterprise",
+    "defaultPrice": 45.0,
+    "category": "Actsoft Services",
+    "desc": "Actsoft Enterprise Services"
+  },
+  {
+    "skuKey": "Actsoft Essentials",
+    "fullPath": "Actsoft Services:Actsoft Essentials",
+    "defaultPrice": 15.0,
+    "category": "Actsoft Services",
+    "desc": "Actsoft Essentials Service"
+  },
+  {
+    "skuKey": "Actsoft Ultimate Services",
+    "fullPath": "Actsoft Services:Actsoft Ultimate Services",
+    "defaultPrice": 20.0,
+    "category": "Actsoft Services",
+    "desc": "Actsoft Ultimate Services"
+  },
+  {
+    "skuKey": "Additional 12mo Warranty",
+    "fullPath": "Raven Service:Additional 12mo Warranty",
+    "defaultPrice": 99.0,
+    "category": "Raven Service",
+    "desc": "Additional 12 Month Warranty Extension"
+  },
+  {
+    "skuKey": "Additional 1GB",
+    "fullPath": "Raven Service:Additional 1GB",
+    "defaultPrice": 15.0,
+    "category": "Raven Service",
+    "desc": "Additional 1GB of wireless LTE data"
+  },
+  {
+    "skuKey": "Additional 24mo Warranty",
+    "fullPath": "Raven Service:Additional 24mo Warranty",
+    "defaultPrice": 199.0,
+    "category": "Raven Service",
+    "desc": "Additional 24 Month Warranty Extension"
+  },
+  {
+    "skuKey": "AEMP Service (Basic)",
+    "fullPath": "Geotab Service:AEMP Service (Basic)",
+    "defaultPrice": 8.0,
+    "category": "Geotab Service",
+    "desc": "AEMP Service (Basic)"
+  },
+  {
+    "skuKey": "AEMP Service (Basic) - RS",
+    "fullPath": "Geotab Service:AEMP Service (Basic) - RS",
+    "defaultPrice": 3.5,
+    "category": "Geotab Service",
+    "desc": "AEMP Service (Basic)"
   },
   {
     "skuKey": "AEMP Service (Premium)",
@@ -42,11 +245,298 @@
     "desc": "AEMP Service (Premium)"
   },
   {
+    "skuKey": "AI-12",
+    "fullPath": "SurfSight Equipment:AI-12",
+    "defaultPrice": 329.0,
+    "category": "SurfSight Equipment",
+    "desc": "AI-12 Dual Camera with 24 month limited warranty, includes hardware kit & 128GB SD Card..(2 Year Warranty)"
+  },
+  {
+    "skuKey": "AI-12 (SURF-BUNDLE)",
+    "fullPath": "Geotab Equipment:AI-12 (SURF-BUNDLE)",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "AI-12 Dual Camera with 24 month limited warranty, includes hardware kit & 128GB SD Card, tamper proof case..(1 Year Warranty) (SURF-BUNDLE)"
+  },
+  {
+    "skuKey": "AI-12 (USED)",
+    "fullPath": "Geotab Equipment:AI-12 (USED)",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "AI-12 Dual Camera with 24 month limited warranty, includes hardware kit & 128GB SD Card, tamper proof case..(1 Year Warranty)"
+  },
+  {
+    "skuKey": "AI-12 Hardwire Kit",
+    "fullPath": "SurfSight Equipment:AI-12 Hardwire Kit",
+    "defaultPrice": 16.0,
+    "category": "SurfSight Equipment",
+    "desc": "AI-12 Hardwire Kit"
+  },
+  {
+    "skuKey": "AI-12 OBD Power Cable",
+    "fullPath": "SurfSight Equipment:AI-12 OBD Power Cable",
+    "defaultPrice": 16.0,
+    "category": "SurfSight Equipment",
+    "desc": "AI-12 OBD Power Cable"
+  },
+  {
+    "skuKey": "AI-12 Ohio",
+    "fullPath": "Geotab Equipment:AI-12 Ohio",
+    "defaultPrice": 269.0,
+    "category": "Geotab Equipment",
+    "desc": "AI-12 Dual Camera with 24 month limited warranty, includes hardware kit & 128GB SD Card, tamper proof case..(1 Year Warranty)"
+  },
+  {
+    "skuKey": "AI-12 Rear Auxiliary Cam RAC-1",
+    "fullPath": "SurfSight Equipment:AI-12 Rear Auxiliary Cam RAC-1",
+    "defaultPrice": 130.0,
+    "category": "SurfSight Equipment",
+    "desc": "AI-12 Rear Auxiliary Camera"
+  },
+  {
+    "skuKey": "AI-12 Side Auxiliary Camera",
+    "fullPath": "SurfSight Equipment:AI-12 Side Auxiliary Camera",
+    "defaultPrice": 130.0,
+    "category": "SurfSight Equipment",
+    "desc": "AI-12 Side Auxiliary Camera SAC-1"
+  },
+  {
+    "skuKey": "AI-12 SW",
+    "fullPath": "Geotab Equipment:AI-12 SW",
+    "defaultPrice": 265.0,
+    "category": "Geotab Equipment",
+    "desc": "AI-12 Dual Camera with 24 month limited warranty, includes hardware kit & 128GB SD Card, tamper proof case..(1 Year Warranty)"
+  },
+  {
+    "skuKey": "AI-12 Tamper Proof Case",
+    "fullPath": "SurfSight Equipment:AI-12 Tamper Proof Case",
+    "defaultPrice": 10.5,
+    "category": "SurfSight Equipment",
+    "desc": "AI-12 Tamper Proof Case"
+  },
+  {
+    "skuKey": "AI-12 USED",
+    "fullPath": "SurfSight Equipment:AI-12 USED",
+    "defaultPrice": 400.0,
+    "category": "SurfSight Equipment",
+    "desc": "AI-12 Dual Camera with 24 month limited warranty, includes hardware kit & 128GB SD Card"
+  },
+  {
+    "skuKey": "AI-12 Wide Auxiliary Cam RAC-2",
+    "fullPath": "SurfSight Equipment:AI-12 Wide Auxiliary Cam RAC-2",
+    "defaultPrice": 130.0,
+    "category": "SurfSight Equipment",
+    "desc": "AI-12 Wide View Auxiliary Camera"
+  },
+  {
+    "skuKey": "AI-14",
+    "fullPath": "SurfSight Equipment:AI-14",
+    "defaultPrice": 299.0,
+    "category": "SurfSight Equipment",
+    "desc": "Surfsight AI-14, NA w/o WiFi"
+  },
+  {
+    "skuKey": "AI-14 OBD Power Cable",
+    "fullPath": "SurfSight Equipment:AI-14 OBD Power Cable",
+    "defaultPrice": 15.0,
+    "category": "SurfSight Equipment",
+    "desc": "AI-14 OBD Power Cable"
+  },
+  {
+    "skuKey": "AI-FC",
+    "fullPath": "FleetCam Service:AI-FC",
+    "defaultPrice": 10.0,
+    "category": "FleetCam Service",
+    "desc": "FleetCam Service Fee (AI)"
+  },
+  {
+    "skuKey": "AI12-SAC13W",
+    "fullPath": "SurfSight Equipment:AI12-SAC13W",
+    "defaultPrice": 125.0,
+    "category": "SurfSight Equipment",
+    "desc": "AI12 Side Aux Cameras SAC-1 w/64GB, W/3 Cables"
+  },
+  {
+    "skuKey": "Air Travel",
+    "fullPath": "Installation Service:Air Travel",
+    "defaultPrice": 0.0,
+    "category": "Installation Service",
+    "desc": "Air Travel Charge"
+  },
+  {
+    "skuKey": "AP1-NA-64",
+    "fullPath": "Smartwitness Equipment:AP1-NA-64",
+    "defaultPrice": 349.99,
+    "category": "Smartwitness Equipment",
+    "desc": "Video Telematics dash camera with built-in ADAS, GPS, 4G/LTE (CAT4), Microphone, Wi-Fi, Bluetooth, and 64GB storage (micro SD). 4FF nano sim card. 3m cable with..OBDII connector."
+  },
+  {
+    "skuKey": "Apache Case",
+    "fullPath": "Installation Equipment:Apache Case",
+    "defaultPrice": 0.0,
+    "category": "Installation Equipment",
+    "desc": "Apache - 4800 Weatherproof Protective Case, X-Large, Black"
+  },
+  {
+    "skuKey": "API & Data Setup",
+    "fullPath": "Smartwitness Service:API & Data Setup",
+    "defaultPrice": 15.0,
+    "category": "Smartwitness Service",
+    "desc": "One Time fee for Smart Client setup to SmartWitness platform server. Monthly API & Data billed separately."
+  },
+  {
+    "skuKey": "API-1 Camera",
+    "fullPath": "Geotab Equipment:API-1 Camera",
+    "defaultPrice": 230.0,
+    "category": "Geotab Equipment",
+    "desc": "Video Telematics dash camera with built-in ADAS, GPS, 4G/LTE (CAT4), Microphone, Wi-Fi, Bluetooth, and 64GB storage (micro SD). 4FF nano sim card. 3m cable with OBDII connector. Includes activation by Sensata Insight Smart API AI Plan used with Camera ..."
+  },
+  {
+    "skuKey": "Arm Mount",
+    "fullPath": "RAM Mount Equipment:Arm Mount",
+    "defaultPrice": 45.0,
+    "category": "RAM Mount Equipment",
+    "desc": "RAM Mount Arm Hardware to secure tablet holders to center console"
+  },
+  {
+    "skuKey": "ASSC.400C",
+    "fullPath": "Zone Defense Equipment:ASSC.400C",
+    "defaultPrice": 0.0,
+    "category": "Zone Defense Equipment",
+    "desc": "Fan Dash Mount"
+  },
+  {
+    "skuKey": "ASSC.400MM.ZD.WS",
+    "fullPath": "Zone Defense Equipment:ASSC.400MM.ZD.WS",
+    "defaultPrice": 26.99,
+    "category": "Zone Defense Equipment",
+    "desc": "Universal Rear View Replacement Mount - fits all Zone Defense Monitors"
+  },
+  {
+    "skuKey": "Asset Trac",
+    "fullPath": "Phillips Connect Equipment:Asset Trac",
+    "defaultPrice": 129.0,
+    "category": "Phillips Connect Equipment",
+    "desc": "Asset Trac device with Tether"
+  },
+  {
+    "skuKey": "AssetWorks Monthly Service",
+    "fullPath": "AssetWorks Service:AssetWorks Monthly Service",
+    "defaultPrice": 5.0,
+    "category": "AssetWorks Service",
+    "desc": "AssetWorks monthly subscription"
+  },
+  {
+    "skuKey": "AT&T SIM",
+    "fullPath": "Smartwitness Equipment:AT&T SIM",
+    "defaultPrice": 0.0,
+    "category": "Smartwitness Equipment",
+    "desc": "AT&T Sim"
+  },
+  {
+    "skuKey": "AT&T SIM Card",
+    "fullPath": "Podsystems Equipment:AT&T SIM Card",
+    "defaultPrice": 0.0,
+    "category": "Podsystems Equipment",
+    "desc": "Podystems AT&T SIM Card"
+  },
+  {
+    "skuKey": "Atmos Control Box",
+    "fullPath": "GPS LockBox Equipment:Atmos Control Box",
+    "defaultPrice": 20.0,
+    "category": "GPS LockBox Equipment",
+    "desc": "Atmos Control Box"
+  },
+  {
+    "skuKey": "ATMOS Flex II T227-U 8.7 Kit",
+    "fullPath": "GPS LockBox Equipment:ATMOS Flex II T227-U 8.7 Kit",
+    "defaultPrice": 199.0,
+    "category": "GPS LockBox Equipment",
+    "desc": "Flex II ATMOS Termperature Controlling Cradle Kit for Cradle Kit for Samsung TAB A7 Lite (T227/T220) 8.7\" Tablet w/Case, 4\" Post, USB 2.4A Charger and Hardwire Kit"
+  },
+  {
+    "skuKey": "B1-MIOT-NA",
+    "fullPath": "Bewhere Equipment:B1-MIOT-NA",
+    "defaultPrice": 260.0,
+    "category": "Bewhere Equipment",
+    "desc": "Bewhere Asset & Humidity Tracker"
+  },
+  {
+    "skuKey": "Barra-Edge",
+    "fullPath": "Digital Matter Equipment:Barra-Edge",
+    "defaultPrice": 80.0,
+    "category": "Digital Matter Equipment",
+    "desc": "Tiny Ultra-Rugged Indoor/Outdoor Battery-Powered Asset Tracker"
+  },
+  {
+    "skuKey": "Barra-GPS",
+    "fullPath": "Digital Matter Equipment:Barra-GPS",
+    "defaultPrice": 90.0,
+    "category": "Digital Matter Equipment",
+    "desc": "Barra-GPS"
+  },
+  {
+    "skuKey": "Base Plan",
+    "fullPath": "VideoProtects Service:Base Plan",
+    "defaultPrice": 0.0,
+    "category": "VideoProtects Service",
+    "desc": "VideoProtects Base Plan"
+  },
+  {
     "skuKey": "BlueArrow Fuel Service",
     "fullPath": "BlueArrow Fuel:BlueArrow Fuel Service (BlueArrow Fuel)",
-    "defaultPrice": 0.0,
+    "defaultPrice": 3.0,
     "category": "BlueArrow Fuel",
     "desc": "BlueArrow Fuel"
+  },
+  {
+    "skuKey": "Bolt2",
+    "fullPath": "Digital Matter Equipment:Bolt2",
+    "defaultPrice": 80.0,
+    "category": "Digital Matter Equipment",
+    "desc": "Bolt2-4G"
+  },
+  {
+    "skuKey": "BS MS5",
+    "fullPath": "Key Cafe Equipment:BS MS5",
+    "defaultPrice": 1699.0,
+    "category": "Key Cafe Equipment",
+    "desc": "BS MS5 9 Bin Base Station Smartbox Wifi/Ethernet"
+  },
+  {
+    "skuKey": "BSSK100",
+    "fullPath": "Rosco Equipment:BSSK100",
+    "defaultPrice": 98.9,
+    "category": "Rosco Equipment",
+    "desc": "(4) UNDER MOUNT BACKUP SAFETY SENSORS (BSSK1000).."
+  },
+  {
+    "skuKey": "BT04",
+    "fullPath": "Bewhere Equipment:BT04",
+    "defaultPrice": 50.0,
+    "category": "Bewhere Equipment",
+    "desc": "Bewhere Beacon (2 Batteries)"
+  },
+  {
+    "skuKey": "BT05",
+    "fullPath": "Bewhere Equipment:BT05",
+    "defaultPrice": 50.0,
+    "category": "Bewhere Equipment",
+    "desc": "Bewhere Mini Beacon (1 Battery)"
+  },
+  {
+    "skuKey": "Bundle Service (GO Focus-SB)",
+    "fullPath": "Geotab Service:Bundle Service (GO Focus-SB)",
+    "defaultPrice": 11.0,
+    "category": "Geotab Service",
+    "desc": "GO Focus Bundle Service Fee - Safety Bundle"
+  },
+  {
+    "skuKey": "Bundle Service (GO Focus-SBWI)",
+    "fullPath": "Geotab Service:Bundle Service (GO Focus-SBWI)",
+    "defaultPrice": 15.0,
+    "category": "Geotab Service",
+    "desc": "GO Focus Bundle Service Fee - Safety Bundle with installation"
   },
   {
     "skuKey": "Bundle Service (GO Focus-SBWI) (GO Focus Bundle Service Fee - Safety Bundle with ...",
@@ -63,6 +553,69 @@
     "desc": "GO Focus Plus Bundle Service Fee - Safety Bundle"
   },
   {
+    "skuKey": "Bundle Service Fee (GFP-SBWI)",
+    "fullPath": "Geotab Service:Bundle Service Fee (GFP-SBWI)",
+    "defaultPrice": 20.0,
+    "category": "Geotab Service",
+    "desc": "GO Focus Plus Bundle Service Fee - Safety Bundle with installation"
+  },
+  {
+    "skuKey": "Bundle Service Fee (GO Focus)",
+    "fullPath": "Geotab Service:Bundle Service Fee (GO Focus)",
+    "defaultPrice": 12.5,
+    "category": "Geotab Service",
+    "desc": "GO Focus Bundle Service Fee"
+  },
+  {
+    "skuKey": "Bus ETA",
+    "fullPath": "Zendu Solutions:Bus ETA",
+    "defaultPrice": 5.0,
+    "category": "Zendu Solutions",
+    "desc": "By Vehicle"
+  },
+  {
+    "skuKey": "CAFIQC3",
+    "fullPath": "GPS LockBox Equipment:CAFIQC3",
+    "defaultPrice": 0.0,
+    "category": "GPS LockBox Equipment",
+    "desc": "Quick-Charge Hardwire Cable"
+  },
+  {
+    "skuKey": "CAM.313D",
+    "fullPath": "Zone Defense Equipment:CAM.313D",
+    "defaultPrice": 111.99,
+    "category": "Zone Defense Equipment",
+    "desc": "Metal Dome Camera"
+  },
+  {
+    "skuKey": "CAM.313LP.V2",
+    "fullPath": "Zone Defense Equipment:CAM.313LP.V2",
+    "defaultPrice": 123.99,
+    "category": "Zone Defense Equipment",
+    "desc": "Metal License Plate Bar Camera"
+  },
+  {
+    "skuKey": "CAM.613.MICRO.V2",
+    "fullPath": "Zone Defense Equipment:CAM.613.MICRO.V2",
+    "defaultPrice": 0.0,
+    "category": "Zone Defense Equipment",
+    "desc": "Micro camera v2 ZONE DEFENSE MINI 1/4 CCD CAMERA. MINI SIZE WITH WIDE ANGLE LENS. Water Proof IP68"
+  },
+  {
+    "skuKey": "CAN-SEN",
+    "fullPath": "Mobileye Equipment:CAN-SEN",
+    "defaultPrice": 0.0,
+    "category": "Mobileye Equipment",
+    "desc": "Mobileye CAN Sensor"
+  },
+  {
+    "skuKey": "CAP1259",
+    "fullPath": "Rosco Equipment:CAP1259",
+    "defaultPrice": 15.71,
+    "category": "Rosco Equipment",
+    "desc": "Lens Cap for Rosco Cameras"
+  },
+  {
     "skuKey": "CAT AEMP (OEM)",
     "fullPath": "Geotab Service:CAT AEMP (OEM) (CAT AEMP OEM)",
     "defaultPrice": 7.5,
@@ -70,11 +623,284 @@
     "desc": "CAT AEMP OEM"
   },
   {
+    "skuKey": "CAT AEMP + Support (OEM)",
+    "fullPath": "Geotab Service:CAT AEMP + Support (OEM)",
+    "defaultPrice": 9.5,
+    "category": "Geotab Service",
+    "desc": "CAT AEMP + Support OEM"
+  },
+  {
+    "skuKey": "CBL.358A",
+    "fullPath": "Zone Defense Equipment:CBL.358A",
+    "defaultPrice": 0.0,
+    "category": "Zone Defense Equipment",
+    "desc": "Camera Cable (4-pin) 15 meter / 49 feet"
+  },
+  {
+    "skuKey": "CBL.358C",
+    "fullPath": "Zone Defense Equipment:CBL.358C",
+    "defaultPrice": 0.0,
+    "category": "Zone Defense Equipment",
+    "desc": "Camera Cable (4-pin) 5 meter / 16 feet"
+  },
+  {
+    "skuKey": "CBLPWRS50011P",
+    "fullPath": "Geotab Equipment:CBLPWRS50011P",
+    "defaultPrice": 15.0,
+    "category": "Geotab Equipment",
+    "desc": "The Surfsight power adapter for AI-12 dual-facing dashcam connects the micro-Molex end of the HRN-TNULL to the camera hardware. This allows the camera hardware to receive power via the GO device."
+  },
+  {
+    "skuKey": "CEN-TECH Circuit Tester",
+    "fullPath": "Installation Equipment:CEN-TECH Circuit Tester",
+    "defaultPrice": 0.0,
+    "category": "Installation Equipment",
+    "desc": "CEN-TECH - 6/12V Circuit Tester with 5 Ft. Lead"
+  },
+  {
+    "skuKey": "CEN-TECH Digital Multimeter",
+    "fullPath": "Installation Equipment:CEN-TECH Digital Multimeter",
+    "defaultPrice": 0.0,
+    "category": "Installation Equipment",
+    "desc": "CEN-TECH - 11 Function Digital Multimeter with Audible Continuity"
+  },
+  {
+    "skuKey": "Channel Configuration Notes",
+    "fullPath": "Smartwitness Equipment:Channel Configuration Notes",
+    "defaultPrice": 0.0,
+    "category": "Smartwitness Equipment",
+    "desc": "Channel Configuration Notes -"
+  },
+  {
+    "skuKey": "Co-Pilot",
+    "fullPath": "Copilot Service:Co-Pilot",
+    "defaultPrice": 15.0,
+    "category": "Copilot Service",
+    "desc": "Co-Pilot Service"
+  },
+  {
+    "skuKey": "Conference Registration",
+    "fullPath": "Misc. Service:Conference Registration",
+    "defaultPrice": 25.0,
+    "category": "Misc. Service",
+    "desc": "Conference Registration/Sponsorships"
+  },
+  {
+    "skuKey": "Consultation",
+    "fullPath": "Integration Services:Consultation",
+    "defaultPrice": 200.0,
+    "category": "Integration Services",
+    "desc": "Custom Integration Consulting Service"
+  },
+  {
+    "skuKey": "Copilot Route Reporter",
+    "fullPath": "Copilot Service:Copilot Route Reporter",
+    "defaultPrice": 2.0,
+    "category": "Copilot Service",
+    "desc": "(Requires Webtools)"
+  },
+  {
+    "skuKey": "Copilot Subscription",
+    "fullPath": "Copilot Service:Copilot Subscription",
+    "defaultPrice": 10.0,
+    "category": "Copilot Service",
+    "desc": "Copilot Service"
+  },
+  {
+    "skuKey": "Copilot Webtools",
+    "fullPath": "Copilot Service:Copilot Webtools",
+    "defaultPrice": 25.0,
+    "category": "Copilot Service",
+    "desc": "(Minimum 25 vehicle fleet)"
+  },
+  {
+    "skuKey": "CP1",
+    "fullPath": "Smartwitness Equipment:CP1",
+    "defaultPrice": 0.0,
+    "category": "Smartwitness Equipment",
+    "desc": "Smartwitness CP1 Road Facing Camera Only"
+  },
+  {
+    "skuKey": "CP2 2CH",
+    "fullPath": "Smartwitness Equipment:CP2 2CH",
+    "defaultPrice": 0.0,
+    "category": "Smartwitness Equipment",
+    "desc": "Smartwitness HD (1080p) Forward & Driver Facing Camera"
+  },
+  {
+    "skuKey": "CP4-4CH",
+    "fullPath": "Smartwitness Equipment:CP4-4CH",
+    "defaultPrice": 0.0,
+    "category": "Smartwitness Equipment",
+    "desc": "Smartwitness Modem / 4 Channel Camera Hookup"
+  },
+  {
+    "skuKey": "CP4-LC",
+    "fullPath": "Smartwitness Equipment:CP4-LC",
+    "defaultPrice": 29.99,
+    "category": "Smartwitness Equipment",
+    "desc": "Tamper Resistant Steel locking mount"
+  },
+  {
+    "skuKey": "CP4-TSDSW",
+    "fullPath": "Smartwitness Equipment:CP4-TSDSW",
+    "defaultPrice": 2.0,
+    "category": "Smartwitness Equipment",
+    "desc": "CP4-TSDSW Replacement Kit - Consists of the following: Replacement Torx Screwdriver for CP4 and 5 Replacement Torx Screw for CP4"
+  },
+  {
+    "skuKey": "CP4S-NA-128",
+    "fullPath": "Smartwitness Equipment:CP4S-NA-128",
+    "defaultPrice": 535.98,
+    "category": "Smartwitness Equipment",
+    "desc": "4-Channel HD Vehicle DVR; provides real time location and behavior tracking. Supports up to four Smartwitness HS (720) cameras. Nearly 360-degree vehicle visibility awareness"
+  },
+  {
+    "skuKey": "CR2450",
+    "fullPath": "Bewhere Equipment:CR2450",
+    "defaultPrice": 2.5,
+    "category": "Bewhere Equipment",
+    "desc": "30V Battery - Used in Bluetooth Beacon"
+  },
+  {
+    "skuKey": "CRX-S-1TB",
+    "fullPath": "Smartwitness Equipment:CRX-S-1TB",
+    "defaultPrice": 1399.0,
+    "category": "Smartwitness Equipment",
+    "desc": "8 Channel 1080P Mobile DVR"
+  },
+  {
+    "skuKey": "CRX-S-TB",
+    "fullPath": "Smartwitness Equipment:CRX-S-TB",
+    "defaultPrice": 1028.98,
+    "category": "Smartwitness Equipment",
+    "desc": "8 Channel AHD 1080P Mobile NVR"
+  },
+  {
+    "skuKey": "CRX-WH065",
+    "fullPath": "Smartwitness Equipment:CRX-WH065",
+    "defaultPrice": 65.0,
+    "category": "Smartwitness Equipment",
+    "desc": "Xirgo Cable"
+  },
+  {
+    "skuKey": "Custom Integration",
+    "fullPath": "Integration Services:Custom Integration",
+    "defaultPrice": 0.0,
+    "category": "Integration Services",
+    "desc": "Development Services - Custom Integration"
+  },
+  {
     "skuKey": "Custom Report",
     "fullPath": "Misc. Service:Custom Report (Custom Geotab Report)",
     "defaultPrice": 100.0,
     "category": "Misc. Service",
     "desc": "Custom Geotab Report"
+  },
+  {
+    "skuKey": "Customs Charge",
+    "fullPath": "Shipping Service:Customs Charge",
+    "defaultPrice": 0.0,
+    "category": "Shipping Service",
+    "desc": "Canada Customs Charges - Includes Customs Duty, Canada GST, Clearance Entry Fee, Disbursement Fee, HST/GST on Disb/Ancillary Service Fees"
+  },
+  {
+    "skuKey": "D-215",
+    "fullPath": "Netradyne Service:D-215",
+    "defaultPrice": 51.0,
+    "category": "Netradyne Service",
+    "desc": "Driver D-215 Dual Camera View - 36 month agreement includes all hardware, service, and warranty"
+  },
+  {
+    "skuKey": "D-430",
+    "fullPath": "Netradyne Service:D-430",
+    "defaultPrice": 58.0,
+    "category": "Netradyne Service",
+    "desc": "Driver D-430 Quad Camera View - 36 month agreement includes all hardware, service, and warranty"
+  },
+  {
+    "skuKey": "D-Cell AriCell",
+    "fullPath": "Batteries:D-Cell AriCell",
+    "defaultPrice": 0.0,
+    "category": "Batteries",
+    "desc": "D-Cell AriCell Batteries"
+  },
+  {
+    "skuKey": "D-Cell Lithium SAFT",
+    "fullPath": "Batteries:D-Cell Lithium SAFT",
+    "defaultPrice": 39.99,
+    "category": "Batteries",
+    "desc": "SAFT LSH20"
+  },
+  {
+    "skuKey": "D-Cell Lithium Titus",
+    "fullPath": "Batteries:D-Cell Lithium Titus",
+    "defaultPrice": 15.0,
+    "category": "Batteries",
+    "desc": "Titus ER34615M"
+  },
+  {
+    "skuKey": "D-Cell Xeno",
+    "fullPath": "Batteries:D-Cell Xeno",
+    "defaultPrice": 0.0,
+    "category": "Batteries",
+    "desc": "D-Cell Xeno Batteries"
+  },
+  {
+    "skuKey": "Dart RFID (G120)",
+    "fullPath": "Digital Matter Equipment:Dart RFID (G120)",
+    "defaultPrice": 80.0,
+    "category": "Digital Matter Equipment",
+    "desc": "125kHz RFID Driver ID Reader - Serial Interface"
+  },
+  {
+    "skuKey": "Dart RFID Tag",
+    "fullPath": "Digital Matter Equipment:Dart RFID Tag",
+    "defaultPrice": 1.0,
+    "category": "Digital Matter Equipment",
+    "desc": "Driver ID RFID Tags and Cards"
+  },
+  {
+    "skuKey": "Deinstallation",
+    "fullPath": "Installation Service:Deinstallation",
+    "defaultPrice": 40.0,
+    "category": "Installation Service",
+    "desc": "Deinstallation"
+  },
+  {
+    "skuKey": "Derive Monthly",
+    "fullPath": "Derive Service:Derive Monthly",
+    "defaultPrice": 15.0,
+    "category": "Derive Service",
+    "desc": "Derive - Speed and Idling governing..Monthly Fees for services"
+  },
+  {
+    "skuKey": "Derive Upfront",
+    "fullPath": "Derive Service:Derive Upfront",
+    "defaultPrice": 540.0,
+    "category": "Derive Service",
+    "desc": "Derive - Speed and Idling governing..Payment for 3 years upfront"
+  },
+  {
+    "skuKey": "DI-PPFAC-D2",
+    "fullPath": "DiCAN Equipment:DI-PPFAC-D2",
+    "defaultPrice": 670.0,
+    "category": "DiCAN Equipment",
+    "desc": "Supply PWM in cab programming system comes..with Di-PPFAC-D2 QUAD harness for Force..America and/or CIRUS Spreadsmart Controller...Includes 15' extension harness and.. POWER/OUTPUT harness."
+  },
+  {
+    "skuKey": "Didcom TPM",
+    "fullPath": "Geotab Service:Didcom TPM",
+    "defaultPrice": 5.0,
+    "category": "Geotab Service",
+    "desc": "Didcom TPM - Temperature Monitor"
+  },
+  {
+    "skuKey": "DL-DVR-5505",
+    "fullPath": "VisionTrack Equipment:DL-DVR-5505",
+    "defaultPrice": 168.0,
+    "category": "VisionTrack Equipment",
+    "desc": "AHD- 7 inch mirror monitor mount monitor- includes trigger wires"
   },
   {
     "skuKey": "DM Service (Hardwire) - RS",
@@ -103,6 +929,13 @@
     "defaultPrice": 11.0,
     "category": "Digital Matter Service",
     "desc": "OEM Server Fee - 2MB Data Plan"
+  },
+  {
+    "skuKey": "DM Service Fee (Barra Plan)",
+    "fullPath": "Digital Matter Service:DM Service Fee (Barra Plan)",
+    "defaultPrice": 10.0,
+    "category": "Digital Matter Service",
+    "desc": "DM Service Fee (Barra Plan) 1-4 Pings"
   },
   {
     "skuKey": "DM Service Fee (Barra) - RS",
@@ -140,11 +973,235 @@
     "desc": "DM Service Fee (Periodic Plan) - 1MB"
   },
   {
+    "skuKey": "DM-LINK",
+    "fullPath": "Digital Matter Equipment:DM-LINK",
+    "defaultPrice": 96.12,
+    "category": "Digital Matter Equipment",
+    "desc": "DM-LINK Provisioning Tool"
+  },
+  {
+    "skuKey": "Driver Hub",
+    "fullPath": "Netradyne Service:Driver Hub",
+    "defaultPrice": 38.0,
+    "category": "Netradyne Service",
+    "desc": "Driver Hub with 3 Exterior View Cameras and Monitor - 36 month agreement includes all hardware, service, and warranty"
+  },
+  {
+    "skuKey": "DV226",
+    "fullPath": "Rosco Equipment:DV226",
+    "defaultPrice": 0.0,
+    "category": "Rosco Equipment",
+    "desc": "OBSOLETE"
+  },
+  {
+    "skuKey": "DV302",
+    "fullPath": "Rosco Equipment:DV302",
+    "defaultPrice": 330.0,
+    "category": "Rosco Equipment",
+    "desc": "CYL-V Automotive HD Video Recorder w/ GPS (16GB Micro SD Card)"
+  },
+  {
+    "skuKey": "DV403P",
+    "fullPath": "Rosco Equipment:DV403P",
+    "defaultPrice": 228.0,
+    "category": "Rosco Equipment",
+    "desc": "(NEW) ADVANCED PDC FOR DV440, 24-PIN AUX CONNECTOR (REQUIRES SEPARATE PURCHASE OF DV457 IF ..APPLICABLE"
+  },
+  {
+    "skuKey": "DV405",
+    "fullPath": "Rosco Equipment:DV405",
+    "defaultPrice": 277.5,
+    "category": "Rosco Equipment",
+    "desc": "OBSOLETE"
+  },
+  {
+    "skuKey": "DV407",
+    "fullPath": "Rosco Equipment:DV407",
+    "defaultPrice": 112.5,
+    "category": "Rosco Equipment",
+    "desc": "Patch Antenna"
+  },
+  {
+    "skuKey": "DV423",
+    "fullPath": "Rosco Equipment:DV423",
+    "defaultPrice": 0.0,
+    "category": "Rosco Equipment",
+    "desc": "OBSOLETE"
+  },
+  {
+    "skuKey": "DV440",
+    "fullPath": "Rosco Equipment:DV440",
+    "defaultPrice": 0.0,
+    "category": "Rosco Equipment",
+    "desc": "OBSOLETE"
+  },
+  {
+    "skuKey": "DV442",
+    "fullPath": "Rosco Equipment:DV442",
+    "defaultPrice": 15.0,
+    "category": "Rosco Equipment",
+    "desc": "Adhesive pad"
+  },
+  {
+    "skuKey": "DV454",
+    "fullPath": "Rosco Equipment:DV454",
+    "defaultPrice": 149.25,
+    "category": "Rosco Equipment",
+    "desc": "SDHC, 128 GB, CLASS 10, DVXC4 PRELOADED W/STANDARD CONFIGS, MANUALS, DV-PRO 5"
+  },
+  {
+    "skuKey": "DV455",
+    "fullPath": "Rosco Equipment:DV455",
+    "defaultPrice": 292.5,
+    "category": "Rosco Equipment",
+    "desc": "SDHC, 256 GB, CLASS 10, DVXC4 PRELOADED W/STANDARD CONFIGS, MANUALS, DV-PRO 5"
+  },
+  {
+    "skuKey": "DV602",
+    "fullPath": "Rosco Equipment:DV602",
+    "defaultPrice": 33.0,
+    "category": "Rosco Equipment",
+    "desc": "MOUNTING BRACKET W/ADHESIVE PAD ATTACHED"
+  },
+  {
+    "skuKey": "DV605",
+    "fullPath": "Rosco Equipment:DV605",
+    "defaultPrice": 66.0,
+    "category": "Rosco Equipment",
+    "desc": "MOUNTING BRACKET W/ADHESIVE PAD ATTACHED, TORX WRENCH, TORX SECURITY SCREWS, ZIP TIES, PRIMER..AND ALCOHOL PAD"
+  },
+  {
+    "skuKey": "DV607",
+    "fullPath": "Rosco Equipment:DV607",
+    "defaultPrice": 0.0,
+    "category": "Rosco Equipment",
+    "desc": "HD Video Converter"
+  },
+  {
+    "skuKey": "DV607PHAR",
+    "fullPath": "Rosco Equipment:DV607PHAR",
+    "defaultPrice": 0.0,
+    "category": "Rosco Equipment",
+    "desc": "Power Harness for the HD Video Converter"
+  },
+  {
+    "skuKey": "DV609- Digital Convert Kit",
+    "fullPath": "Rosco Equipment:DV609- Digital Convert Kit",
+    "defaultPrice": 132.0,
+    "category": "Rosco Equipment",
+    "desc": "DIGITAL CONVERTER KIT FOR DV6, INCLUDES BASIC CONVERTER DV607, PARKING MODE RELAY DV610, POWER ..HARNESS, & 16' OUTPUT HARNESS TO DV6"
+  },
+  {
+    "skuKey": "DV660",
+    "fullPath": "Rosco Equipment:DV660",
+    "defaultPrice": 660.0,
+    "category": "Rosco Equipment",
+    "desc": "Dual Facing Camera - AI Distracted Driving Technology and ADAS"
+  },
+  {
+    "skuKey": "DV673",
+    "fullPath": "Rosco Equipment:DV673",
+    "defaultPrice": 33.0,
+    "category": "Rosco Equipment",
+    "desc": "Power Harness for DV6, with IGN, PWR, GND, TTap Connection"
+  },
+  {
+    "skuKey": "DV676",
+    "fullPath": "Rosco Equipment:DV676",
+    "defaultPrice": 132.0,
+    "category": "Rosco Equipment",
+    "desc": "AHD Video Converter Kit"
+  },
+  {
+    "skuKey": "E-BOX",
+    "fullPath": "Mobileye Equipment:E-BOX",
+    "defaultPrice": 100.0,
+    "category": "Mobileye Equipment",
+    "desc": "Mobileye E-box (Enhancement box)"
+  },
+  {
+    "skuKey": "E9 Puck Tag Service",
+    "fullPath": "Geotab Service:E9 Puck Tag Service",
+    "defaultPrice": 3.95,
+    "category": "Geotab Service",
+    "desc": "Link Labs Plan - Puck/Badge Tag...."
+  },
+  {
+    "skuKey": "Eagle",
+    "fullPath": "Digital Matter Equipment:Eagle",
+    "defaultPrice": 200.0,
+    "category": "Digital Matter Equipment",
+    "desc": "Battery or Hardwire Asset Tracker and Sensor Monitor"
+  },
+  {
+    "skuKey": "Early Adopter White Labeling",
+    "fullPath": "BlueArrow Fuel:Early Adopter White Labeling",
+    "defaultPrice": 750.0,
+    "category": "BlueArrow Fuel",
+    "desc": "BlueArrow Fuel Early Adopter White Labeling"
+  },
+  {
+    "skuKey": "Enrollment Service Fee",
+    "fullPath": "SambaSafety Service:Enrollment Service Fee",
+    "defaultPrice": 2.0,
+    "category": "SambaSafety Service",
+    "desc": "Enrollment Service Fee"
+  },
+  {
+    "skuKey": "Enterprise-FC",
+    "fullPath": "FleetCam Service:Enterprise-FC",
+    "defaultPrice": 20.0,
+    "category": "FleetCam Service",
+    "desc": "FleetCam Service Fee (Enterprise)"
+  },
+  {
+    "skuKey": "eSquared Support",
+    "fullPath": "eSquared Service:eSquared Support",
+    "defaultPrice": 8.0,
+    "category": "eSquared Service",
+    "desc": "eSquared Support"
+  },
+  {
     "skuKey": "Essentials",
     "fullPath": "SambaSafety Service:Essentials (License Subscription)",
     "defaultPrice": 2.99,
     "category": "SambaSafety Service",
     "desc": "License Subscription"
+  },
+  {
+    "skuKey": "EVVY",
+    "fullPath": "Motion Intelligence Equipment:EVVY",
+    "defaultPrice": 50.0,
+    "category": "Motion Intelligence Equipment",
+    "desc": "Montion Intelligence EVVY Device"
+  },
+  {
+    "skuKey": "EX MS5E-42",
+    "fullPath": "Key Cafe Equipment:EX MS5E-42",
+    "defaultPrice": 999.0,
+    "category": "Key Cafe Equipment",
+    "desc": "EX MS5E-42  42 Bin Capacity Expansion SmartBox"
+  },
+  {
+    "skuKey": "EX MSE30",
+    "fullPath": "Key Cafe Equipment:EX MSE30",
+    "defaultPrice": 799.0,
+    "category": "Key Cafe Equipment",
+    "desc": "EX MSE30  30 Bin Capacity Expansion SmartBox"
+  },
+  {
+    "skuKey": "EXT 15M",
+    "fullPath": "Smartwitness Equipment:EXT 15M",
+    "defaultPrice": 0.0,
+    "category": "Smartwitness Equipment",
+    "desc": "Smartwitness 15 Meter Extension Cable for Cameras"
+  },
+  {
+    "skuKey": "EXT 5M",
+    "fullPath": "Smartwitness Equipment:EXT 5M",
+    "defaultPrice": 0.0,
+    "category": "Smartwitness Equipment",
+    "desc": "Smartwitness 5 Meter Extension Cable for Cameras"
   },
   {
     "skuKey": "Extendable Services - Pro",
@@ -154,6 +1211,111 @@
     "desc": "Multi Stream data to additional databases"
   },
   {
+    "skuKey": "EYECan",
+    "fullPath": "Mobileye Equipment:EYECan",
+    "defaultPrice": 150.0,
+    "category": "Mobileye Equipment",
+    "desc": "cable that goes from the unit to the computer so the software needed for install and calibration can happen and the unit can be programmed and calibrated."
+  },
+  {
+    "skuKey": "EZTrac HE",
+    "fullPath": "Phillips Connect Equipment:EZTrac HE",
+    "defaultPrice": 119.0,
+    "category": "Phillips Connect Equipment",
+    "desc": "Tracking Device"
+  },
+  {
+    "skuKey": "Falcon",
+    "fullPath": "Digital Matter Equipment:Falcon",
+    "defaultPrice": 150.0,
+    "category": "Digital Matter Equipment",
+    "desc": "7 Year Battery Life or Permanent Hardwire"
+  },
+  {
+    "skuKey": "FC-CAM-OS-AHD-2.8",
+    "fullPath": "FleetCam Equipment:FC-CAM-OS-AHD-2.8",
+    "defaultPrice": 84.0,
+    "category": "FleetCam Equipment",
+    "desc": "IP68 Waterproof Rated Outdoor camera 720P 2.8mm Camera"
+  },
+  {
+    "skuKey": "FC-CAM-OS-IPC-3.6",
+    "fullPath": "FleetCam Equipment:FC-CAM-OS-IPC-3.6",
+    "defaultPrice": 105.0,
+    "category": "FleetCam Equipment",
+    "desc": "IP69K rated 3.6mm IPC outdoor side camera"
+  },
+  {
+    "skuKey": "FC-CBL-AHD-15",
+    "fullPath": "FleetCam Equipment:FC-CBL-AHD-15",
+    "defaultPrice": 22.0,
+    "category": "FleetCam Equipment",
+    "desc": "15 Meter Extension Cable"
+  },
+  {
+    "skuKey": "FC-CBL-IPC-15",
+    "fullPath": "FleetCam Equipment:FC-CBL-IPC-15",
+    "defaultPrice": 23.25,
+    "category": "FleetCam Equipment",
+    "desc": "15 Meter IPC Extension Cable"
+  },
+  {
+    "skuKey": "FC-CBL-PRO-LCD",
+    "fullPath": "FleetCam Equipment:FC-CBL-PRO-LCD",
+    "defaultPrice": 13.0,
+    "category": "FleetCam Equipment",
+    "desc": "1.5M Cable required to connect PRO and LCD screen"
+  },
+  {
+    "skuKey": "FC-CBL-PRO-OBD",
+    "fullPath": "FleetCam Equipment:FC-CBL-PRO-OBD",
+    "defaultPrice": 15.0,
+    "category": "FleetCam Equipment",
+    "desc": "OBDII Cable"
+  },
+  {
+    "skuKey": "FC-CBL-PRO-VIO",
+    "fullPath": "FleetCam Equipment:FC-CBL-PRO-VIO",
+    "defaultPrice": 19.0,
+    "category": "FleetCam Equipment",
+    "desc": "AI Video Input/Output Cable"
+  },
+  {
+    "skuKey": "FC-MICROSD-128GB",
+    "fullPath": "FleetCam Equipment:FC-MICROSD-128GB",
+    "defaultPrice": 60.0,
+    "category": "FleetCam Equipment",
+    "desc": "128GB Micro SD Card (Class 10, U3, A2, V30)"
+  },
+  {
+    "skuKey": "FC-MICROSD-64GB",
+    "fullPath": "FleetCam Equipment:FC-MICROSD-64GB",
+    "defaultPrice": 35.0,
+    "category": "FleetCam Equipment",
+    "desc": "64GB Micro SD Card (Class 10, U3, A2, V30)"
+  },
+  {
+    "skuKey": "FC-PRO-AI-RD-NA",
+    "fullPath": "FleetCam Equipment:FC-PRO-AI-RD-NA",
+    "defaultPrice": 374.0,
+    "category": "FleetCam Equipment",
+    "desc": "Dual Facing Camera"
+  },
+  {
+    "skuKey": "FC-PRO-LCD",
+    "fullPath": "FleetCam Equipment:FC-PRO-LCD",
+    "defaultPrice": 105.0,
+    "category": "FleetCam Equipment",
+    "desc": "7' LCD Viewing Monitor"
+  },
+  {
+    "skuKey": "FC-PRO-NA-22",
+    "fullPath": "FleetCam Equipment:FC-PRO-NA-22",
+    "defaultPrice": 305.0,
+    "category": "FleetCam Equipment",
+    "desc": "AI Road & Driver All-in-One MDVR"
+  },
+  {
     "skuKey": "FleetShare Hosting",
     "fullPath": "FleetShare Hosting (FleetShare Hosting)",
     "defaultPrice": 45.0,
@@ -161,11 +1323,95 @@
     "desc": "FleetShare Hosting"
   },
   {
+    "skuKey": "Flex II Pro Cradle Kit",
+    "fullPath": "GPS LockBox Equipment:Flex II Pro Cradle Kit",
+    "defaultPrice": 179.0,
+    "category": "GPS LockBox Equipment",
+    "desc": "Flex II Pro Cradle Kit for Samsung A7 Lite(T227) 8.7\" w/ Case, 4\" Post, 2.4A Charger and Hardwire Kit"
+  },
+  {
+    "skuKey": "FlexII Case",
+    "fullPath": "GPS LockBox Equipment:FlexII Case",
+    "defaultPrice": 69.9,
+    "category": "GPS LockBox Equipment",
+    "desc": "Flex II Case for Samsung Galaxy Tab A 7 LITE 8.7 (T227U) Tablet W/Offset Mag Module - Black"
+  },
+  {
+    "skuKey": "Food Reimbursement",
+    "fullPath": "Installation Service:Food Reimbursement",
+    "defaultPrice": 0.0,
+    "category": "Installation Service",
+    "desc": "Food Reimbursement"
+  },
+  {
     "skuKey": "Freightliner (OEM)",
     "fullPath": "Geotab Service:Freightliner (OEM) (Freightliner OEM Service)",
     "defaultPrice": 22.95,
     "category": "Geotab Service",
     "desc": "Freightliner OEM Service"
+  },
+  {
+    "skuKey": "FTSDATA-FC",
+    "fullPath": "FleetCam Service:FTSDATA-FC",
+    "defaultPrice": 9.0,
+    "category": "FleetCam Service",
+    "desc": "FleetCam Service Fee (Cellular Data)"
+  },
+  {
+    "skuKey": "G62",
+    "fullPath": "Digital Matter Equipment:G62",
+    "defaultPrice": 165.0,
+    "category": "Digital Matter Equipment",
+    "desc": "Wired Asset Tracker"
+  },
+  {
+    "skuKey": "G70",
+    "fullPath": "Digital Matter Equipment:G70",
+    "defaultPrice": 165.0,
+    "category": "Digital Matter Equipment",
+    "desc": "Wired Asset Tracker..(2 Year Warranty)"
+  },
+  {
+    "skuKey": "G70 (USED)",
+    "fullPath": "Digital Matter Equipment:G70 (USED)",
+    "defaultPrice": 165.0,
+    "category": "Digital Matter Equipment",
+    "desc": "Wired Asset Tracker"
+  },
+  {
+    "skuKey": "GA+ Magnets",
+    "fullPath": "Geotab Equipment:GA+ Magnets",
+    "defaultPrice": 17.5,
+    "category": "Geotab Equipment",
+    "desc": "Magnet kit for the GO Anywhere Plus and Next Gen GO Anywhere"
+  },
+  {
+    "skuKey": "Gateway BLE",
+    "fullPath": "Didcom Equipment:Gateway BLE",
+    "defaultPrice": 249.0,
+    "category": "Didcom Equipment",
+    "desc": ""
+  },
+  {
+    "skuKey": "GEO-KLNFCFOB",
+    "fullPath": "Geotab Equipment:GEO-KLNFCFOB",
+    "defaultPrice": 9.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab Keyless NFC fob (with adhesive backing) to be used with IOX-NFCREADERA"
+  },
+  {
+    "skuKey": "GEO-KLNFCFOB-SW",
+    "fullPath": "Geotab Equipment:GEO-KLNFCFOB-SW",
+    "defaultPrice": 3.96,
+    "category": "Geotab Equipment",
+    "desc": "Geotab Keyless NFC fob (with adhesive backing) to be used with IOX-NFCREADERA"
+  },
+  {
+    "skuKey": "Geoforce Plastic Bezel",
+    "fullPath": "Geoforce Equipment:Geoforce Plastic Bezel",
+    "defaultPrice": 10.0,
+    "category": "Geoforce Equipment",
+    "desc": ""
   },
   {
     "skuKey": "Geoforce Service (GT1s)",
@@ -189,8 +1435,36 @@
     "desc": "Geoforce GT2 Cellular/Satellite Service"
   },
   {
+    "skuKey": "Geoforce SS Bezel (GT2)",
+    "fullPath": "Geoforce Equipment:Geoforce SS Bezel (GT2)",
+    "defaultPrice": 50.0,
+    "category": "Geoforce Equipment",
+    "desc": "Geoforce Stainless Steel Bezel (GT2)"
+  },
+  {
+    "skuKey": "Geotab (SolarFlex)",
+    "fullPath": "Geotab Service:Geotab (SolarFlex)",
+    "defaultPrice": 12.95,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (SolarFlex)"
+  },
+  {
+    "skuKey": "Geotab Ford (Premium (OEM) V2)",
+    "fullPath": "Geotab Service:Geotab Ford (Premium (OEM) V2)",
+    "defaultPrice": 26.95,
+    "category": "Geotab Service",
+    "desc": "Ford OEM Integration (Premium)"
+  },
+  {
     "skuKey": "Geotab Ford (Premium (OEM))",
     "fullPath": "Geotab Service:Geotab Ford (Premium (OEM)) (Ford OEM Integration (Premium))",
+    "defaultPrice": 17.75,
+    "category": "Geotab Service",
+    "desc": "Ford OEM Integration (Premium)"
+  },
+  {
+    "skuKey": "Geotab Ford (Premium (OEM)) SW3",
+    "fullPath": "Geotab Service:Geotab Ford (Premium (OEM)) SW3",
     "defaultPrice": 17.75,
     "category": "Geotab Service",
     "desc": "Ford OEM Integration (Premium)"
@@ -203,11 +1477,32 @@
     "desc": "GM OEM Integration (Premium)"
   },
   {
+    "skuKey": "Geotab GM (Premium (OEM)) SW3",
+    "fullPath": "Geotab Service:Geotab GM (Premium (OEM)) SW3",
+    "defaultPrice": 17.75,
+    "category": "Geotab Service",
+    "desc": "GM OEM Integration (Premium) SW3"
+  },
+  {
+    "skuKey": "Geotab Integration Fee",
+    "fullPath": "Raven Service:Geotab Integration Fee",
+    "defaultPrice": 4.0,
+    "category": "Raven Service",
+    "desc": "Raven to Geotab Third Party Integration Fee"
+  },
+  {
     "skuKey": "Geotab Mack (Premium (OEM))",
     "fullPath": "Geotab Service:Geotab Mack (Premium (OEM)) (Geotab Mack OEM Premium Integration)",
     "defaultPrice": 24.95,
     "category": "Geotab Service",
     "desc": "Geotab Mack OEM Premium Integration"
+  },
+  {
+    "skuKey": "Geotab Mack (Regulatory (OEM))",
+    "fullPath": "Geotab Service:Geotab Mack (Regulatory (OEM))",
+    "defaultPrice": 19.95,
+    "category": "Geotab Service",
+    "desc": "Geotab Mack Integration (Regulatory OEM)"
   },
   {
     "skuKey": "Geotab Mercedes (MBCON Premium)",
@@ -224,11 +1519,32 @@
     "desc": "International OEM Integration (Premium)"
   },
   {
+    "skuKey": "Geotab Off-Road (Base)",
+    "fullPath": "Geotab Service:Geotab Off-Road (Base)",
+    "defaultPrice": 14.0,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab Off-Road (Base)"
+  },
+  {
     "skuKey": "Geotab Off-Road (GO)",
     "fullPath": "Geotab Service:Geotab Off-Road (GO) (Service Fee Geotab Off-Road (GO))",
     "defaultPrice": 15.0,
     "category": "Geotab Service",
     "desc": "Service Fee Geotab Off-Road (GO)"
+  },
+  {
+    "skuKey": "Geotab Off-Road (Pro)",
+    "fullPath": "Geotab Service:Geotab Off-Road (Pro)",
+    "defaultPrice": 17.0,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab Off-Road (Pro)"
+  },
+  {
+    "skuKey": "Geotab Off-Road (ProPlus)",
+    "fullPath": "Geotab Service:Geotab Off-Road (ProPlus)",
+    "defaultPrice": 20.0,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab Off-Road (ProPlus)"
   },
   {
     "skuKey": "Geotab Only",
@@ -257,6 +1573,13 @@
     "defaultPrice": 5.8,
     "category": "Geotab Service",
     "desc": "Service Fee Geotab (GO BUNDLE) - Satefy Bundle Plan"
+  },
+  {
+    "skuKey": "Geotab Service (GO Bundle-SBWI)",
+    "fullPath": "Geotab Service:Geotab Service (GO Bundle-SBWI)",
+    "defaultPrice": 28.0,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (GO BUNDLE) - Satefy Bundle Plan with installation"
   },
   {
     "skuKey": "Geotab Service (GO Bundle-SBWI) (Service Fee Geotab (GO BUNDLE) - Satefy Bundle P...",
@@ -336,6 +1659,13 @@
     "desc": "Service Fee Geotab (Pro) Ohio Bundle"
   },
   {
+    "skuKey": "Geotab Service (ProPlus NJPA)",
+    "fullPath": "Geotab Service:Geotab Service (ProPlus NJPA)",
+    "defaultPrice": 19.39,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (ProPlus NJPA)"
+  },
+  {
     "skuKey": "Geotab Service (Proplus SW-SI)",
     "fullPath": "Geotab Service:Geotab Service (Proplus SW-SI) (Service Fee Geotab (ProPlus) SW Self-Install)",
     "defaultPrice": 18.87,
@@ -399,6 +1729,34 @@
     "desc": "Geotab Volvo OEM Integration (Regulatory)"
   },
   {
+    "skuKey": "GIS Shapefile",
+    "fullPath": "Zendu Solutions:GIS Shapefile",
+    "defaultPrice": 1800.0,
+    "category": "Zendu Solutions",
+    "desc": ""
+  },
+  {
+    "skuKey": "GL10-LTE1ATT",
+    "fullPath": "Geotab Equipment:GL10-LTE1ATT",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "GO10 Device (AT&T, LTE CAT1)"
+  },
+  {
+    "skuKey": "GO Anywhere",
+    "fullPath": "Geotab Equipment:GO Anywhere",
+    "defaultPrice": 115.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab GO Anywhere (AT&T, USA, LTE CATM1, TAA Compliant, IP68 and IP69K) Asset Tracker"
+  },
+  {
+    "skuKey": "GO Anywhere Bundle",
+    "fullPath": "Geotab Equipment:GO Anywhere Bundle",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab GO Anywhere (AT&T, USA, LTE CATM1, TAA Compliant, IP68 and IP69K) Asset Tracker - Sourcewell Contract"
+  },
+  {
     "skuKey": "GO Anywhere Plan",
     "fullPath": "Geotab Service:GO Anywhere Plan (GO Anywhere Plan)",
     "defaultPrice": 7.0,
@@ -413,6 +1771,13 @@
     "desc": "GO Anywhere Plan - Bundle"
   },
   {
+    "skuKey": "GO Anywhere Plan (SW)",
+    "fullPath": "Geotab Service:GO Anywhere Plan (SW)",
+    "defaultPrice": 12.0,
+    "category": "Geotab Service",
+    "desc": "GO Anywhere Plan - Sourcewell Contract"
+  },
+  {
     "skuKey": "GO Anywhere Plan (SWSI)",
     "fullPath": "Geotab Service:GO Anywhere Plan (SWSI) (GO Anywhere Plan - Sourcewell Contract Self Installation)",
     "defaultPrice": 9.0,
@@ -420,11 +1785,214 @@
     "desc": "GO Anywhere Plan - Sourcewell Contract Self Installation"
   },
   {
+    "skuKey": "GO Anywhere Plus",
+    "fullPath": "Geotab Equipment:GO Anywhere Plus",
+    "defaultPrice": 130.0,
+    "category": "Geotab Equipment",
+    "desc": "GO Anywhere Plus (AT&T, USA, LTE CAT1) Asset Tracker"
+  },
+  {
+    "skuKey": "GO Anywhere Plus - Bundle",
+    "fullPath": "Geotab Equipment:GO Anywhere Plus - Bundle",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "GO Anywhere Plus (AT&T, USA, LTE CAT1) Asset Tracker - Bundle"
+  },
+  {
+    "skuKey": "GO Anywhere Plus Plan",
+    "fullPath": "Geotab Service:GO Anywhere Plus Plan",
+    "defaultPrice": 12.5,
+    "category": "Geotab Service",
+    "desc": "GO Anywhere Plus Service Fee"
+  },
+  {
     "skuKey": "GO Anywhere Plus Plan - Bundle",
     "fullPath": "Geotab Service:GO Anywhere Plus Plan - Bundle (GO Anywhere Plus Service Fee - Bundle)",
     "defaultPrice": 15.0,
     "category": "Geotab Service",
     "desc": "GO Anywhere Plus Service Fee - Bundle"
+  },
+  {
+    "skuKey": "GO Anywhere Plus-CigPwrHrn",
+    "fullPath": "Geotab Equipment:GO Anywhere Plus-CigPwrHrn",
+    "defaultPrice": 40.0,
+    "category": "Geotab Equipment",
+    "desc": "GO Anywhere Plus Car Cigarette Lighter Power Harness"
+  },
+  {
+    "skuKey": "GO Anywhere Plus-CigPwrHrn-BNDL",
+    "fullPath": "Geotab Equipment:GO Anywhere Plus-CigPwrHrn-BNDL",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "GO Anywhere Plus Car Cigarette Lighter Power Harness - Bundle"
+  },
+  {
+    "skuKey": "GO Anywhere Plus-ExtPwrHrn",
+    "fullPath": "Geotab Equipment:GO Anywhere Plus-ExtPwrHrn",
+    "defaultPrice": 40.0,
+    "category": "Geotab Equipment",
+    "desc": "GO Anywhere Plus External Power Harness"
+  },
+  {
+    "skuKey": "GO Anywhere Plus-ExtPwrHrn-BNDL",
+    "fullPath": "Geotab Equipment:GO Anywhere Plus-ExtPwrHrn-BNDL",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "GO Anywhere Plus External Power Harness - Bundle"
+  },
+  {
+    "skuKey": "GO Anywhere Plus-TrlPwrHrn",
+    "fullPath": "Geotab Equipment:GO Anywhere Plus-TrlPwrHrn",
+    "defaultPrice": 40.0,
+    "category": "Geotab Equipment",
+    "desc": "GO Anywhere Plus Trailer Power Harness"
+  },
+  {
+    "skuKey": "GO Anywhere Plus-TrlPwrHrn-BNDL",
+    "fullPath": "Geotab Equipment:GO Anywhere Plus-TrlPwrHrn-BNDL",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "GO Anywhere Plus Trailer Power Harness - Bundle"
+  },
+  {
+    "skuKey": "GO Anywhere SW",
+    "fullPath": "Geotab Equipment:GO Anywhere SW",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab GO Anywhere (AT&T, USA, LTE CATM1, TAA Compliant, IP68 and IP69K) Asset Tracker - Sourcewell Contract"
+  },
+  {
+    "skuKey": "GO Core Bundle Plan",
+    "fullPath": "Geotab Service:GO Core Bundle Plan",
+    "defaultPrice": 17.95,
+    "category": "Geotab Service",
+    "desc": "GO Core Bundle Plan"
+  },
+  {
+    "skuKey": "GO Core Bundle Plan w/INS",
+    "fullPath": "Geotab Service:GO Core Bundle Plan w/INS",
+    "defaultPrice": 19.95,
+    "category": "Geotab Service",
+    "desc": "14-pin T-harness for installing GO RUGGED devices in Caterpillar equipment 2016 and newer."
+  },
+  {
+    "skuKey": "GO Focus",
+    "fullPath": "Geotab Equipment:GO Focus",
+    "defaultPrice": 200.0,
+    "category": "Geotab Equipment",
+    "desc": "GO Focus Safety Sensor (AT&T, USA)"
+  },
+  {
+    "skuKey": "GO Focus Plus Dashcam",
+    "fullPath": "Geotab Equipment:GO Focus Plus Dashcam",
+    "defaultPrice": 329.0,
+    "category": "Geotab Equipment",
+    "desc": "Go Focus Plus Dashcam"
+  },
+  {
+    "skuKey": "GO Focus Plus Dashcam - Bundle",
+    "fullPath": "Geotab Equipment:GO Focus Plus Dashcam - Bundle",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "Go Focus Plus Dashcam"
+  },
+  {
+    "skuKey": "GO Focus Plus Dashcam - Trial",
+    "fullPath": "Geotab Equipment:GO Focus Plus Dashcam - Trial",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "Go Focus Plus Dashcam Trial"
+  },
+  {
+    "skuKey": "GO Focus Plus Dashcam - Used",
+    "fullPath": "Geotab Equipment:GO Focus Plus Dashcam - Used",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "Used GO Focus Plus Dashcam"
+  },
+  {
+    "skuKey": "GO Focus Plus Dashcam SW",
+    "fullPath": "Geotab Equipment:GO Focus Plus Dashcam SW",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "Go Focus Plus Dashcam"
+  },
+  {
+    "skuKey": "GO Focus Plus Dashcam SW-STRD",
+    "fullPath": "Geotab Equipment:GO Focus Plus Dashcam SW-STRD",
+    "defaultPrice": 312.0,
+    "category": "Geotab Equipment",
+    "desc": "Go Focus Plus Dashcam"
+  },
+  {
+    "skuKey": "GO Focus SW",
+    "fullPath": "Geotab Equipment:GO Focus SW",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "GO Focus Camera"
+  },
+  {
+    "skuKey": "GO10-LTE1ATT",
+    "fullPath": "Geotab Equipment:GO10-LTE1ATT",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "GO10+ Device (AT&T, LTE CAT1)"
+  },
+  {
+    "skuKey": "GO8 Pre-Owned",
+    "fullPath": "Geotab Equipment:GO8 Pre-Owned",
+    "defaultPrice": 55.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab GO8 Pre-Owned"
+  },
+  {
+    "skuKey": "GO9",
+    "fullPath": "Geotab Equipment:GO9",
+    "defaultPrice": 125.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab GO9 ..(Limited Lifetime Warranty)"
+  },
+  {
+    "skuKey": "GO9 - APEXR",
+    "fullPath": "Geotab Equipment:GO9 - APEXR",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab GO9."
+  },
+  {
+    "skuKey": "GO9 - Bundle",
+    "fullPath": "Geotab Equipment:GO9 - Bundle",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab GO9 - Bundle..(Limited Lifetime Warranty)"
+  },
+  {
+    "skuKey": "GO9 - Trial",
+    "fullPath": "Geotab Equipment:GO9 - Trial",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab GO9 - Trial"
+  },
+  {
+    "skuKey": "GO9 NI",
+    "fullPath": "Geotab NI Equipment:GO9 NI",
+    "defaultPrice": 0.0,
+    "category": "Geotab NI Equipment",
+    "desc": "Geotab GO9 NI"
+  },
+  {
+    "skuKey": "GO9 Ohio",
+    "fullPath": "Geotab Equipment:GO9 Ohio",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab GO9 - Ohio Bundle..(Limited Lifetime Warranty)"
+  },
+  {
+    "skuKey": "GO9 Pre-Owned",
+    "fullPath": "Geotab Equipment:GO9 Pre-Owned",
+    "defaultPrice": 85.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab GO9 Pre-Owned"
   },
   {
     "skuKey": "GO9 SW",
@@ -441,11 +2009,158 @@
     "desc": "GoAnalytics - Data"
   },
   {
+    "skuKey": "GP9",
+    "fullPath": "Geotab Equipment:GP9",
+    "defaultPrice": 154.0,
+    "category": "Geotab Equipment",
+    "desc": "GO9 + Wifi..(1 Year Warranty)"
+  },
+  {
+    "skuKey": "GR7-3GTEFA",
+    "fullPath": "Geotab Equipment:GR7-3GTEFA",
+    "defaultPrice": 155.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab Go Rugged"
+  },
+  {
+    "skuKey": "GR8-LTEATT",
+    "fullPath": "Geotab Equipment:GR8-LTEATT",
+    "defaultPrice": 155.0,
+    "category": "Geotab Equipment",
+    "desc": "GoRugged 8 - 4G LTE"
+  },
+  {
+    "skuKey": "GR9-LTEATTA Ohio",
+    "fullPath": "Geotab Equipment:GR9-LTEATTA Ohio",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "GO9 RUGGED device for Commercial Government for real-time GPS fleet and asset tracking in the USA on the AT&T network using LTE/3G technology."
+  },
+  {
+    "skuKey": "GR9-LTEATTA SW",
+    "fullPath": "Geotab Equipment:GR9-LTEATTA SW",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "GO9 RUGGED device (AT&T, USA, LTE/3G, TAA Compliant, Commercial Government)"
+  },
+  {
+    "skuKey": "GR9-LTEVZW",
+    "fullPath": "Geotab Equipment:GR9-LTEVZW",
+    "defaultPrice": 155.0,
+    "category": "Geotab Equipment",
+    "desc": "GORugged9..(1 Year Warranty)"
+  },
+  {
+    "skuKey": "GR9-LTEVZW SW",
+    "fullPath": "Geotab Equipment:GR9-LTEVZW SW",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "GORugged9..(1 Year Warranty)"
+  },
+  {
+    "skuKey": "GR9-LTEVZW SW3",
+    "fullPath": "Geotab Equipment:GR9-LTEVZW SW3",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "GORugged9..(1 Year Warranty)"
+  },
+  {
+    "skuKey": "GT0K",
+    "fullPath": "Geoforce Equipment:GT0K",
+    "defaultPrice": 200.0,
+    "category": "Geoforce Equipment",
+    "desc": "GTO Satellite Tracker"
+  },
+  {
+    "skuKey": "GT1K",
+    "fullPath": "Geoforce Equipment:GT1K",
+    "defaultPrice": 200.0,
+    "category": "Geoforce Equipment",
+    "desc": "GT1 - Global Asset Tracker, ATEX/IECEx/UL60079 Zone 0 Intrinsically Safe, EX ia IIC T4 Ga, Class 1 Division 1 Groups A-D T4, -40C<Tamb<+64C"
+  },
+  {
+    "skuKey": "GT2c",
+    "fullPath": "Geoforce Equipment:GT2c",
+    "defaultPrice": 325.0,
+    "category": "Geoforce Equipment",
+    "desc": "Geoforce GT2c Solar Asset Tracker"
+  },
+  {
+    "skuKey": "GT2h",
+    "fullPath": "Geoforce Equipment:GT2h",
+    "defaultPrice": 400.0,
+    "category": "Geoforce Equipment",
+    "desc": "Rugged industrial grade field asset tracking devices"
+  },
+  {
+    "skuKey": "GTXK-BEZEL-SS",
+    "fullPath": "Geoforce Equipment:GTXK-BEZEL-SS",
+    "defaultPrice": 30.0,
+    "category": "Geoforce Equipment",
+    "desc": "Metal Bezel for GTO Device"
+  },
+  {
+    "skuKey": "GY1-LTE1ATT",
+    "fullPath": "Geotab Equipment:GY1-LTE1ATT",
+    "defaultPrice": 600.0,
+    "category": "Geotab Equipment",
+    "desc": "GO Focus Pro Dual Facing Camera (AT&T, US)"
+  },
+  {
     "skuKey": "Haas Alert",
     "fullPath": "Haas Services:Haas Alert (Haas Alert)",
     "defaultPrice": 5.0,
     "category": "Haas Services",
     "desc": "Haas Alert"
+  },
+  {
+    "skuKey": "HACC-GPSLB-RVCUP",
+    "fullPath": "GPS LockBox Equipment:HACC-GPSLB-RVCUP",
+    "defaultPrice": 0.0,
+    "category": "GPS LockBox Equipment",
+    "desc": "Universal RV Cupholder Mount"
+  },
+  {
+    "skuKey": "HDW-EXTCAM-TVISQ",
+    "fullPath": "Geotab Equipment:HDW-EXTCAM-TVISQ",
+    "defaultPrice": 179.99,
+    "category": "Geotab Equipment",
+    "desc": "GO Focus Pro - External Aux Rear Cam"
+  },
+  {
+    "skuKey": "HDW-GFPU10CAM-USB",
+    "fullPath": "Geotab Equipment:HDW-GFPU10CAM-USB",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "Weather-resistant and IR-enabled auxiliary camera with a 5m / 16ft cable."
+  },
+  {
+    "skuKey": "HDW-GFPU10CAM-USB - Bundle",
+    "fullPath": "Geotab Equipment:HDW-GFPU10CAM-USB - Bundle",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "GO Focus Plus - External Auxiliary Rear Cam 5m / 16ft."
+  },
+  {
+    "skuKey": "Heavy-Duty Cup Holder",
+    "fullPath": "GPS LockBox Equipment:Heavy-Duty Cup Holder",
+    "defaultPrice": 0.0,
+    "category": "GPS LockBox Equipment",
+    "desc": "Heavy-Duty Expandable Cup Holder mount w/Ball Mount"
+  },
+  {
+    "skuKey": "Heavy-Duty Seat Rail",
+    "fullPath": "GPS LockBox Equipment:Heavy-Duty Seat Rail",
+    "defaultPrice": 90.0,
+    "category": "GPS LockBox Equipment",
+    "desc": "Heavy-Duty Seat Rail Car Mount with 22\" Adjustable Arm"
+  },
+  {
+    "skuKey": "Holder Base BT Sensor",
+    "fullPath": "Didcom Equipment:Holder Base BT Sensor",
+    "defaultPrice": 3.0,
+    "category": "Didcom Equipment",
+    "desc": ""
   },
   {
     "skuKey": "Hosting Fee",
@@ -455,11 +2170,683 @@
     "desc": "Hosting/Maintenance Fee"
   },
   {
+    "skuKey": "Hotel Fee",
+    "fullPath": "Installation Service:Hotel Fee",
+    "defaultPrice": 200.0,
+    "category": "Installation Service",
+    "desc": "Hotel Stay - per installer, per night"
+  },
+  {
+    "skuKey": "HRN-BE16T2",
+    "fullPath": "Geotab Equipment:HRN-BE16T2",
+    "defaultPrice": 30.0,
+    "category": "Geotab Equipment",
+    "desc": ""
+  },
+  {
+    "skuKey": "HRN-BS04A1",
+    "fullPath": "Geotab Equipment:HRN-BS04A1",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "Hanress Adapter for 2017+ Kentworth & Peterbilts"
+  },
+  {
+    "skuKey": "HRN-BS16S4",
+    "fullPath": "Geotab Equipment:HRN-BS16S4",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "OBDII Straight Extension Harness"
+  },
+  {
+    "skuKey": "HRN-BS16S4F",
+    "fullPath": "Geotab Equipment:HRN-BS16S4F",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "Flat OBD-II extension harness for GO devices."
+  },
+  {
+    "skuKey": "HRN-BS16S5",
+    "fullPath": "Geotab Equipment:HRN-BS16S5",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "16PIN Extended Straight Harness - 1.5 Meters"
+  },
+  {
+    "skuKey": "HRN-BS16S5 SW",
+    "fullPath": "Geotab Equipment:HRN-BS16S5 SW",
+    "defaultPrice": 11.62,
+    "category": "Geotab Equipment",
+    "desc": "16PIN Extended Straight Harness - 1.5 Meters"
+  },
+  {
+    "skuKey": "HRN-BT16T2",
+    "fullPath": "Geotab Equipment:HRN-BT16T2",
+    "defaultPrice": 30.0,
+    "category": "Geotab Equipment",
+    "desc": "OBDII Y Harness (Old Version)"
+  },
+  {
+    "skuKey": "HRN-BU16Y5",
+    "fullPath": "Geotab Equipment:HRN-BU16Y5",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "OBDII Harness; Special vehicle connector to receive engine data"
+  },
+  {
+    "skuKey": "HRN-BU16Y5-USED",
+    "fullPath": "Geotab Equipment:HRN-BU16Y5-USED",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "OBDII Harness; Special vehicle connector to receive engine data"
+  },
+  {
+    "skuKey": "HRN-C9HD",
+    "fullPath": "Geotab Equipment:HRN-C9HD",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "9-Pin Heavy Duty Harness"
+  },
+  {
+    "skuKey": "HRN-CE04A4",
+    "fullPath": "Geotab Equipment:HRN-CE04A4",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "Custom proprietary adapter for Volvo vehicles in Latin America and Europe. Requires HRN-CM24Y1"
+  },
+  {
+    "skuKey": "HRN-CE10A2",
+    "fullPath": "Geotab Equipment:HRN-CE10A2",
+    "defaultPrice": 30.0,
+    "category": "Geotab Equipment",
+    "desc": "Outdated - replaced by hrn-CE10K2"
+  },
+  {
+    "skuKey": "HRN-CE10K2",
+    "fullPath": "Geotab Equipment:HRN-CE10K2",
+    "defaultPrice": 40.0,
+    "category": "Geotab Equipment",
+    "desc": "Custom harness kit for Volvo/Mack vehicles, 2019 or newer, in North America. Requires HRN-CM24Y1. The custom kit contains the harness and a fuse kit."
+  },
+  {
+    "skuKey": "HRN-CE10K2 SW",
+    "fullPath": "Geotab Equipment:HRN-CE10K2 SW",
+    "defaultPrice": 39.6,
+    "category": "Geotab Equipment",
+    "desc": "Custom harness kit for Volvo/Mack vehicles,..2019 or newer, in North America. Requires..HRN-CM24Y1. The custom kit contains the..harness and a fuse kit."
+  },
+  {
+    "skuKey": "HRN-CG13S1",
+    "fullPath": "Geotab Equipment:HRN-CG13S1",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "13-pin custom adapter to be used with HRN-GS16K2 Universal Harness Kit"
+  },
+  {
+    "skuKey": "HRN-CH06A2 V.1",
+    "fullPath": "Geotab Equipment:HRN-CH06A2 V.1",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "Custom Proprietary HINO FMS Adapter. Requires HRN-CM24Y1."
+  },
+  {
+    "skuKey": "HRN-CH10A2",
+    "fullPath": "Geotab Equipment:HRN-CH10A2",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "Custom 10-pin Hino FMS adapter, 2019 or newer. Requires HRN-CM24Y1"
+  },
+  {
+    "skuKey": "HRN-CH10A2 SW",
+    "fullPath": "Geotab Equipment:HRN-CH10A2 SW",
+    "defaultPrice": 14.52,
+    "category": "Geotab Equipment",
+    "desc": "Custom 10-pin Hino FMS adapter, 2019 or newer. Requires HRN-CM24Y1"
+  },
+  {
+    "skuKey": "HRN-CI04A2",
+    "fullPath": "Geotab Equipment:HRN-CI04A2",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "Custom Isuzu FMS adapter for 2017 or newer. Requires HRN-CM24Y1 and FMS Module."
+  },
+  {
+    "skuKey": "HRN-CK10K2",
+    "fullPath": "Geotab Equipment:HRN-CK10K2",
+    "defaultPrice": 30.0,
+    "category": "Geotab Equipment",
+    "desc": "Custom harness kit for Mack vehicles, 2018 or older, in North America. Requires HRN-CM24Y1. The custom kit contains the harness and a fuse kit."
+  },
+  {
+    "skuKey": "HRN-CK10K2 SW",
+    "fullPath": "Geotab Equipment:HRN-CK10K2 SW",
+    "defaultPrice": 26.4,
+    "category": "Geotab Equipment",
+    "desc": "Custom harness kit for Mack vehicles, 2018 or older, in North America. Requires HRN-CM24Y1. The custom kit contains the harness and a fuse kit."
+  },
+  {
+    "skuKey": "HRN-CM24Y1",
+    "fullPath": "Geotab Equipment:HRN-CM24Y1",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "Harness for custom GO device installations \ufffd includes Molex connectors for two OBD and one J1939 points."
+  },
+  {
+    "skuKey": "HRN-CM24Y1 SW",
+    "fullPath": "Geotab Equipment:HRN-CM24Y1 SW",
+    "defaultPrice": 14.52,
+    "category": "Geotab Equipment",
+    "desc": "Harness for custom GO device installations \ufffd includes Molex connectors for two OBD and one J1939 points."
+  },
+  {
+    "skuKey": "HRN-CS14S21",
+    "fullPath": "Geotab Equipment:HRN-CS14S21",
+    "defaultPrice": 25.0,
+    "category": "Geotab Equipment",
+    "desc": "14 PIN Connector harness for heavy duty applications"
+  },
+  {
+    "skuKey": "HRN-CS14S21 SW",
+    "fullPath": "Geotab Equipment:HRN-CS14S21 SW",
+    "defaultPrice": 17.42,
+    "category": "Geotab Equipment",
+    "desc": "14 PIN Connector harness for heavy duty applications"
+  },
+  {
+    "skuKey": "HRN-CS14T2",
+    "fullPath": "Geotab Equipment:HRN-CS14T2",
+    "defaultPrice": 32.5,
+    "category": "Geotab Equipment",
+    "desc": "14-pin T-harness for heavy-duty applications. For use with vehicles with an RP1226 diagnostic connection."
+  },
+  {
+    "skuKey": "HRN-CS14T2 SW",
+    "fullPath": "Geotab Equipment:HRN-CS14T2 SW",
+    "defaultPrice": 29.04,
+    "category": "Geotab Equipment",
+    "desc": "14-pin T-harness for heavy-duty applications. For use with vehicles with an RP1226 diagnostic connection."
+  },
+  {
+    "skuKey": "HRN-CT06S1 (Tesla)",
+    "fullPath": "Geotab Equipment:HRN-CT06S1 (Tesla)",
+    "defaultPrice": 11.0,
+    "category": "Geotab Equipment",
+    "desc": "Straight Harness for Tesla Models S/X (2016 to 2021)"
+  },
+  {
+    "skuKey": "HRN-CT06S2",
+    "fullPath": "Geotab Equipment:HRN-CT06S2",
+    "defaultPrice": 15.0,
+    "category": "Geotab Equipment",
+    "desc": "Custom straight harness for Tesla Models S and X, 2015 and older"
+  },
+  {
+    "skuKey": "HRN-CT20T1 (Tesla)",
+    "fullPath": "Geotab Equipment:HRN-CT20T1 (Tesla)",
+    "defaultPrice": 24.0,
+    "category": "Geotab Equipment",
+    "desc": "T-Harness for Tesla Model 3 (2018)"
+  },
+  {
+    "skuKey": "HRN-CT20T11 (Tesla)",
+    "fullPath": "Geotab Equipment:HRN-CT20T11 (Tesla)",
+    "defaultPrice": 24.0,
+    "category": "Geotab Equipment",
+    "desc": "T-Harness for Tesla Model 3 (2019 to 2023)"
+  },
+  {
+    "skuKey": "HRN-CT20T11 SW",
+    "fullPath": "Geotab Equipment:HRN-CT20T11 SW",
+    "defaultPrice": 21.78,
+    "category": "Geotab Equipment",
+    "desc": "Custom harness for Tesla Model 3 vehicles, 2019 or newer."
+  },
+  {
+    "skuKey": "HRN-CT26T1 (Tesla)",
+    "fullPath": "Geotab Equipment:HRN-CT26T1 (Tesla)",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "T-Harness for Tesla Model Y (2019 to 2023)"
+  },
+  {
+    "skuKey": "HRN-CW03K3",
+    "fullPath": "Geotab Equipment:HRN-CW03K3",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "Custom 3-wire harness kit. The custom kit contains the harness and a fuse kit."
+  },
+  {
+    "skuKey": "HRN-CW03K3 SW",
+    "fullPath": "Geotab Equipment:HRN-CW03K3 SW",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "Custom 3-wire harness kit. The custom kit contains the harness and a fuse kit."
+  },
+  {
+    "skuKey": "HRN-CX10S4",
+    "fullPath": "Geotab Equipment:HRN-CX10S4",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "expansion harness for bladed key ignition to inhibit functionality (must only be used with the H/W B1 version  of the IOX-KEYLESS.)"
+  },
+  {
+    "skuKey": "HRN-CX10S4 SW",
+    "fullPath": "Geotab Equipment:HRN-CX10S4 SW",
+    "defaultPrice": 13.2,
+    "category": "Geotab Equipment",
+    "desc": "expansion harness for bladed key ignition to inhibit functionality (must only be used with the H/W B1 version  of the IOX-KEYLESS.)"
+  },
+  {
+    "skuKey": "HRN-D6HD",
+    "fullPath": "Geotab Equipment:HRN-D6HD",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "6-Pin Straight Harness (Short)"
+  },
+  {
+    "skuKey": "HRN-DB9NM",
+    "fullPath": "Geotab Equipment:HRN-DB9NM",
+    "defaultPrice": 35.0,
+    "category": "Geotab Equipment",
+    "desc": "Winter Ops cable for DB-9 null modem integration."
+  },
+  {
+    "skuKey": "HRN-DB9NM SW",
+    "fullPath": "Geotab Equipment:HRN-DB9NM SW",
+    "defaultPrice": 33.0,
+    "category": "Geotab Equipment",
+    "desc": "Winter Ops cable for DB-9 null modem integration."
+  },
+  {
+    "skuKey": "HRN-DC14S2 (GR)",
+    "fullPath": "Geotab Equipment:HRN-DC14S2 (GR)",
+    "defaultPrice": 65.0,
+    "category": "Geotab Equipment",
+    "desc": "14-pin harness for 2016+ CAT vehicle models for GORugged"
+  },
+  {
+    "skuKey": "HRN-DC14T1",
+    "fullPath": "Geotab Equipment:HRN-DC14T1",
+    "defaultPrice": 70.0,
+    "category": "Geotab Equipment",
+    "desc": "14-pin T-harness for installing GO RUGGED devices in Caterpillar equipment 2016 and newer."
+  },
+  {
+    "skuKey": "HRN-DC14T1 SW",
+    "fullPath": "Geotab Equipment:HRN-DC14T1 SW",
+    "defaultPrice": 65.34,
+    "category": "Geotab Equipment",
+    "desc": "14-pin T-harness for installing GO RUGGED devices in Caterpillar equipment 2016 and newer."
+  },
+  {
+    "skuKey": "HRN-DS06S4",
+    "fullPath": "Geotab Equipment:HRN-DS06S4",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "6-Pin Straight Harness"
+  },
+  {
+    "skuKey": "HRN-DS06T2",
+    "fullPath": "Geotab Equipment:HRN-DS06T2",
+    "defaultPrice": 32.5,
+    "category": "Geotab Equipment",
+    "desc": "6-Pin Y Harness"
+  },
+  {
+    "skuKey": "HRN-DS06T2 SW",
+    "fullPath": "Geotab Equipment:HRN-DS06T2 SW",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "6-Pin Y Harness"
+  },
+  {
+    "skuKey": "HRN-DS06T2-Bundle",
+    "fullPath": "Geotab Equipment:HRN-DS06T2-Bundle",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "6-Pin Y Harness Bundle"
+  },
+  {
+    "skuKey": "HRN-DS09S4 (V1)",
+    "fullPath": "Geotab Equipment:HRN-DS09S4 (V1)",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "9-Pin Straight Harness (Only for use with older vehicles)"
+  },
+  {
+    "skuKey": "HRN-DS09S4 (V2)",
+    "fullPath": "Geotab Equipment:HRN-DS09S4 (V2)",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "9-Pin Straight Harness"
+  },
+  {
+    "skuKey": "HRN-DS09S4 (V2) - SW",
+    "fullPath": "Geotab Equipment:HRN-DS09S4 (V2) - SW",
+    "defaultPrice": 17.42,
+    "category": "Geotab Equipment",
+    "desc": "9-Pin Straight Harness"
+  },
+  {
+    "skuKey": "HRN-GA23WIRE - Bundle",
+    "fullPath": "Geotab Equipment:HRN-GA23WIRE - Bundle",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "GO Anywhere Plus 3-Wire Power..Harness - Bundle"
+  },
+  {
+    "skuKey": "HRN-GMLS",
+    "fullPath": "Geotab Equipment:HRN-GMLS",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": ""
+  },
+  {
+    "skuKey": "HRN-GMLSKE",
+    "fullPath": "Geotab Equipment:HRN-GMLSKE",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": ""
+  },
+  {
+    "skuKey": "HRN-GR09K1",
+    "fullPath": "Geotab Equipment:HRN-GR09K1",
+    "defaultPrice": 32.5,
+    "category": "Geotab Equipment",
+    "desc": "Universal Rugged Heavy-Duty T-Harness Kit (IP67)"
+  },
+  {
+    "skuKey": "HRN-GR09K1 SW",
+    "fullPath": "Geotab Equipment:HRN-GR09K1 SW",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "Universal Rugged Heavy-Duty T-Harness Kit (IP67)"
+  },
+  {
+    "skuKey": "HRN-GS09K2",
+    "fullPath": "Geotab Equipment:HRN-GS09K2",
+    "defaultPrice": 32.5,
+    "category": "Geotab Equipment",
+    "desc": "Universal 9-Pin Y-Harness Kit"
+  },
+  {
+    "skuKey": "HRN-GS09K2 (USED)",
+    "fullPath": "Geotab Equipment:HRN-GS09K2 (USED)",
+    "defaultPrice": 30.0,
+    "category": "Geotab Equipment",
+    "desc": "Universal 9-Pin Y-Harness Kit (Used)"
+  },
+  {
+    "skuKey": "HRN-GS09K2 - Trial",
+    "fullPath": "Geotab Equipment:HRN-GS09K2 - Trial",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "9-pin universal heavy duty T-harness, replacing HRN-DR09T2 and HRN-DS09T2. Includes a multi-connector kit with mounting adapters for most international heavy duty vehicles. TAA compliant."
+  },
+  {
+    "skuKey": "HRN-GS09K2 SW",
+    "fullPath": "Geotab Equipment:HRN-GS09K2 SW",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "Universal 9-Pin Y-Harness Kit - Sourcewell"
+  },
+  {
+    "skuKey": "HRN-GS09K2-A-Bundle",
+    "fullPath": "Geotab Equipment:HRN-GS09K2-A-Bundle",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "9-pin universal heavy duty T-harness, replacing HRN-DR09T2 and HRN-DS09T2. Includes a multi-connector kit with mounting adapters for most international heavy duty vehicles. TAA compliant."
+  },
+  {
+    "skuKey": "HRN-GS16K2-HD",
+    "fullPath": "Geotab Equipment:HRN-GS16K2-HD",
+    "defaultPrice": 34.5,
+    "category": "Geotab Equipment",
+    "desc": "16-Pin Universal Heavy Duty OBD-II T-Harness kit"
+  },
+  {
+    "skuKey": "HRN-GS16K2-LD",
+    "fullPath": "Geotab Equipment:HRN-GS16K2-LD",
+    "defaultPrice": 34.5,
+    "category": "Geotab Equipment",
+    "desc": "16-Pin Universal Light Duty OBD-II T-Harness kit"
+  },
+  {
+    "skuKey": "HRN-GS16K22",
+    "fullPath": "Geotab Equipment:HRN-GS16K22",
+    "defaultPrice": 34.5,
+    "category": "Geotab Equipment",
+    "desc": "Universal OBD-II Y-Harness Kit (2023)"
+  },
+  {
+    "skuKey": "HRN-GS16K22 (USED)",
+    "fullPath": "Geotab Equipment:HRN-GS16K22 (USED)",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "Universal OBD-II Y-Harness Kit (2023)"
+  },
+  {
+    "skuKey": "HRN-GS16K22 - Trial",
+    "fullPath": "Geotab Equipment:HRN-GS16K22 - Trial",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "16-pin universal OBD-II T-harness kit with several mounting adapters for use in most light duty and medium duty international vehicles. CARB approved. TAA compliant."
+  },
+  {
+    "skuKey": "HRN-GS16K22 Ohio",
+    "fullPath": "Geotab Equipment:HRN-GS16K22 Ohio",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "Universal OBDII Y-Harness Kit - Ohio Bundle"
+  },
+  {
     "skuKey": "HRN-GS16K22 SW",
     "fullPath": "Geotab Equipment:HRN-GS16K22 SW (Universal OBDII Y-Harness Kit - Sourcewell)",
     "defaultPrice": 0.0,
     "category": "Geotab Equipment",
     "desc": "Universal OBDII Y-Harness Kit - Sourcewell"
+  },
+  {
+    "skuKey": "HRN-GS16K22-A-Bundle",
+    "fullPath": "Geotab Equipment:HRN-GS16K22-A-Bundle",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "16-pin universal OBD-II T-harness kit with several mounting adapters for use in most light duty and medium duty international vehicles. CARB approved. TAA compliant."
+  },
+  {
+    "skuKey": "HRN-IOXGFP-3W",
+    "fullPath": "Geotab Equipment:HRN-IOXGFP-3W",
+    "defaultPrice": 30.0,
+    "category": "Geotab Equipment",
+    "desc": "GO Focus Plus 3-Wire Power Cable"
+  },
+  {
+    "skuKey": "HRN-IOXGFP-G",
+    "fullPath": "Geotab Equipment:HRN-IOXGFP-G",
+    "defaultPrice": 30.0,
+    "category": "Geotab Equipment",
+    "desc": "GO Focus plus - smart G cable"
+  },
+  {
+    "skuKey": "HRN-KP2OBDIIDATAPS",
+    "fullPath": "Geotab Equipment:HRN-KP2OBDIIDATAPS",
+    "defaultPrice": 79.99,
+    "category": "Geotab Equipment",
+    "desc": "OBD II Cable for Power and ECM Data for ADAS functionality."
+  },
+  {
+    "skuKey": "HRN-KP2OBDPWR",
+    "fullPath": "Geotab Equipment:HRN-KP2OBDPWR",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "The Sensata INSIGHTS OBD-II power adapter for KP2 video telematics dashcam connects the KP2 dashcam to a T-Harness or available OBD-II port on a vehicle. This facilitates a simpler installation process for the KP2 solution, because this does not requir..."
+  },
+  {
+    "skuKey": "HRN-RC12T2 (GR Komatsu)",
+    "fullPath": "Geotab Equipment:HRN-RC12T2 (GR Komatsu)",
+    "defaultPrice": 49.0,
+    "category": "Geotab Equipment",
+    "desc": "12-Pin Harness for GO RUGGED Installation in Komatsu Vehicles"
+  },
+  {
+    "skuKey": "HRN-RL06T1",
+    "fullPath": "Geotab Equipment:HRN-RL06T1",
+    "defaultPrice": 30.0,
+    "category": "Geotab Equipment",
+    "desc": "6-Pin Harness for GO RUGGED Installations in Various Bobcat Assets"
+  },
+  {
+    "skuKey": "HRN-RL07T1 (GR Bobcat)",
+    "fullPath": "Geotab Equipment:HRN-RL07T1 (GR Bobcat)",
+    "defaultPrice": 30.0,
+    "category": "Geotab Equipment",
+    "desc": "7-pin harness for GO RUGGED installations in legacy Bobcat equipment and assets, such as skid steers. Harness allows for J1939 engine data collection, if available."
+  },
+  {
+    "skuKey": "HRN-RMRCA1",
+    "fullPath": "Geotab Equipment:HRN-RMRCA1",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "CAT-specific adapter. Requires HRN-GR09K1."
+  },
+  {
+    "skuKey": "HRN-RW03K4",
+    "fullPath": "Geotab Equipment:HRN-RW03K4",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "3-wire harness for GO RUGGED; includes fuse kit"
+  },
+  {
+    "skuKey": "HRN-RW03K4 Ohio",
+    "fullPath": "Geotab Equipment:HRN-RW03K4 Ohio",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "3-wire harness for GO RUGGED installations. Kit contents include a harness and a fuse kit. TAA compliant."
+  },
+  {
+    "skuKey": "HRN-RW03K4 SW",
+    "fullPath": "Geotab Equipment:HRN-RW03K4 SW",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "3-wire harness for GO RUGGED; includes fuse kit"
+  },
+  {
+    "skuKey": "HRN-RW03S4",
+    "fullPath": "Geotab Equipment:HRN-RW03S4",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "3-wire harness for GO RUGGED"
+  },
+  {
+    "skuKey": "HRN-RW03S5",
+    "fullPath": "Geotab Equipment:HRN-RW03S5",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "Pulse harness for engines not reporting ignition / RPM for the GO RUGGED device. Required for ground service equipment."
+  },
+  {
+    "skuKey": "HRN-RW08K1",
+    "fullPath": "Geotab Equipment:HRN-RW08K1",
+    "defaultPrice": 27.0,
+    "category": "Geotab Equipment",
+    "desc": "8-Wire Harness"
+  },
+  {
+    "skuKey": "HRN-RX06S4",
+    "fullPath": "Geotab Equipment:HRN-RX06S4",
+    "defaultPrice": 20.0,
+    "category": "Geotab Equipment",
+    "desc": "6-way IOX harness for GO RUGGED to provide IOX add-on support. The gray connector is weather resistant."
+  },
+  {
+    "skuKey": "HRN-RZ04T4",
+    "fullPath": "Geotab Equipment:HRN-RZ04T4",
+    "defaultPrice": 25.0,
+    "category": "Geotab Equipment",
+    "desc": "Kubota gas engine interface harness for the GO RUGGED device. Required for ground service equipment...Custom harness for Kubota engine MA-40-36. Required for ground service equipment."
+  },
+  {
+    "skuKey": "HRN-SGCBOBD",
+    "fullPath": "Geotab Equipment:HRN-SGCBOBD",
+    "defaultPrice": 15.0,
+    "category": "Geotab Equipment",
+    "desc": "SS OBDII Power Adapter"
+  },
+  {
+    "skuKey": "HRN-SGCBOBD (SW)",
+    "fullPath": "Geotab Equipment:HRN-SGCBOBD (SW)",
+    "defaultPrice": 15.84,
+    "category": "Geotab Equipment",
+    "desc": "SS OBDII Power Adapter - SW"
+  },
+  {
+    "skuKey": "HRN-TNULL (Custom-T)",
+    "fullPath": "Geotab Equipment:HRN-TNULL (Custom-T)",
+    "defaultPrice": 13.0,
+    "category": "Geotab Equipment",
+    "desc": "T-harness for connecting GO devices to custom telematics devices."
+  },
+  {
+    "skuKey": "HRN-TVI-14-3W",
+    "fullPath": "Geotab Equipment:HRN-TVI-14-3W",
+    "defaultPrice": 100.0,
+    "category": "Geotab Equipment",
+    "desc": "GO Focus Pro - Hub Cable - 3-Wire Please note the label on the open 3-wire cable."
+  },
+  {
+    "skuKey": "HRN-TVICAM-5EXT",
+    "fullPath": "Geotab Equipment:HRN-TVICAM-5EXT",
+    "defaultPrice": 34.5,
+    "category": "Geotab Equipment",
+    "desc": "GO Focus Pro - Extension Cable - 5m / 16ft - TVI"
+  },
+  {
+    "skuKey": "HRN-UD03S7",
+    "fullPath": "Geotab Equipment:HRN-UD03S7",
+    "defaultPrice": 15.0,
+    "category": "Geotab Equipment",
+    "desc": "8 ft extension cable to be used with IOX-RS232D"
+  },
+  {
+    "skuKey": "HRN-UD03S9",
+    "fullPath": "Geotab Equipment:HRN-UD03S9",
+    "defaultPrice": 15.0,
+    "category": "Geotab Equipment",
+    "desc": "14 foot extension cable for IOX-RS232D."
+  },
+  {
+    "skuKey": "HRN-XGS16K2-LD",
+    "fullPath": "Geotab Equipment:HRN-XGS16K2-LD",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "16-Pin light duty OBD-II T-Harness kit"
+  },
+  {
+    "skuKey": "HRN01-4WOBDK",
+    "fullPath": "FleetHoster Equipment:HRN01-4WOBDK",
+    "defaultPrice": 35.0,
+    "category": "FleetHoster Equipment",
+    "desc": "4-Way Universal OBD Kit"
+  },
+  {
+    "skuKey": "Husky Hex Bit Socket Set",
+    "fullPath": "Installation Equipment:Husky Hex Bit Socket Set",
+    "defaultPrice": 0.0,
+    "category": "Installation Equipment",
+    "desc": "Husky - 1/4In. Drive Metric Hex Bit Socket Set 8Pc."
+  },
+  {
+    "skuKey": "IButton Reader",
+    "fullPath": "Digital Matter Equipment:IButton Reader",
+    "defaultPrice": 41.87,
+    "category": "Digital Matter Equipment",
+    "desc": "IButton Reader and Harness (1-Wire Protocol)"
+  },
+  {
+    "skuKey": "IButton Tag",
+    "fullPath": "Digital Matter Equipment:IButton Tag",
+    "defaultPrice": 5.63,
+    "category": "Digital Matter Equipment",
+    "desc": "IButton Tag (1-Wire Protocol)"
   },
   {
     "skuKey": "IFTA Plus",
@@ -469,11 +2856,410 @@
     "desc": "One click IFTA  statements"
   },
   {
+    "skuKey": "INS-ADDCHARGES",
+    "fullPath": "Installation Service:INS-ADDCHARGES",
+    "defaultPrice": 1.0,
+    "category": "Installation Service",
+    "desc": "Additional miscellaneous charges related to installation activities (i.e. custom install work, hotel fees, parking fees, etc.)......"
+  },
+  {
+    "skuKey": "INS-ASSETWIRED",
+    "fullPath": "Installation Service:INS-ASSETWIRED",
+    "defaultPrice": 105.0,
+    "category": "Installation Service",
+    "desc": "Installation of a hardwired Asset Tracker..........."
+  },
+  {
+    "skuKey": "INS-ASSETWIRELESS",
+    "fullPath": "Installation Service:INS-ASSETWIRELESS",
+    "defaultPrice": 95.0,
+    "category": "Installation Service",
+    "desc": "Installation of a Solar or Battery powered Asset Tracker........."
+  },
+  {
+    "skuKey": "INS-AUXEXT",
+    "fullPath": "Installation Service:INS-AUXEXT",
+    "defaultPrice": 100.0,
+    "category": "Installation Service",
+    "desc": "Connection of auxiliary input to external vehicle accessory. Does not include GO device and IOX cable installation. Can only be ordered with INS-GOADV..."
+  },
+  {
+    "skuKey": "INS-AUXINT",
+    "fullPath": "Installation Service:INS-AUXINT",
+    "defaultPrice": 40.0,
+    "category": "Installation Service",
+    "desc": "Connection of auxiliary input to in-cab vehicle accessory. Does not include GO device and IOX cable installation. Can only be ordered with INS-GOADV........."
+  },
+  {
+    "skuKey": "INS-CAMERA",
+    "fullPath": "Installation Service:INS-CAMERA",
+    "defaultPrice": 105.0,
+    "category": "Installation Service",
+    "desc": "Installation of camera solution. Does not include GO device installation. Trip fee up to 50 mi/km is included."
+  },
+  {
+    "skuKey": "INS-CAMERA SW",
+    "fullPath": "Installation Service:INS-CAMERA SW",
+    "defaultPrice": 0.0,
+    "category": "Installation Service",
+    "desc": "Installation of camera solution. Does not include GO device installation. Trip fee up to 50 mi/km is included. Sourcewell..Installation"
+  },
+  {
+    "skuKey": "INS-CAMERAMONITOR",
+    "fullPath": "Installation Service:INS-CAMERAMONITOR",
+    "defaultPrice": 75.0,
+    "category": "Installation Service",
+    "desc": "Installation of one camera monitor.  Does not include GO device installation. Can only be ordered with INS-CAMERA....."
+  },
+  {
+    "skuKey": "INS-CAMERAREMOVAL",
+    "fullPath": "Installation Service:INS-CAMERAREMOVAL",
+    "defaultPrice": 45.0,
+    "category": "Installation Service",
+    "desc": "Removal of an existing camera solution before a new camera installation. Can be ordered only in addition to a new camera installation..."
+  },
+  {
+    "skuKey": "INS-COLDCHAIN",
+    "fullPath": "Installation Service:INS-COLDCHAIN",
+    "defaultPrice": 170.0,
+    "category": "Installation Service",
+    "desc": "Installation of a GO or GO RUGGED device with IOX-COLD or IOX-COLDRUGGED..."
+  },
+  {
+    "skuKey": "INS-COLDCHAINADD",
+    "fullPath": "Installation Service:INS-COLDCHAINADD",
+    "defaultPrice": 90.0,
+    "category": "Installation Service",
+    "desc": "Installation of a single Door Sensor or Temperature sensor for the Cold Chain Solution.  Does not include installation of a GO device, GO RUGGED device, IOX-COLD or IOX-COLDRUGGED.  Can only be ordered with INS-COLDCHAIN..."
+  },
+  {
+    "skuKey": "INS-GOADV",
+    "fullPath": "Installation Service:INS-GOADV",
+    "defaultPrice": 110.0,
+    "category": "Installation Service",
+    "desc": "Installation of a GO device with T-harness and up to two IOX cables (e.g., IOX-NFCREADER, IOX-GOTALK)....."
+  },
+  {
+    "skuKey": "INS-GOHDWIRE",
+    "fullPath": "Installation Service:INS-GOHDWIRE",
+    "defaultPrice": 100.0,
+    "category": "Installation Service",
+    "desc": "Installation of a GO device with the use of a hardwired connection to the ignition, power and ground........."
+  },
+  {
+    "skuKey": "INS-GORUGGED",
+    "fullPath": "Installation Service:INS-GORUGGED",
+    "defaultPrice": 110.0,
+    "category": "Installation Service",
+    "desc": "Installation of a GO RUGGED device with any applicable rugged harness..."
+  },
+  {
+    "skuKey": "INS-GOSTRD",
+    "fullPath": "Installation Service:INS-GOSTRD",
+    "defaultPrice": 95.0,
+    "category": "Installation Service",
+    "desc": "Installation of a GO device with or without T-harness......."
+  },
+  {
+    "skuKey": "INS-GOSTRD-3P",
+    "fullPath": "Installation Service:INS-GOSTRD-3P",
+    "defaultPrice": 65.0,
+    "category": "Installation Service",
+    "desc": "Outsourced Standard Installation - Sourcewell"
+  },
+  {
+    "skuKey": "INS-GOSTRD-BA",
+    "fullPath": "Installation Service:INS-GOSTRD-BA",
+    "defaultPrice": 65.0,
+    "category": "Installation Service",
+    "desc": "BlueArrow Standard Installation - Sourcewell..(1 Year Warranty)"
+  },
+  {
+    "skuKey": "INS-GOSWAP",
+    "fullPath": "Installation Service:INS-GOSWAP",
+    "defaultPrice": 105.0,
+    "category": "Installation Service",
+    "desc": "Removal of a defective GO device and installation of a new GO Device. The swap needs to occur in the same vehicle on the same day and applies for Standard, Advanced and Hardwired installations....."
+  },
+  {
+    "skuKey": "INS-NOSHOW",
+    "fullPath": "Installation Service:INS-NOSHOW",
+    "defaultPrice": 95.0,
+    "category": "Installation Service",
+    "desc": "Vehicle not available at the time and place of the scheduled installation..."
+  },
+  {
+    "skuKey": "INS-REMOVAL",
+    "fullPath": "Installation Service:INS-REMOVAL",
+    "defaultPrice": 95.0,
+    "category": "Installation Service",
+    "desc": "Removal of a GO device. Applies for Hardwired, Advanced, and Standard Installed devices. Removed device and harness will be returned to the customer..."
+  },
+  {
+    "skuKey": "INS-SERVICE",
+    "fullPath": "Installation Service:INS-SERVICE",
+    "defaultPrice": 105.0,
+    "category": "Installation Service",
+    "desc": "Service or repair of an existing GO device or Geotab accessory......."
+  },
+  {
+    "skuKey": "INS-STRTINHIB",
+    "fullPath": "Installation Service:INS-STRTINHIB",
+    "defaultPrice": 180.0,
+    "category": "Installation Service",
+    "desc": "Installation of Starter Inhibit solution. Includes GO device, one IOX cable and relay kit. Solution is targeted to new Customers or existing Customers with a GO device already installed."
+  },
+  {
+    "skuKey": "INS-TRIPFEE",
+    "fullPath": "Installation Service:INS-TRIPFEE",
+    "defaultPrice": 1.0,
+    "category": "Installation Service",
+    "desc": "Trip fee per 1 mi/km for installations that require trips over 50 mi/km. Only mileage/kilometers in excess of 50 mi/km one way shall be billable..."
+  },
+  {
+    "skuKey": "INS-WTROPS",
+    "fullPath": "Installation Service:INS-WTROPS",
+    "defaultPrice": 300.0,
+    "category": "Installation Service",
+    "desc": "Installation of Public Works (Winter Ops) solution. Includes spreader controller connection and one external accessory connection........."
+  },
+  {
+    "skuKey": "Install - Aux",
+    "fullPath": "Installation Service:Install - Aux",
+    "defaultPrice": 25.0,
+    "category": "Installation Service",
+    "desc": "Auxiliary Installation"
+  },
+  {
+    "skuKey": "Installation",
+    "fullPath": "Installation Service:Installation",
+    "defaultPrice": 65.0,
+    "category": "Installation Service",
+    "desc": "GPS Device Install, includes Y-Harness installation..(1 Year Warranty)"
+  },
+  {
+    "skuKey": "INSTALLBAG",
+    "fullPath": "Geotab Equipment:INSTALLBAG",
+    "defaultPrice": 4.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab Install Bracket"
+  },
+  {
+    "skuKey": "INT4-MT-GBL",
+    "fullPath": "Smartwitness Equipment:INT4-MT-GBL",
+    "defaultPrice": 351.98,
+    "category": "Smartwitness Equipment",
+    "desc": "LTE Modem"
+  },
+  {
+    "skuKey": "INT4-MT-GBL-BUN",
+    "fullPath": "Smartwitness Equipment:INT4-MT-GBL-BUN",
+    "defaultPrice": 0.0,
+    "category": "Smartwitness Equipment",
+    "desc": ""
+  },
+  {
     "skuKey": "International Payment Fee",
     "fullPath": "International Payment Fee (International Payment Fee)",
     "defaultPrice": 10.0,
     "category": "",
     "desc": "International Payment Fee"
+  },
+  {
+    "skuKey": "IOX-Alert",
+    "fullPath": "Geotab Equipment:IOX-Alert",
+    "defaultPrice": 40.0,
+    "category": "Geotab Equipment",
+    "desc": "Input/output expander to send an alert message to MyGeotab."
+  },
+  {
+    "skuKey": "IOX-Alert SW",
+    "fullPath": "Geotab Equipment:IOX-Alert SW",
+    "defaultPrice": 36.3,
+    "category": "Geotab Equipment",
+    "desc": "Input/output expander to send an alert message to MyGeotab."
+  },
+  {
+    "skuKey": "IOX-ANALOG",
+    "fullPath": "Geotab Equipment:IOX-ANALOG",
+    "defaultPrice": 50.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab Analog Cable"
+  },
+  {
+    "skuKey": "IOX-AUX",
+    "fullPath": "Geotab Equipment:IOX-AUX",
+    "defaultPrice": 50.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab Auxiliary Cable"
+  },
+  {
+    "skuKey": "IOX-AUXM SW",
+    "fullPath": "Geotab Equipment:IOX-AUXM SW",
+    "defaultPrice": 42.11,
+    "category": "Geotab Equipment",
+    "desc": "IOX Add-on for GO devices for auxillary support"
+  },
+  {
+    "skuKey": "IOX-Battery",
+    "fullPath": "Geotab Equipment:IOX-Battery",
+    "defaultPrice": 69.95,
+    "category": "Geotab Equipment",
+    "desc": "Backup battery solution for GO devices"
+  },
+  {
+    "skuKey": "IOX-Battery SW",
+    "fullPath": "Geotab Equipment:IOX-Battery SW",
+    "defaultPrice": 71.28,
+    "category": "Geotab Equipment",
+    "desc": "Backup battery solution for GO devices"
+  },
+  {
+    "skuKey": "IOX-BT",
+    "fullPath": "Geotab Equipment:IOX-BT",
+    "defaultPrice": 60.0,
+    "category": "Geotab Equipment",
+    "desc": "Bewhere IOX Bluetooth Harness"
+  },
+  {
+    "skuKey": "IOX-BT SW",
+    "fullPath": "Geotab Equipment:IOX-BT SW",
+    "defaultPrice": 56.63,
+    "category": "Geotab Equipment",
+    "desc": "Bewhere IOX Bluetooth Harness"
+  },
+  {
+    "skuKey": "IOX-BUZZ",
+    "fullPath": "Geotab Equipment:IOX-BUZZ",
+    "defaultPrice": 75.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab IOX-Buzzer"
+  },
+  {
+    "skuKey": "IOX-BUZZ SW",
+    "fullPath": "Geotab Equipment:IOX-BUZZ SW",
+    "defaultPrice": 56.63,
+    "category": "Geotab Equipment",
+    "desc": "Geotab IOX-Buzzer"
+  },
+  {
+    "skuKey": "IOX-CAN",
+    "fullPath": "Geotab Equipment:IOX-CAN",
+    "defaultPrice": 60.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab IOX-CAN"
+  },
+  {
+    "skuKey": "IOX-GARMINNT",
+    "fullPath": "Geotab Equipment:IOX-GARMINNT",
+    "defaultPrice": 85.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab Garmin Cable No Traffic"
+  },
+  {
+    "skuKey": "IOX-GOTALK",
+    "fullPath": "Geotab Equipment:IOX-GOTALK",
+    "defaultPrice": 125.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab GO Talk"
+  },
+  {
+    "skuKey": "IOX-GOTALK SW",
+    "fullPath": "Geotab Equipment:IOX-GOTALK SW",
+    "defaultPrice": 110.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab GO Talk"
+  },
+  {
+    "skuKey": "IOX-Keybox",
+    "fullPath": "Geotab Equipment:IOX-Keybox",
+    "defaultPrice": 325.0,
+    "category": "Geotab Equipment",
+    "desc": "The IOX-KEYBOX enables shared vehicle access and works with Geotab\ufffds Keyless Platform. The device supports multiple markets including car sharing, car rental, shared vehicle pools, shared vehicle access for delivery and field service vehicles, and so o..."
+  },
+  {
+    "skuKey": "IOX-Keyless",
+    "fullPath": "Geotab Equipment:IOX-Keyless",
+    "defaultPrice": 150.0,
+    "category": "Geotab Equipment",
+    "desc": "Keyless IOX"
+  },
+  {
+    "skuKey": "IOX-Keyless SW",
+    "fullPath": "Geotab Equipment:IOX-Keyless SW",
+    "defaultPrice": 120.0,
+    "category": "Geotab Equipment",
+    "desc": "IOX Add-On for Keyless functionality, with integrated keyfob."
+  },
+  {
+    "skuKey": "IOX-Keyless-NK SW",
+    "fullPath": "Geotab Equipment:IOX-Keyless-NK SW",
+    "defaultPrice": 69.96,
+    "category": "Geotab Equipment",
+    "desc": "IOX Add-On for Keyless functionality, without integrated keyfob"
+  },
+  {
+    "skuKey": "IOX-NFC",
+    "fullPath": "Geotab Equipment:IOX-NFC",
+    "defaultPrice": 85.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab IOX-NFCREADER"
+  },
+  {
+    "skuKey": "IOX-NFC SW",
+    "fullPath": "Geotab Equipment:IOX-NFC SW",
+    "defaultPrice": 65.34,
+    "category": "Geotab Equipment",
+    "desc": "Geotab IOX-NFCREADER"
+  },
+  {
+    "skuKey": "IOX-NFC-USED",
+    "fullPath": "Geotab Equipment:IOX-NFC-USED",
+    "defaultPrice": 80.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab IOX-NFCREADER (Used)"
+  },
+  {
+    "skuKey": "IOX-RS232D",
+    "fullPath": "Geotab Equipment:IOX-RS232D",
+    "defaultPrice": 65.0,
+    "category": "Geotab Equipment",
+    "desc": "Input/output expander for RS232 support \ufffd 3 pin Delphi connector"
+  },
+  {
+    "skuKey": "IOX-RS232F",
+    "fullPath": "Geotab Equipment:IOX-RS232F",
+    "defaultPrice": 65.0,
+    "category": "Geotab Equipment",
+    "desc": "IOX Add-On for GO devices for RS232 support (female connector)"
+  },
+  {
+    "skuKey": "IOX-RS232M",
+    "fullPath": "Geotab Equipment:IOX-RS232M",
+    "defaultPrice": 65.0,
+    "category": "Geotab Equipment",
+    "desc": "IOX Add-On for GO devices for RS232 support (male connector)"
+  },
+  {
+    "skuKey": "IOX-SATIRDV2",
+    "fullPath": "Geotab Equipment:IOX-SATIRDV2",
+    "defaultPrice": 550.0,
+    "category": "Geotab Equipment",
+    "desc": "IOX Add-On for GO devices for Iridium satellite support (includes Iridium modem and antenna)"
+  },
+  {
+    "skuKey": "IOX-USB",
+    "fullPath": "Geotab Equipment:IOX-USB",
+    "defaultPrice": 50.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab  USB Cable"
+  },
+  {
+    "skuKey": "IOX-WRKS",
+    "fullPath": "Geotab Equipment:IOX-WRKS",
+    "defaultPrice": 131.25,
+    "category": "Geotab Equipment",
+    "desc": "IOX-WRKS integrated with the GO9 device as a part of the Geotab Public Works solution for government fleets."
   },
   {
     "skuKey": "John Deere AEMP (OEM)",
@@ -483,6 +3269,34 @@
     "desc": "John Deere AEMP OEM"
   },
   {
+    "skuKey": "John Deere AEMP + Support (OEM)",
+    "fullPath": "Geotab Service:John Deere AEMP + Support (OEM)",
+    "defaultPrice": 9.5,
+    "category": "Geotab Service",
+    "desc": "John Deere AEMP + Support OEM"
+  },
+  {
+    "skuKey": "KCF3",
+    "fullPath": "Key Cafe Equipment:KCF3",
+    "defaultPrice": 60.0,
+    "category": "Key Cafe Equipment",
+    "desc": "User Sticker Badge Pack (30)"
+  },
+  {
+    "skuKey": "Keyless Plan (SW3)",
+    "fullPath": "Geotab Service:Keyless Plan (SW3)",
+    "defaultPrice": 15.0,
+    "category": "Geotab Service",
+    "desc": "Service Fee (Keyless) SW3"
+  },
+  {
+    "skuKey": "Kitting",
+    "fullPath": "GPS LockBox Equipment:Kitting",
+    "defaultPrice": 0.0,
+    "category": "GPS LockBox Equipment",
+    "desc": "Kitting"
+  },
+  {
     "skuKey": "Komatsu AEMP (OEM)",
     "fullPath": "Geotab Service:Komatsu AEMP (OEM) (Komatsu AEMP OEM Service)",
     "defaultPrice": 5.0,
@@ -490,11 +3304,53 @@
     "desc": "Komatsu AEMP OEM Service"
   },
   {
+    "skuKey": "KP2 Camera",
+    "fullPath": "Smartwitness Equipment:KP2 Camera",
+    "defaultPrice": 0.0,
+    "category": "Smartwitness Equipment",
+    "desc": "KP2-NA-64 Camera"
+  },
+  {
+    "skuKey": "KP2-DFC-S",
+    "fullPath": "Smartwitness Equipment:KP2-DFC-S",
+    "defaultPrice": 59.0,
+    "category": "Smartwitness Equipment",
+    "desc": "KP2 Driver-Facing Camera Module"
+  },
+  {
+    "skuKey": "KP2-NA-64",
+    "fullPath": "Smartwitness Equipment:KP2-NA-64",
+    "defaultPrice": 0.0,
+    "category": "Smartwitness Equipment",
+    "desc": "Camera"
+  },
+  {
     "skuKey": "LifeSaver Service",
     "fullPath": "LifeSaver Service (Distracted Driving Solution)",
     "defaultPrice": 15.0,
     "category": "",
     "desc": "Distracted Driving Solution"
+  },
+  {
+    "skuKey": "Lightning charging cables",
+    "fullPath": "RAM Mount Equipment:Lightning charging cables",
+    "defaultPrice": 0.0,
+    "category": "RAM Mount Equipment",
+    "desc": "Lightning charging cables for direct wire to the power source - battery hot - secured to center console"
+  },
+  {
+    "skuKey": "LTE Connectivity",
+    "fullPath": "eSquared Service:LTE Connectivity",
+    "defaultPrice": 8.0,
+    "category": "eSquared Service",
+    "desc": "LTE Connectivity"
+  },
+  {
+    "skuKey": "Magnet Gripper Set",
+    "fullPath": "Digital Matter Equipment:Magnet Gripper Set",
+    "defaultPrice": 20.0,
+    "category": "Digital Matter Equipment",
+    "desc": "Magnet Set for Battery Powered Devices"
   },
   {
     "skuKey": "Main Shipping",
@@ -511,11 +3367,228 @@
     "desc": "Manage Services"
   },
   {
+    "skuKey": "Manta Fusion",
+    "fullPath": "Digital Matter Equipment:Manta Fusion",
+    "defaultPrice": 155.0,
+    "category": "Digital Matter Equipment",
+    "desc": "Manta Fusion - High-performance, high-precision Indoor/Outdoor GPS asset tracking device and Bluetooth\ufffd Gateway. Features cloud-based location solving for 10+ years of battery life"
+  },
+  {
+    "skuKey": "Micro Sim",
+    "fullPath": "Aeris Equipment:Micro Sim",
+    "defaultPrice": 0.0,
+    "category": "Aeris Equipment",
+    "desc": "Aeris Micro 3FF Sim Card"
+  },
+  {
+    "skuKey": "Micro2 Fuse Blade Buddy Adapter",
+    "fullPath": "Miscellaneous:Micro2 Fuse Blade Buddy Adapter",
+    "defaultPrice": 2.0,
+    "category": "Miscellaneous",
+    "desc": "Add-a-Circuit Fuse Tap Adapter (Micro2)"
+  },
+  {
+    "skuKey": "Milwaukee Impact Driver Kit",
+    "fullPath": "Installation Equipment:Milwaukee Impact Driver Kit",
+    "defaultPrice": 0.0,
+    "category": "Installation Equipment",
+    "desc": "Milwaukee - M12 Fuel Surge 12-Volt Lithium-Ion Brushless Cordless 1/4In. Hex Impact Driver Compact Kit w/Two 2.0Ah Batteries, Bag Model #2551-22"
+  },
+  {
+    "skuKey": "Mini Fuse Blade Buddy Adapter",
+    "fullPath": "Miscellaneous:Mini Fuse Blade Buddy Adapter",
+    "defaultPrice": 2.0,
+    "category": "Miscellaneous",
+    "desc": "Add-a-Circuit Fuse Tap Adapter (Mini)."
+  },
+  {
+    "skuKey": "Mini Sim",
+    "fullPath": "Aeris Equipment:Mini Sim",
+    "defaultPrice": 0.0,
+    "category": "Aeris Equipment",
+    "desc": "Aeris Mini 2FF Sim Card"
+  },
+  {
+    "skuKey": "MKH-776220GT",
+    "fullPath": "Phillips Connect Equipment:MKH-776220GT",
+    "defaultPrice": 255.0,
+    "category": "Phillips Connect Equipment",
+    "desc": "SolarNet\ufffd Tethered"
+  },
+  {
+    "skuKey": "MKH-776290GT15B",
+    "fullPath": "Phillips Connect Equipment:MKH-776290GT15B",
+    "defaultPrice": 235.0,
+    "category": "Phillips Connect Equipment",
+    "desc": "StealthNet\ufffd with 15' Nosebox Harness"
+  },
+  {
+    "skuKey": "MKH-776290GT4P",
+    "fullPath": "Phillips Connect Equipment:MKH-776290GT4P",
+    "defaultPrice": 235.0,
+    "category": "Phillips Connect Equipment",
+    "desc": "StealthNet\ufffd on 4-Pin ABS Harness"
+  },
+  {
+    "skuKey": "MKH-776290GT5P",
+    "fullPath": "Phillips Connect Equipment:MKH-776290GT5P",
+    "defaultPrice": 235.0,
+    "category": "Phillips Connect Equipment",
+    "desc": "StealthNet\ufffd on 5-Pin ABS Harness"
+  },
+  {
+    "skuKey": "MKH-776290GTCN",
+    "fullPath": "Phillips Connect Equipment:MKH-776290GTCN",
+    "defaultPrice": 235.0,
+    "category": "Phillips Connect Equipment",
+    "desc": "StealthNet\ufffd with 12v CN-Linko Adaptor"
+  },
+  {
+    "skuKey": "MKH-776530GT",
+    "fullPath": "Phillips Connect Equipment:MKH-776530GT",
+    "defaultPrice": 235.0,
+    "category": "Phillips Connect Equipment",
+    "desc": "SolarNet\ufffd"
+  },
+  {
+    "skuKey": "MKH-BLEGTWV1.0Z1B",
+    "fullPath": "Geotab Equipment:MKH-BLEGTWV1.0Z1B",
+    "defaultPrice": 295.17,
+    "category": "Geotab Equipment",
+    "desc": "Didcom BLEG Temperature Monitor 1 Zone ....Bundle Includes:....One(1) Didcom Gateway BLEG - V1.0..One(1) Bluetooth Sensor - Puck Tem EN12830- SEN -BTH - TEMP..One(1) Mounting Base - Bluetooth Sensor"
+  },
+  {
+    "skuKey": "MKH-KP2DFCS",
+    "fullPath": "Geotab Equipment:MKH-KP2DFCS",
+    "defaultPrice": 59.0,
+    "category": "Geotab Equipment",
+    "desc": "driver-facing 1080p HD camera module for KP2 dashcam. Installation of this camera module provides AI-enabled Driver State Monitoring (DSM), including automatic driver identification, driver fatigue, and distraction. This module can be installed or remo..."
+  },
+  {
+    "skuKey": "MKH-KP2NA64RDGTPS",
+    "fullPath": "Geotab Equipment:MKH-KP2NA64RDGTPS",
+    "defaultPrice": 399.0,
+    "category": "Geotab Equipment",
+    "desc": "KP2 Video Telematics dash camera with a Road Facing Camera, built-in Driver State Monitoring (DSM) and Advanced Driver-Assistance System (ADAS), GPS, 4G/LTE (CAT4), Microphone, Wi-Fi, Bluetooth, a 64GB storage (micro SD), a 4FF Nano Sim Card, DFC Blank..."
+  },
+  {
+    "skuKey": "MKH-KP2NA64RFGTPS",
+    "fullPath": "Geotab Equipment:MKH-KP2NA64RFGTPS",
+    "defaultPrice": 339.0,
+    "category": "Geotab Equipment",
+    "desc": "KP2 road facing only 1080p HD dashcam records and uploads event data to the cloud and has built-in real-time Advanced Driver Assistance Systems (ADAS) alerts, including tailgating, forward collision and lane departure. Technical features include 1080p ..."
+  },
+  {
+    "skuKey": "MKH-LLAF2STSMATK02",
+    "fullPath": "Geotab Equipment:MKH-LLAF2STSMATK02",
+    "defaultPrice": 92.0,
+    "category": "Geotab Equipment",
+    "desc": "SuperTag Pro (ATK02)"
+  },
+  {
+    "skuKey": "MKH-LLAF2STSMATK42ES",
+    "fullPath": "Geotab Equipment:MKH-LLAF2STSMATK42ES",
+    "defaultPrice": 109.0,
+    "category": "Geotab Equipment",
+    "desc": "SuperTag Plus (ATK42)"
+  },
+  {
+    "skuKey": "MKH-LLAF2TE8",
+    "fullPath": "Geotab Equipment:MKH-LLAF2TE8",
+    "defaultPrice": 18.2,
+    "category": "Geotab Equipment",
+    "desc": "E8 Puck Tag in SuperTag Hub Mode"
+  },
+  {
+    "skuKey": "MKH-LLAF2TE9A",
+    "fullPath": "Geotab Equipment:MKH-LLAF2TE9A",
+    "defaultPrice": 25.0,
+    "category": "Geotab Equipment",
+    "desc": "E9 Puck Tag in SuperTag Hub Mode"
+  },
+  {
+    "skuKey": "MKH-SRFPERTPCS",
+    "fullPath": "Geotab Equipment:MKH-SRFPERTPCS",
+    "defaultPrice": 7.0,
+    "category": "Geotab Equipment",
+    "desc": "Tamper-proof case for Surfsight AI-12 dual facing dashcam."
+  },
+  {
+    "skuKey": "MKT-FEE-CITIZENS1",
+    "fullPath": "Geotab Service:MKT-FEE-CITIZENS1",
+    "defaultPrice": 487.5,
+    "category": "Geotab Service",
+    "desc": "Citizen Insights Monthly Fee (Population up to 50k) Ohio Contract"
+  },
+  {
     "skuKey": "MKT-FEE-CITIZENS1 (Citizen Insights Monthly Fee (Population up to 50k) Ohio Contr...",
     "fullPath": "Geotab Service:MKT-FEE-CITIZENS1 (Citizen Insights Monthly Fee (Population up to 50k) Ohio Contr...",
     "defaultPrice": 487.5,
     "category": "Geotab Service",
     "desc": ""
+  },
+  {
+    "skuKey": "MKT-FEE-CITIZENS3",
+    "fullPath": "Geotab Service:MKT-FEE-CITIZENS3",
+    "defaultPrice": 1570.83,
+    "category": "Geotab Service",
+    "desc": "Citizen Insights Monthly Fee (Population 100k - 500k)"
+  },
+  {
+    "skuKey": "Mobile Device Manager (MDM)",
+    "fullPath": "eSquared Service:Mobile Device Manager (MDM)",
+    "defaultPrice": 8.0,
+    "category": "eSquared Service",
+    "desc": "Mobile Device Manager (MDM)"
+  },
+  {
+    "skuKey": "Mobileye Installation",
+    "fullPath": "Mobileye:Mobileye Installation",
+    "defaultPrice": 0.0,
+    "category": "Mobileye",
+    "desc": "Mobileye Installation"
+  },
+  {
+    "skuKey": "MOBILEYE-RVS",
+    "fullPath": "Mobileye Equipment:MOBILEYE-RVS",
+    "defaultPrice": 700.0,
+    "category": "Mobileye Equipment",
+    "desc": "Mobileye RVS System"
+  },
+  {
+    "skuKey": "MON-KIT-1",
+    "fullPath": "VisionTrack Equipment:MON-KIT-1",
+    "defaultPrice": 0.0,
+    "category": "VisionTrack Equipment",
+    "desc": "Monitor Kit"
+  },
+  {
+    "skuKey": "Motion Service",
+    "fullPath": "Motion Intelligence Service:Motion Service",
+    "defaultPrice": 10.0,
+    "category": "Motion Intelligence Service",
+    "desc": "Motion Intelligence Service Fee"
+  },
+  {
+    "skuKey": "MS4 Base-Station",
+    "fullPath": "Key Cafe Equipment:MS4 Base-Station",
+    "defaultPrice": 1699.0,
+    "category": "Key Cafe Equipment",
+    "desc": "MS4 Base Station"
+  },
+  {
+    "skuKey": "MTK-WT10XLTEUSA",
+    "fullPath": "Geotab Equipment:MTK-WT10XLTEUSA",
+    "defaultPrice": 215.0,
+    "category": "Geotab Equipment",
+    "desc": "WT10X LTE for the USA. Controller Integration Kit - Includes: Controller Gateway(WT10X), HRN-IOX10X, HRN-WT10XIOC"
+  },
+  {
+    "skuKey": "MVR Service Fee",
+    "fullPath": "SambaSafety Service:MVR Service Fee",
+    "defaultPrice": 2.0,
+    "category": "SambaSafety Service",
+    "desc": "MVR Service Fee"
   },
   {
     "skuKey": "Nano Sim",
@@ -525,11 +3598,116 @@
     "desc": "Nano 4FF Sim Card"
   },
   {
+    "skuKey": "NAUS SIM",
+    "fullPath": "Podsystems Equipment:NAUS SIM",
+    "defaultPrice": 0.0,
+    "category": "Podsystems Equipment",
+    "desc": "Podystems NAUS SIM Card - Multicarrier Network"
+  },
+  {
+    "skuKey": "NFCFOBBLU",
+    "fullPath": "Geotab Equipment:NFCFOBBLU",
+    "defaultPrice": 6.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab NFC Blue Fob"
+  },
+  {
+    "skuKey": "NFCFOBBLU SW",
+    "fullPath": "Geotab Equipment:NFCFOBBLU SW",
+    "defaultPrice": 3.96,
+    "category": "Geotab Equipment",
+    "desc": "Geotab NFC Blue Fob"
+  },
+  {
+    "skuKey": "NFCFOBBLU20",
+    "fullPath": "Geotab Equipment:NFCFOBBLU20",
+    "defaultPrice": 120.0,
+    "category": "Geotab Equipment",
+    "desc": "NFC Reader Fobs (Bag of 20)"
+  },
+  {
+    "skuKey": "NFCFOBBLU20 SW",
+    "fullPath": "Geotab Equipment:NFCFOBBLU20 SW",
+    "defaultPrice": 52.8,
+    "category": "Geotab Equipment",
+    "desc": "NFC Reader Fobs (Bag of 20)"
+  },
+  {
+    "skuKey": "NFCSTKBLU",
+    "fullPath": "Geotab Equipment:NFCSTKBLU",
+    "defaultPrice": 6.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab NFC Sticker"
+  },
+  {
+    "skuKey": "NFCSTKBLU SW",
+    "fullPath": "Geotab Equipment:NFCSTKBLU SW",
+    "defaultPrice": 3.96,
+    "category": "Geotab Equipment",
+    "desc": "Geotab NFC Sticker"
+  },
+  {
+    "skuKey": "NFCSTKBLU20",
+    "fullPath": "Geotab Equipment:NFCSTKBLU20",
+    "defaultPrice": 120.0,
+    "category": "Geotab Equipment",
+    "desc": "NFC Sticker (Bag of 20)"
+  },
+  {
+    "skuKey": "NFCSTKBLU20 SW",
+    "fullPath": "Geotab Equipment:NFCSTKBLU20 SW",
+    "defaultPrice": 52.8,
+    "category": "Geotab Equipment",
+    "desc": "NFC Sticker (Bag of 20)"
+  },
+  {
+    "skuKey": "OBDII Harness",
+    "fullPath": "VideoProtects Equipment:OBDII Harness",
+    "defaultPrice": 0.0,
+    "category": "VideoProtects Equipment",
+    "desc": "OBDII harness"
+  },
+  {
+    "skuKey": "Off-Road IFTA",
+    "fullPath": "Zendu Solutions:Off-Road IFTA",
+    "defaultPrice": 3.0,
+    "category": "Zendu Solutions",
+    "desc": "Per Vehicle"
+  },
+  {
+    "skuKey": "Onboarding",
+    "fullPath": "Fleetio Service:Onboarding",
+    "defaultPrice": 1499.0,
+    "category": "Fleetio Service",
+    "desc": "One Time Onboarding Services-500-1000 Vehicles"
+  },
+  {
     "skuKey": "ORIGOInspect Plan",
     "fullPath": "Geotab Service:ORIGOInspect Plan (ORIGOInspect Plan)",
     "defaultPrice": 3.5,
     "category": "Geotab Service",
     "desc": "ORIGOInspect Plan"
+  },
+  {
+    "skuKey": "Oyster Edge",
+    "fullPath": "Digital Matter Equipment:Oyster Edge",
+    "defaultPrice": 155.0,
+    "category": "Digital Matter Equipment",
+    "desc": "Battery Powered Asset Tracker and Bluetooth Gateway..(2 Year Warranty)"
+  },
+  {
+    "skuKey": "Oyster Edge - Used",
+    "fullPath": "Digital Matter Equipment:Oyster Edge - Used",
+    "defaultPrice": 155.0,
+    "category": "Digital Matter Equipment",
+    "desc": "Battery Powered Asset Tracker and Bluetooth Gateway..(2 Year Warranty)"
+  },
+  {
+    "skuKey": "Oyster2 - USED",
+    "fullPath": "Digital Matter Equipment:Oyster2 - USED",
+    "defaultPrice": 155.0,
+    "category": "Digital Matter Equipment",
+    "desc": "5-7 Year Battery Powered Asset Tracker"
   },
   {
     "skuKey": "Oyster3",
@@ -539,11 +3717,60 @@
     "desc": "Compact Ultra-Rugged Battery-Powered Asset Tracker"
   },
   {
+    "skuKey": "Oyster3 - USED",
+    "fullPath": "Digital Matter Equipment:Oyster3 - USED",
+    "defaultPrice": 155.0,
+    "category": "Digital Matter Equipment",
+    "desc": "Battery Powered Asset Tracker..(2 Year Warranty)"
+  },
+  {
+    "skuKey": "Oyster3-Global",
+    "fullPath": "Digital Matter Equipment:Oyster3-Global",
+    "defaultPrice": 111.0,
+    "category": "Digital Matter Equipment",
+    "desc": "Oyster3 Global GPS Tracker"
+  },
+  {
+    "skuKey": "Pager Replacement",
+    "fullPath": "Pager Equipment:Pager Replacement",
+    "defaultPrice": 25.0,
+    "category": "Pager Equipment",
+    "desc": "Pager"
+  },
+  {
+    "skuKey": "Pager Service",
+    "fullPath": "Pager Service:Pager Service",
+    "defaultPrice": 0.0,
+    "category": "Pager Service",
+    "desc": "Pager Service"
+  },
+  {
     "skuKey": "Pairing Script",
     "fullPath": "Integration Services:Pairing Script (Pairing Script)",
     "defaultPrice": 0.1,
     "category": "Integration Services",
     "desc": "Pairing Script"
+  },
+  {
+    "skuKey": "PitStop standard",
+    "fullPath": "PitStop Service:PitStop standard",
+    "defaultPrice": 6.5,
+    "category": "PitStop Service",
+    "desc": "Predictive Maintence Solution"
+  },
+  {
+    "skuKey": "Platform Setup Fee",
+    "fullPath": "SambaSafety Service:Platform Setup Fee",
+    "defaultPrice": 500.0,
+    "category": "SambaSafety Service",
+    "desc": "One-Time Platform Setup Fee"
+  },
+  {
+    "skuKey": "Pledge - Beacon",
+    "fullPath": "Associate Pledge Equipment:Pledge - Beacon",
+    "defaultPrice": 35.0,
+    "category": "Associate Pledge Equipment",
+    "desc": "BlueTooth Beacon that measures proximity and accelerometer data for Associate Pledge"
   },
   {
     "skuKey": "Pledge - Enterprise",
@@ -553,10 +3780,94 @@
     "desc": "Distracted Driving Solution by PortNexus"
   },
   {
+    "skuKey": "PLS-100 (F.0)",
+    "fullPath": "Pressure Pro Equipment:PLS-100 (F.0)",
+    "defaultPrice": 340.0,
+    "category": "Pressure Pro Equipment",
+    "desc": "Pulse Monitor"
+  },
+  {
+    "skuKey": "PLS-120",
+    "fullPath": "Pressure Pro Equipment:PLS-120",
+    "defaultPrice": 110.0,
+    "category": "Pressure Pro Equipment",
+    "desc": "FX Monitor with Power Cable (PLS-200P)"
+  },
+  {
+    "skuKey": "PLS-200P",
+    "fullPath": "Pressure Pro Equipment:PLS-200P",
+    "defaultPrice": 15.0,
+    "category": "Pressure Pro Equipment",
+    "desc": "Power Cable"
+  },
+  {
+    "skuKey": "PLS-850K",
+    "fullPath": "Pressure Pro Equipment:PLS-850K",
+    "defaultPrice": 65.0,
+    "category": "Pressure Pro Equipment",
+    "desc": "Pressure Pro Antenna Cable"
+  },
+  {
+    "skuKey": "Plus Plan",
+    "fullPath": "Predictive Coach:Plus Plan",
+    "defaultPrice": 15.0,
+    "category": "Predictive Coach",
+    "desc": "Monthly Service Fee (Plus)"
+  },
+  {
+    "skuKey": "Poetic Tablet Case",
+    "fullPath": "eSquared Equipment:Poetic Tablet Case",
+    "defaultPrice": 26.95,
+    "category": "eSquared Equipment",
+    "desc": "Poetic Tablet Case"
+  },
+  {
+    "skuKey": "Posi-Tap Connector - Pack of 20",
+    "fullPath": "Installation NI Equipment:Posi-Tap Connector - Pack of 20",
+    "defaultPrice": 25.93,
+    "category": "Installation NI Equipment",
+    "desc": "12-18 Gauge Wire, Bulk Pack of 20"
+  },
+  {
+    "skuKey": "Power Adapter",
+    "fullPath": "Geotab Equipment:Power Adapter",
+    "defaultPrice": 14.0,
+    "category": "Geotab Equipment",
+    "desc": "Surfsight Power Adapter for AI-12 Dual Facing Dashcam"
+  },
+  {
+    "skuKey": "PP-ANTENNA",
+    "fullPath": "Pressure Pro Equipment:PP-ANTENNA",
+    "defaultPrice": 50.0,
+    "category": "Pressure Pro Equipment",
+    "desc": "Pressure Pro Pulse Dipole Antenna"
+  },
+  {
+    "skuKey": "PP-GATEWAY",
+    "fullPath": "Pressure Pro Equipment:PP-GATEWAY",
+    "defaultPrice": 340.0,
+    "category": "Pressure Pro Equipment",
+    "desc": "Pressure Pro Gateway for Integration"
+  },
+  {
+    "skuKey": "PP-SENSOR",
+    "fullPath": "Pressure Pro Equipment:PP-SENSOR",
+    "defaultPrice": 55.0,
+    "category": "Pressure Pro Equipment",
+    "desc": "Pressure Pro Sensor"
+  },
+  {
     "skuKey": "Predictive Coach",
     "fullPath": "Geotab Service:Predictive Coach (Predictive Coach Service Fee - Automated Driver Coaching)",
     "defaultPrice": 6.0,
     "category": "Geotab Service",
+    "desc": "Predictive Coach Service Fee - Automated Driver Coaching"
+  },
+  {
+    "skuKey": "Predictive Coach Service Fee",
+    "fullPath": "Predictive Coach:Predictive Coach Service Fee",
+    "defaultPrice": 10.0,
+    "category": "Predictive Coach",
     "desc": "Predictive Coach Service Fee - Automated Driver Coaching"
   },
   {
@@ -567,11 +3878,53 @@
     "desc": ""
   },
   {
+    "skuKey": "Premium Annual Software",
+    "fullPath": "Key Cafe Service:Premium Annual Software",
+    "defaultPrice": 1188.0,
+    "category": "Key Cafe Service",
+    "desc": "Premium Annual Software Plan"
+  },
+  {
+    "skuKey": "Premium Plan",
+    "fullPath": "Predictive Coach:Premium Plan",
+    "defaultPrice": 20.0,
+    "category": "Predictive Coach",
+    "desc": "Monthly Service Fee (Premium)"
+  },
+  {
     "skuKey": "Pressure Pro FX Service",
     "fullPath": "Pressure Pro Service:Pressure Pro FX Service (Pressure Pro Service Fee)",
     "defaultPrice": 5.0,
     "category": "Pressure Pro Service",
     "desc": "Pressure Pro Service Fee"
+  },
+  {
+    "skuKey": "Pro Plan",
+    "fullPath": "VideoProtects Service:Pro Plan",
+    "defaultPrice": 0.0,
+    "category": "VideoProtects Service",
+    "desc": "VideoProtects Pro Plan"
+  },
+  {
+    "skuKey": "ProClip Tough Sleeve",
+    "fullPath": "eSquared Equipment:ProClip Tough Sleeve",
+    "defaultPrice": 209.99,
+    "category": "eSquared Equipment",
+    "desc": "ProClip Tough Sleeve"
+  },
+  {
+    "skuKey": "Professional Services",
+    "fullPath": "Integration Services:Professional Services",
+    "defaultPrice": 0.0,
+    "category": "Integration Services",
+    "desc": "Professional Services"
+  },
+  {
+    "skuKey": "ProPlus + Keyless",
+    "fullPath": "Geotab Service:ProPlus + Keyless",
+    "defaultPrice": 39.0,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (ProPlus + Keyless)"
   },
   {
     "skuKey": "ProPlus + Keyless (SW)",
@@ -581,11 +3934,319 @@
     "desc": "Service Fee Geotab (ProPlus + Keyless) SW"
   },
   {
+    "skuKey": "ProPlus + Keyless (V2)",
+    "fullPath": "Geotab Service:ProPlus + Keyless (V2)",
+    "defaultPrice": 43.0,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (ProPlus + Keyless)"
+  },
+  {
+    "skuKey": "ProPlus + Public Works",
+    "fullPath": "Geotab Service:ProPlus + Public Works",
+    "defaultPrice": 29.0,
+    "category": "Geotab Service",
+    "desc": "Geotab ProPlus + Public Works"
+  },
+  {
+    "skuKey": "ProPlus + Wifi",
+    "fullPath": "Geotab Service:ProPlus + Wifi",
+    "defaultPrice": 37.95,
+    "category": "Geotab Service",
+    "desc": "ProPlus service + Wifi (2GB data plan)"
+  },
+  {
+    "skuKey": "PTT-AMPV2@-20W-5PIN",
+    "fullPath": "GPS LockBox Equipment:PTT-AMPV2@-20W-5PIN",
+    "defaultPrice": 75.0,
+    "category": "GPS LockBox Equipment",
+    "desc": "Amp"
+  },
+  {
+    "skuKey": "PTT-MIC-4PIN",
+    "fullPath": "GPS LockBox Equipment:PTT-MIC-4PIN",
+    "defaultPrice": 49.95,
+    "category": "GPS LockBox Equipment",
+    "desc": "4-Pin Mic"
+  },
+  {
+    "skuKey": "PULSE TPMS",
+    "fullPath": "Pressure Pro Equipment:PULSE TPMS",
+    "defaultPrice": 375.0,
+    "category": "Pressure Pro Equipment",
+    "desc": "Pressure Pro Pulse TPMS + Monitor PLS-100"
+  },
+  {
+    "skuKey": "Pushbutton Momentary- Stainless",
+    "fullPath": "Miscellaneous:Pushbutton Momentary- Stainless",
+    "defaultPrice": 17.6,
+    "category": "Miscellaneous",
+    "desc": "Pushbutton Momentary Stainless Steel"
+  },
+  {
+    "skuKey": "PUSHBUTTON SW",
+    "fullPath": "Rosco Equipment:PUSHBUTTON SW",
+    "defaultPrice": 0.0,
+    "category": "Rosco Equipment",
+    "desc": "Red Pushbutton"
+  },
+  {
+    "skuKey": "Quinn Socket Set",
+    "fullPath": "Installation Equipment:Quinn Socket Set",
+    "defaultPrice": 0.0,
+    "category": "Installation Equipment",
+    "desc": "Quinn - 1/4In. Drive SAE & Metric High Visibility Socket Set, 21 Pc."
+  },
+  {
+    "skuKey": "RAM AMPS Backplate",
+    "fullPath": "eSquared Equipment:RAM AMPS Backplate",
+    "defaultPrice": 15.0,
+    "category": "eSquared Equipment",
+    "desc": "Backplate for Mount"
+  },
+  {
+    "skuKey": "RAM EZ-Roll\ufffdr Powered Dock",
+    "fullPath": "eSquared Equipment:RAM EZ-Roll\ufffdr Powered Dock",
+    "defaultPrice": 74.99,
+    "category": "eSquared Equipment",
+    "desc": "RAM EZ-Roll\ufffdr Powered Dock"
+  },
+  {
+    "skuKey": "RAM Hardwire Charger",
+    "fullPath": "eSquared Equipment:RAM Hardwire Charger",
+    "defaultPrice": 50.0,
+    "category": "eSquared Equipment",
+    "desc": "RAM Hardwire Charger"
+  },
+  {
+    "skuKey": "RAM Mount",
+    "fullPath": "eSquared Equipment:RAM Mount",
+    "defaultPrice": 30.0,
+    "category": "eSquared Equipment",
+    "desc": "RAM Mount"
+  },
+  {
+    "skuKey": "RAM Powered Dock",
+    "fullPath": "eSquared Equipment:RAM Powered Dock",
+    "defaultPrice": 74.99,
+    "category": "eSquared Equipment",
+    "desc": "Holder for Tablet"
+  },
+  {
+    "skuKey": "RAM Tablet Holder",
+    "fullPath": "eSquared Equipment:RAM Tablet Holder",
+    "defaultPrice": 30.49,
+    "category": "eSquared Equipment",
+    "desc": "RAM Tablet Holder"
+  },
+  {
+    "skuKey": "RAM-316-HD-18-202U",
+    "fullPath": "eSquared Equipment:RAM-316-HD-18-202U",
+    "defaultPrice": 207.99,
+    "category": "eSquared Equipment",
+    "desc": "RAM Pod HD Vehicle mount w/18\" Rod and Round Plate"
+  },
+  {
+    "skuKey": "RAM-B-138-PD4U",
+    "fullPath": "eSquared Equipment:RAM-B-138-PD4U",
+    "defaultPrice": 54.99,
+    "category": "eSquared Equipment",
+    "desc": "Holder and double ball mount"
+  },
+  {
+    "skuKey": "RAM-VB-143",
+    "fullPath": "eSquared Equipment:RAM-VB-143",
+    "defaultPrice": 116.99,
+    "category": "eSquared Equipment",
+    "desc": "RAM No-drill vehicle base"
+  },
+  {
+    "skuKey": "RAM-VP-SW1-8",
+    "fullPath": "eSquared Equipment:RAM-VP-SW1-8",
+    "defaultPrice": 128.49,
+    "category": "eSquared Equipment",
+    "desc": "RAM 8\" Upper Pole w/Double Swing Arms & Round Plate"
+  },
+  {
     "skuKey": "Rasters Plan",
     "fullPath": "Geotab Service:Rasters Plan (Rasters Turn By Turn Plan)",
     "defaultPrice": 33.0,
     "category": "Geotab Service",
     "desc": "Rasters Turn By Turn Plan"
+  },
+  {
+    "skuKey": "Raven AI-ITS-DS",
+    "fullPath": "Raven Service:Raven AI-ITS-DS",
+    "defaultPrice": 7500.0,
+    "category": "Raven Service",
+    "desc": "Monthly Fee for the core AI-ITS Data Stream Platform"
+  },
+  {
+    "skuKey": "Raven Business Plan",
+    "fullPath": "Raven Service:Raven Business Plan",
+    "defaultPrice": 29.95,
+    "category": "Raven Service",
+    "desc": "Raven Video Telematics with access to Raven Web App, Cloud Storage, 1GB of wireless LTE data per device"
+  },
+  {
+    "skuKey": "Raven ITS Data Stream",
+    "fullPath": "Raven Service:Raven ITS Data Stream",
+    "defaultPrice": 0.0,
+    "category": "Raven Service",
+    "desc": "Raven ITS Data Stream"
+  },
+  {
+    "skuKey": "Raven ITS-DS Services",
+    "fullPath": "Raven Service:Raven ITS-DS Services",
+    "defaultPrice": 29.95,
+    "category": "Raven Service",
+    "desc": "Add-on to the Raven Telematics Services. Requires Raven Business Plan"
+  },
+  {
+    "skuKey": "Raven Shipping",
+    "fullPath": "Shipping Service:Raven Shipping",
+    "defaultPrice": 20.0,
+    "category": "Shipping Service",
+    "desc": "UPS Shipping"
+  },
+  {
+    "skuKey": "Raven+",
+    "fullPath": "Raven Equipment:Raven+",
+    "defaultPrice": 399.0,
+    "category": "Raven Equipment",
+    "desc": "Raven+ w/256GB microSD Card"
+  },
+  {
+    "skuKey": "RavenPro",
+    "fullPath": "Raven Equipment:RavenPro",
+    "defaultPrice": 499.0,
+    "category": "Raven Equipment",
+    "desc": "RavenPro w/256GB microSD Card"
+  },
+  {
+    "skuKey": "Reactivation",
+    "fullPath": "Geotab Service:Reactivation",
+    "defaultPrice": 50.0,
+    "category": "Geotab Service",
+    "desc": "Reactivation fee - When a deactivated device is reactivated within a 30day window."
+  },
+  {
+    "skuKey": "Remora2",
+    "fullPath": "Digital Matter Equipment:Remora2",
+    "defaultPrice": 183.0,
+    "category": "Digital Matter Equipment",
+    "desc": "10 Year Battery Powered Asset Tracker..(2 Year Warranty)"
+  },
+  {
+    "skuKey": "Remora2 - USED",
+    "fullPath": "Digital Matter Equipment:Remora2 - USED",
+    "defaultPrice": 183.0,
+    "category": "Digital Matter Equipment",
+    "desc": "10 Year Battery Powered Asset Tracker"
+  },
+  {
+    "skuKey": "Remora3",
+    "fullPath": "Digital Matter Equipment:Remora3",
+    "defaultPrice": 199.0,
+    "category": "Digital Matter Equipment",
+    "desc": "10 Year Battery Powered Asset Tracker..(2 Year Warranty)"
+  },
+  {
+    "skuKey": "Rental Car",
+    "fullPath": "Installation Service:Rental Car",
+    "defaultPrice": 0.0,
+    "category": "Installation Service",
+    "desc": "Rental Car Charge"
+  },
+  {
+    "skuKey": "Rental Service Fee",
+    "fullPath": "Geotab Service:Rental Service Fee",
+    "defaultPrice": 25.0,
+    "category": "Geotab Service",
+    "desc": "Short-Term Rental Fee"
+  },
+  {
+    "skuKey": "RM2XAMPS-MET",
+    "fullPath": "GPS LockBox Equipment:RM2XAMPS-MET",
+    "defaultPrice": 0.0,
+    "category": "GPS LockBox Equipment",
+    "desc": ""
+  },
+  {
+    "skuKey": "Rosco DV408",
+    "fullPath": "Rosco Equipment:Rosco DV408",
+    "defaultPrice": 150.0,
+    "category": "Rosco Equipment",
+    "desc": "DVXC4 4G CELLULAR ANTENNA FOR ADHESIVE MOUNT LTE MOUNT LTE"
+  },
+  {
+    "skuKey": "Rosco Shipping",
+    "fullPath": "Shipping Service:Rosco Shipping",
+    "defaultPrice": 0.0,
+    "category": "Shipping Service",
+    "desc": "UPS Shipping: Charge TBD"
+  },
+  {
+    "skuKey": "Rosco STSC272",
+    "fullPath": "Rosco Equipment:Rosco STSC272",
+    "defaultPrice": 252.0,
+    "category": "Rosco Equipment",
+    "desc": "WIDE ANGLE DOME HD CAMERA, 145\ufffd, 10 INFRARED LEDS, AUDIO"
+  },
+  {
+    "skuKey": "Samsung Galaxy Tab A7 Lite 8.7\ufffd",
+    "fullPath": "eSquared Equipment:Samsung Galaxy Tab A7 Lite 8.7\ufffd",
+    "defaultPrice": 199.99,
+    "category": "eSquared Equipment",
+    "desc": "Samsung Galaxy Tablet"
+  },
+  {
+    "skuKey": "Samsung Galaxy Tab Active3 8\ufffd",
+    "fullPath": "eSquared Equipment:Samsung Galaxy Tab Active3 8\ufffd",
+    "defaultPrice": 589.99,
+    "category": "eSquared Equipment",
+    "desc": "Samsung Galaxy Tab Active3 8\ufffdSamsung"
+  },
+  {
+    "skuKey": "Samsung Galaxy Tab Active5 8\"",
+    "fullPath": "eSquared Equipment:Samsung Galaxy Tab Active5 8\"",
+    "defaultPrice": 550.0,
+    "category": "eSquared Equipment",
+    "desc": "Samsung Galaxy Tab Active5 8\" - Rugged Tablet"
+  },
+  {
+    "skuKey": "Samsung Tab A7 Lite",
+    "fullPath": "CTS Mobility Equipment:Samsung Tab A7 Lite",
+    "defaultPrice": 245.0,
+    "category": "CTS Mobility Equipment",
+    "desc": "Samsung Galaxy Tab A7 Lite 8.7\" (32GB, 3GB, WiFi + 4G LTE) GSM Unlocked"
+  },
+  {
+    "skuKey": "Samsung Tablet",
+    "fullPath": "Converge IOT Equipment:Samsung Tablet",
+    "defaultPrice": 245.0,
+    "category": "Converge IOT Equipment",
+    "desc": "Samsung A7 Lite Tablet"
+  },
+  {
+    "skuKey": "SD128",
+    "fullPath": "SurfSight Equipment:SD128",
+    "defaultPrice": 50.0,
+    "category": "SurfSight Equipment",
+    "desc": "128GB High Endurance SD Card"
+  },
+  {
+    "skuKey": "SDXC1035",
+    "fullPath": "Rosco Equipment:SDXC1035",
+    "defaultPrice": 550.0,
+    "category": "Rosco Equipment",
+    "desc": "1 TB HIGH ENDURANCE MICRO SD CARD, NON-CONFIGURED, FORMATTED"
+  },
+  {
+    "skuKey": "SEN - 200",
+    "fullPath": "Pressure Pro Equipment:SEN - 200",
+    "defaultPrice": 55.0,
+    "category": "Pressure Pro Equipment",
+    "desc": "Dynamic Standard Sensor"
   },
   {
     "skuKey": "Sensata Service",
@@ -595,11 +4256,32 @@
     "desc": "Cloud Base Services"
   },
   {
+    "skuKey": "Sensor Fee",
+    "fullPath": "Phillips Connect Service:Sensor Fee",
+    "defaultPrice": 2.0,
+    "category": "Phillips Connect Service",
+    "desc": "Sensor Fee"
+  },
+  {
+    "skuKey": "Service (GF Plus + Aux) Bundle",
+    "fullPath": "Geotab Service:Service (GF Plus + Aux) Bundle",
+    "defaultPrice": 29.0,
+    "category": "Geotab Service",
+    "desc": "GO Focus Plus Aux Cam Bundle Service Fee"
+  },
+  {
     "skuKey": "Service (GFPlus + Aux) Bundle",
     "fullPath": "Geotab Service:Service (GFPlus + Aux) Bundle (GO Focus Plus Aux Cam Bundle)",
     "defaultPrice": 29.0,
     "category": "Geotab Service",
     "desc": "GO Focus Plus Aux Cam Bundle"
+  },
+  {
+    "skuKey": "Service (GO Bundle + Support)",
+    "fullPath": "Geotab Service:Service (GO Bundle + Support)",
+    "defaultPrice": 21.8,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab GO Bundle Plan + Premium Support"
   },
   {
     "skuKey": "Service (GO Focus Plus) Bundle",
@@ -616,6 +4298,13 @@
     "desc": "GO Focus Plus Bundle Service Fee"
   },
   {
+    "skuKey": "Service (GO Focus Plus) SW-STRD",
+    "fullPath": "Geotab Service:Service (GO Focus Plus) SW-STRD",
+    "defaultPrice": 20.0,
+    "category": "Geotab Service",
+    "desc": "GO Focus Plus Service Fee"
+  },
+  {
     "skuKey": "Service (GO Focus Plus) SWELL3",
     "fullPath": "Geotab Service:Service (GO Focus Plus) SWELL3 (GO Focus Plus Bundle Service Fee)",
     "defaultPrice": 20.0,
@@ -623,9 +4312,30 @@
     "desc": "GO Focus Plus Bundle Service Fee"
   },
   {
+    "skuKey": "Service Fee (Base Bundle)",
+    "fullPath": "Geotab Service:Service Fee (Base Bundle)",
+    "defaultPrice": 20.45,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (Base Bundle)"
+  },
+  {
     "skuKey": "Service Fee (GO Focus)",
     "fullPath": "Geotab Service:Service Fee (GO Focus) (GO Focus Service Fee)",
     "defaultPrice": 6.0,
+    "category": "Geotab Service",
+    "desc": "GO Focus Service Fee"
+  },
+  {
+    "skuKey": "Service Fee (GO Focus) SW-SI3",
+    "fullPath": "Geotab Service:Service Fee (GO Focus) SW-SI3",
+    "defaultPrice": 8.5,
+    "category": "Geotab Service",
+    "desc": "GO Focus Service Fee"
+  },
+  {
+    "skuKey": "Service Fee (GO Focus) SWELL3",
+    "fullPath": "Geotab Service:Service Fee (GO Focus) SWELL3",
+    "defaultPrice": 11.0,
     "category": "Geotab Service",
     "desc": "GO Focus Service Fee"
   },
@@ -637,11 +4347,25 @@
     "desc": "Service Fee Geotab (GO) - Nextlink"
   },
   {
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
+    "fullPath": "Geotab Service:Service Fee (HANOVER-CS) Cust",
+    "defaultPrice": 8.0,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (GO) - Hanover Cost Share for Customer"
+  },
+  {
     "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
     "fullPath": "Geotab Service:Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
     "defaultPrice": 8.0,
     "category": "Geotab Service",
     "desc": ""
+  },
+  {
+    "skuKey": "Service Fee (HANOVER-CS) Han",
+    "fullPath": "Geotab Service:Service Fee (HANOVER-CS) Han",
+    "defaultPrice": 8.0,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (GO) - Hanover Cost Share for Hanover"
   },
   {
     "skuKey": "Service Fee (HANOVER-CS) Han (Service Fee Geotab (GO) - Hanover Cost Share for Ha...",
@@ -658,11 +4382,60 @@
     "desc": "Service Fee Geotab (ProPlus + Keyless) SW"
   },
   {
+    "skuKey": "Service Fee (Pro Analytics)",
+    "fullPath": "Geotab Service:Service Fee (Pro Analytics)",
+    "defaultPrice": 30.95,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (Pro Analytics)"
+  },
+  {
+    "skuKey": "Service Fee (ProPlus Analytics)",
+    "fullPath": "Geotab Service:Service Fee (ProPlus Analytics)",
+    "defaultPrice": 33.95,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (ProPlus Analytics)"
+  },
+  {
+    "skuKey": "Service Fee Bewhere",
+    "fullPath": "Bewhere Service:Service Fee Bewhere",
+    "defaultPrice": 5.0,
+    "category": "Bewhere Service",
+    "desc": "Service Fee Bewhere"
+  },
+  {
     "skuKey": "Service Fee CalAmp (Asset)",
     "fullPath": "Fleethoster Service:Service Fee CalAmp (Asset) (Service Fee CalAmp (Asset))",
     "defaultPrice": 12.95,
     "category": "Fleethoster Service",
     "desc": "Service Fee CalAmp (Asset)"
+  },
+  {
+    "skuKey": "Service Fee Cell Control",
+    "fullPath": "CellControl Service:Service Fee Cell Control",
+    "defaultPrice": 15.0,
+    "category": "CellControl Service",
+    "desc": "Service Fee Cell Control"
+  },
+  {
+    "skuKey": "Service Fee Craig Safety",
+    "fullPath": "Craig Safety Service:Service Fee Craig Safety",
+    "defaultPrice": 5.0,
+    "category": "Craig Safety Service",
+    "desc": "Service Fee Craig Safety"
+  },
+  {
+    "skuKey": "Service Fee Curbsoft",
+    "fullPath": "Smartwitness Service:Service Fee Curbsoft",
+    "defaultPrice": 25.0,
+    "category": "Smartwitness Service",
+    "desc": "Service Fee Curbsoft"
+  },
+  {
+    "skuKey": "Service Fee D2GO",
+    "fullPath": "D2GO Service:Service Fee D2GO",
+    "defaultPrice": 2.0,
+    "category": "D2GO Service",
+    "desc": "Service Fee D2GO.."
   },
   {
     "skuKey": "Service Fee DoForms (Basic)",
@@ -672,6 +4445,20 @@
     "desc": "Service Fee DoForms (Basic)"
   },
   {
+    "skuKey": "Service Fee DoForms (Dispatch)",
+    "fullPath": "DoForms Service:Service Fee DoForms (Dispatch)",
+    "defaultPrice": 14.95,
+    "category": "DoForms Service",
+    "desc": "Service Fee DoForms (Dispatch)"
+  },
+  {
+    "skuKey": "Service Fee DoForms (Sync&Save)",
+    "fullPath": "DoForms Service:Service Fee DoForms (Sync&Save)",
+    "defaultPrice": 5.0,
+    "category": "DoForms Service",
+    "desc": "Service Fee DoForms (Sync&Save)"
+  },
+  {
     "skuKey": "Service Fee Drivewyze",
     "fullPath": "Drivewyze Service:Service Fee Drivewyze (Drivewyze Service)",
     "defaultPrice": 17.99,
@@ -679,11 +4466,32 @@
     "desc": "Drivewyze Service"
   },
   {
+    "skuKey": "Service Fee FleetHoster Hosting",
+    "fullPath": "Fleethoster Service:Service Fee FleetHoster Hosting",
+    "defaultPrice": 200.0,
+    "category": "Fleethoster Service",
+    "desc": "Service Fee FleetHoster Hosting"
+  },
+  {
     "skuKey": "Service Fee Fleetio (Advanced)",
     "fullPath": "Fleetio Service:Service Fee Fleetio (Advanced) (Service Fee Fleetio (Advanced))",
     "defaultPrice": 7.5,
     "category": "Fleetio Service",
     "desc": "Service Fee Fleetio (Advanced)"
+  },
+  {
+    "skuKey": "Service Fee Fleetio Pro",
+    "fullPath": "Fleetio Service:Service Fee Fleetio Pro",
+    "defaultPrice": 6.0,
+    "category": "Fleetio Service",
+    "desc": "Service Fee Fleetio Pro"
+  },
+  {
+    "skuKey": "Service Fee Fuel BI",
+    "fullPath": "Fleethoster Service:Service Fee Fuel BI",
+    "defaultPrice": 2.5,
+    "category": "Fleethoster Service",
+    "desc": "Service Fee Fuel BI"
   },
   {
     "skuKey": "Service Fee Geotab (Asset)",
@@ -707,6 +4515,34 @@
     "desc": "Service Fee Geotab (Base)"
   },
   {
+    "skuKey": "Service Fee Geotab (Base) SW",
+    "fullPath": "Geotab Service:Service Fee Geotab (Base) SW",
+    "defaultPrice": 10.2,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (Base) SW"
+  },
+  {
+    "skuKey": "Service Fee Geotab (BIGBITE)",
+    "fullPath": "Geotab Service:Service Fee Geotab (BIGBITE)",
+    "defaultPrice": 0.0,
+    "category": "Geotab Service",
+    "desc": "BIGBITE PROMO - 6 Months of free service"
+  },
+  {
+    "skuKey": "Service Fee Geotab (Garmin)",
+    "fullPath": "Geotab Service:Service Fee Geotab (Garmin)",
+    "defaultPrice": 19.95,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (Garmin)"
+  },
+  {
+    "skuKey": "Service Fee Geotab (HOS TCS)",
+    "fullPath": "Geotab Service:Service Fee Geotab (HOS TCS)",
+    "defaultPrice": 26.95,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (HOS)"
+  },
+  {
     "skuKey": "Service Fee Geotab (HOS V2)",
     "fullPath": "Geotab Service:Service Fee Geotab (HOS V2) (Service Fee Geotab (HOS))",
     "defaultPrice": 22.95,
@@ -721,11 +4557,25 @@
     "desc": "Service Fee Geotab (HOS)"
   },
   {
+    "skuKey": "Service Fee Geotab (HOS) SW",
+    "fullPath": "Geotab Service:Service Fee Geotab (HOS) SW",
+    "defaultPrice": 12.24,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (HOS) SW"
+  },
+  {
     "skuKey": "Service Fee Geotab (PP)-Bundle",
     "fullPath": "Geotab Service:Service Fee Geotab (PP)-Bundle (Service Fee Geotab (ProPlus) - Bundle)",
     "defaultPrice": 30.25,
     "category": "Geotab Service",
     "desc": "Service Fee Geotab (ProPlus) - Bundle"
+  },
+  {
+    "skuKey": "Service Fee Geotab (Pro NJPA)",
+    "fullPath": "Geotab Service:Service Fee Geotab (Pro NJPA)",
+    "defaultPrice": 16.33,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (Pro) SW"
   },
   {
     "skuKey": "Service Fee Geotab (Pro V2)",
@@ -763,6 +4613,13 @@
     "desc": "Service Fee Geotab (ProPlus)"
   },
   {
+    "skuKey": "Service Fee Geotab (ProPlus) MP",
+    "fullPath": "Geotab Service:Service Fee Geotab (ProPlus) MP",
+    "defaultPrice": 45.0,
+    "category": "Geotab Service",
+    "desc": "ProPlus Motor Pool Plan"
+  },
+  {
     "skuKey": "Service Fee Geotab (Suspend V2)",
     "fullPath": "Geotab Service:Service Fee Geotab (Suspend V2) (Service Fee Geotab (Suspend))",
     "defaultPrice": 10.0,
@@ -775,6 +4632,20 @@
     "defaultPrice": 10.0,
     "category": "Geotab Service",
     "desc": "Service Fee Geotab (Suspend)"
+  },
+  {
+    "skuKey": "Service Fee Geotab (Suspend) SW",
+    "fullPath": "Geotab Service:Service Fee Geotab (Suspend) SW",
+    "defaultPrice": 6.12,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (Suspend) SW"
+  },
+  {
+    "skuKey": "Service Fee Geotab 24/7 Support",
+    "fullPath": "Geotab Service:Service Fee Geotab 24/7 Support",
+    "defaultPrice": 3.0,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab 24/7 Support"
   },
   {
     "skuKey": "Service Fee GoCam+",
@@ -791,6 +4662,13 @@
     "desc": "Service Fee JJ Keller"
   },
   {
+    "skuKey": "Service Fee Paper DoDo",
+    "fullPath": "Paper DoDo Service:Service Fee Paper DoDo",
+    "defaultPrice": 5.0,
+    "category": "Paper DoDo Service",
+    "desc": "Service Fee Paper DoDo"
+  },
+  {
     "skuKey": "Service Fee Rosco (Basic)",
     "fullPath": "Rosco Service:Service Fee Rosco (Basic) (Service Fee Rosco (Basic))",
     "defaultPrice": 28.0,
@@ -798,11 +4676,25 @@
     "desc": "Service Fee Rosco (Basic)"
   },
   {
+    "skuKey": "Service Fee Rosco DV6 Pro",
+    "fullPath": "Rosco Service:Service Fee Rosco DV6 Pro",
+    "defaultPrice": 24.95,
+    "category": "Rosco Service",
+    "desc": "Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Storage + Live Streaming for DV6"
+  },
+  {
     "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
     "fullPath": "Rosco Service:Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
     "defaultPrice": 23.0,
     "category": "Rosco Service",
     "desc": ""
+  },
+  {
+    "skuKey": "Service Fee Rosco Pro",
+    "fullPath": "Rosco Service:Service Fee Rosco Pro",
+    "defaultPrice": 35.0,
+    "category": "Rosco Service",
+    "desc": "Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Storage + Live Streaming"
   },
   {
     "skuKey": "Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
@@ -826,6 +4718,13 @@
     "desc": "Starlite Solar Asset Tracking Service Fee"
   },
   {
+    "skuKey": "Service Fee TopFly Asset",
+    "fullPath": "TopFly Service:Service Fee TopFly Asset",
+    "defaultPrice": 12.0,
+    "category": "TopFly Service",
+    "desc": "Service Fee TopFly Asset (2MB Data Limit)"
+  },
+  {
     "skuKey": "Service Fee TopFly Basic",
     "fullPath": "TopFly Service:Service Fee TopFly Basic (Service Fee TopFly Basic (2GB Data Limit))",
     "defaultPrice": 16.95,
@@ -833,11 +4732,368 @@
     "desc": "Service Fee TopFly Basic (2GB Data Limit)"
   },
   {
+    "skuKey": "Service Fee TopFly Pro",
+    "fullPath": "TopFly Service:Service Fee TopFly Pro",
+    "defaultPrice": 14.95,
+    "category": "TopFly Service",
+    "desc": "Service Fee TopFly Pro (2GB Data Limit)"
+  },
+  {
+    "skuKey": "Service Fee TripClips",
+    "fullPath": "Smartwitness Service:Service Fee TripClips",
+    "defaultPrice": 25.0,
+    "category": "Smartwitness Service",
+    "desc": "Service Fee TripClips - Data Limit: 500MB"
+  },
+  {
+    "skuKey": "Service Fee Visitrack",
+    "fullPath": "Visitrack Service:Service Fee Visitrack",
+    "defaultPrice": 20.0,
+    "category": "Visitrack Service",
+    "desc": "Service Fee Visitrack"
+  },
+  {
+    "skuKey": "Service Fee Xirgo (Asset)",
+    "fullPath": "Fleethoster Service:Service Fee Xirgo (Asset)",
+    "defaultPrice": 14.95,
+    "category": "Fleethoster Service",
+    "desc": "Service Fee Xirgo Asset Tracker"
+  },
+  {
     "skuKey": "Service Fee Xirgo (Basic)",
     "fullPath": "Xirgo Service:Service Fee Xirgo (Basic) (Service Fee Xirgo (Basic) (2MB Data Limit))",
     "defaultPrice": 16.95,
     "category": "Xirgo Service",
     "desc": "Service Fee Xirgo (Basic) (2MB Data Limit)"
+  },
+  {
+    "skuKey": "Service Trip",
+    "fullPath": "Installation Service:Service Trip",
+    "defaultPrice": 0.0,
+    "category": "Installation Service",
+    "desc": "Non-Warranty Call"
+  },
+  {
+    "skuKey": "Setup Fee",
+    "fullPath": "Fleet Nova Services:Setup Fee",
+    "defaultPrice": 500.0,
+    "category": "Fleet Nova Services",
+    "desc": "One time setup fee"
+  },
+  {
+    "skuKey": "Shipping NC",
+    "fullPath": "Shipping Service:Shipping NC",
+    "defaultPrice": 0.0,
+    "category": "Shipping Service",
+    "desc": "FedEx Shipping NC"
+  },
+  {
+    "skuKey": "SIM1002FFF",
+    "fullPath": "Rosco Equipment:SIM1002FFF",
+    "defaultPrice": 0.0,
+    "category": "Rosco Equipment",
+    "desc": "Rosco SIM Card"
+  },
+  {
+    "skuKey": "SL-ACC-0040",
+    "fullPath": "VisionTrack Equipment:SL-ACC-0040",
+    "defaultPrice": 9.95,
+    "category": "VisionTrack Equipment",
+    "desc": "Widescreen Mounting Bracket for VT3600 and VT3600AI"
+  },
+  {
+    "skuKey": "SL-CAB-0022",
+    "fullPath": "VisionTrack Equipment:SL-CAB-0022",
+    "defaultPrice": 22.02,
+    "category": "VisionTrack Equipment",
+    "desc": "Y Cable for OBDII (Dashcam)"
+  },
+  {
+    "skuKey": "SL-CAB-0063",
+    "fullPath": "VisionTrack Equipment:SL-CAB-0063",
+    "defaultPrice": 14.0,
+    "category": "VisionTrack Equipment",
+    "desc": "AHD Camera Extension Cable 20m"
+  },
+  {
+    "skuKey": "SL-CAB-0064",
+    "fullPath": "VisionTrack Equipment:SL-CAB-0064",
+    "defaultPrice": 8.37,
+    "category": "VisionTrack Equipment",
+    "desc": "AHD Camera Extension Cable 10 Meter"
+  },
+  {
+    "skuKey": "SL-CAB-0065",
+    "fullPath": "VisionTrack Equipment:SL-CAB-0065",
+    "defaultPrice": 13.21,
+    "category": "VisionTrack Equipment",
+    "desc": "AHD Camera Extension Cable 20 Meter"
+  },
+  {
+    "skuKey": "SL-CAB-0073",
+    "fullPath": "VisionTrack Equipment:SL-CAB-0073",
+    "defaultPrice": 0.0,
+    "category": "VisionTrack Equipment",
+    "desc": "9 Meter IPC Cable"
+  },
+  {
+    "skuKey": "SL-CAB-0082",
+    "fullPath": "VisionTrack Equipment:SL-CAB-0082",
+    "defaultPrice": 34.57,
+    "category": "VisionTrack Equipment",
+    "desc": "Camera VT3500AI/VT3600AI Video Input Output Cable"
+  },
+  {
+    "skuKey": "SL-CAB-0085",
+    "fullPath": "VisionTrack Equipment:SL-CAB-0085",
+    "defaultPrice": 25.0,
+    "category": "VisionTrack Equipment",
+    "desc": "Camera VT3600 Video Input Output Cable"
+  },
+  {
+    "skuKey": "SL-CAB-0086",
+    "fullPath": "VisionTrack Equipment:SL-CAB-0086",
+    "defaultPrice": 11.01,
+    "category": "VisionTrack Equipment",
+    "desc": "Camera VT3600/VT3600AI Power Cable"
+  },
+  {
+    "skuKey": "SL-CAB-0087",
+    "fullPath": "VisionTrack Equipment:SL-CAB-0087",
+    "defaultPrice": 0.0,
+    "category": "VisionTrack Equipment",
+    "desc": "Hardwire"
+  },
+  {
+    "skuKey": "SL-CAB-0089",
+    "fullPath": "VisionTrack Equipment:SL-CAB-0089",
+    "defaultPrice": 11.01,
+    "category": "VisionTrack Equipment",
+    "desc": "SL-CAB-0089"
+  },
+  {
+    "skuKey": "SL-CAB-0093",
+    "fullPath": "VisionTrack Equipment:SL-CAB-0093",
+    "defaultPrice": 20.0,
+    "category": "VisionTrack Equipment",
+    "desc": "VT650- AI Cable for 10-Meter for Internal Camera"
+  },
+  {
+    "skuKey": "SL-CAM-3014",
+    "fullPath": "VisionTrack Equipment:SL-CAM-3014",
+    "defaultPrice": 96.9,
+    "category": "VisionTrack Equipment",
+    "desc": "Number Plate Rear Camera VT670-AHD"
+  },
+  {
+    "skuKey": "SL-CAM-3028",
+    "fullPath": "VisionTrack Equipment:SL-CAM-3028",
+    "defaultPrice": 61.67,
+    "category": "VisionTrack Equipment",
+    "desc": "VT-648-AHD Rear Cam"
+  },
+  {
+    "skuKey": "SL-CAM-3069",
+    "fullPath": "VisionTrack Equipment:SL-CAM-3069",
+    "defaultPrice": 0.0,
+    "category": "VisionTrack Equipment",
+    "desc": "IPC Camera for Inside Ambulance"
+  },
+  {
+    "skuKey": "SL-CAM-3611",
+    "fullPath": "VisionTrack Equipment:SL-CAM-3611",
+    "defaultPrice": 330.33,
+    "category": "VisionTrack Equipment",
+    "desc": "Camera VT3600 128GB/64GB"
+  },
+  {
+    "skuKey": "SL-CAM-3621-SIM",
+    "fullPath": "VisionTrack Equipment:SL-CAM-3621-SIM",
+    "defaultPrice": 350.0,
+    "category": "VisionTrack Equipment",
+    "desc": "Camera PNP VT3600 AI 128GB/64GB with..SIM"
+  },
+  {
+    "skuKey": "SM090-B",
+    "fullPath": "GPS LockBox Equipment:SM090-B",
+    "defaultPrice": 0.0,
+    "category": "GPS LockBox Equipment",
+    "desc": ""
+  },
+  {
+    "skuKey": "Smartphone Holder",
+    "fullPath": "GPS LockBox Equipment:Smartphone Holder",
+    "defaultPrice": 20.0,
+    "category": "GPS LockBox Equipment",
+    "desc": "Universal locking smartphone holder with AMPS connection"
+  },
+  {
+    "skuKey": "SOLARFLEX",
+    "fullPath": "Geotab Equipment:SOLARFLEX",
+    "defaultPrice": 237.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab SolarFlex Asset Tracking"
+  },
+  {
+    "skuKey": "Sourcewell Early Termination",
+    "fullPath": "Geotab Service:Sourcewell Early Termination",
+    "defaultPrice": 100.0,
+    "category": "Geotab Service",
+    "desc": "Early Termination Fee for Sourcewell devices deactivated before the contract end date"
+  },
+  {
+    "skuKey": "SpeedGauge Enterprise Service",
+    "fullPath": "SpeedGauge:SpeedGauge Enterprise Service",
+    "defaultPrice": 6.5,
+    "category": "SpeedGauge",
+    "desc": "SpeedGauge Enterpise Service"
+  },
+  {
+    "skuKey": "SpeedGauge Standard Service",
+    "fullPath": "SpeedGauge:SpeedGauge Standard Service",
+    "defaultPrice": 5.0,
+    "category": "SpeedGauge",
+    "desc": "SpeedGauge Standard Service"
+  },
+  {
+    "skuKey": "SPR-GFPBRK",
+    "fullPath": "Geotab Equipment:SPR-GFPBRK",
+    "defaultPrice": 10.0,
+    "category": "Geotab Equipment",
+    "desc": "GO Focus Plus Mounting Bracket"
+  },
+  {
+    "skuKey": "SPR-GFPIOCVR",
+    "fullPath": "Geotab Equipment:SPR-GFPIOCVR",
+    "defaultPrice": 10.0,
+    "category": "Geotab Equipment",
+    "desc": "I/O port cover for GO Focus Plus"
+  },
+  {
+    "skuKey": "SPR-GFPLCVR",
+    "fullPath": "Geotab Equipment:SPR-GFPLCVR",
+    "defaultPrice": 5.0,
+    "category": "Geotab Equipment",
+    "desc": "GO Focus Plus - In-Cabin Camera Cover"
+  },
+  {
+    "skuKey": "SPR-GOFBRK-5PK",
+    "fullPath": "Geotab Equipment:SPR-GOFBRK-5PK",
+    "defaultPrice": 40.0,
+    "category": "Geotab Equipment",
+    "desc": "GO Focus Mounting Bracket (5 Pack)"
+  },
+  {
+    "skuKey": "SPR-NFCBracket",
+    "fullPath": "Geotab Equipment:SPR-NFCBracket",
+    "defaultPrice": 5.0,
+    "category": "Geotab Equipment",
+    "desc": "NFC Bracket"
+  },
+  {
+    "skuKey": "SPR-NFCBracket SW",
+    "fullPath": "Geotab Equipment:SPR-NFCBracket SW",
+    "defaultPrice": 3.3,
+    "category": "Geotab Equipment",
+    "desc": "Mounting bracket and holder for..IOX-NFCREADER. Includes 2 screws..and double-sided tape for the bracket..for installation purposes."
+  },
+  {
+    "skuKey": "SPR-QRTAG",
+    "fullPath": "Geotab Equipment:SPR-QRTAG",
+    "defaultPrice": 1.5,
+    "category": "Geotab Equipment",
+    "desc": "Keyless QR Tag"
+  },
+  {
+    "skuKey": "SPR-QRTAG SW",
+    "fullPath": "Geotab Equipment:SPR-QRTAG SW",
+    "defaultPrice": 1.32,
+    "category": "Geotab Equipment",
+    "desc": "QR Tag for IOX-KEYLESS key shipment to Geotab."
+  },
+  {
+    "skuKey": "SPR-RelayKit",
+    "fullPath": "Geotab Equipment:SPR-RelayKit",
+    "defaultPrice": 30.0,
+    "category": "Geotab Equipment",
+    "desc": "Relay Kit"
+  },
+  {
+    "skuKey": "Square Mounting Plate",
+    "fullPath": "GPS LockBox Equipment:Square Mounting Plate",
+    "defaultPrice": 10.0,
+    "category": "GPS LockBox Equipment",
+    "desc": "Square Mounting Plate w/4-Hole AMPS drill base pattern"
+  },
+  {
+    "skuKey": "SRF-AUX-S51-02P",
+    "fullPath": "SurfSight Equipment:SRF-AUX-S51-02P",
+    "defaultPrice": 150.0,
+    "category": "SurfSight Equipment",
+    "desc": "Wi-Fi auxiliary camera with flush mount"
+  },
+  {
+    "skuKey": "SRF-AUX-S51-03P",
+    "fullPath": "SurfSight Equipment:SRF-AUX-S51-03P",
+    "defaultPrice": 150.0,
+    "category": "SurfSight Equipment",
+    "desc": "Wired auxiliary camera with wrap mount"
+  },
+  {
+    "skuKey": "SRF-AUX-S51-04P",
+    "fullPath": "SurfSight Equipment:SRF-AUX-S51-04P",
+    "defaultPrice": 150.0,
+    "category": "SurfSight Equipment",
+    "desc": "Wired auxiliary camera with flush mount"
+  },
+  {
+    "skuKey": "SRF-CBL-S50-01P",
+    "fullPath": "Geotab Equipment:SRF-CBL-S50-01P",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "Surfsight AI-14 IOX cable"
+  },
+  {
+    "skuKey": "SRF-CBL-S51-01P",
+    "fullPath": "SurfSight Equipment:SRF-CBL-S51-01P",
+    "defaultPrice": 30.0,
+    "category": "SurfSight Equipment",
+    "desc": "5m M12 (F) to RJ-45 (M), Shielded CAT5E"
+  },
+  {
+    "skuKey": "SRF-CBL-S51-02P",
+    "fullPath": "SurfSight Equipment:SRF-CBL-S51-02P",
+    "defaultPrice": 50.0,
+    "category": "SurfSight Equipment",
+    "desc": "20m M12 (F) to RJ-45 (M), Shielded CAT5E"
+  },
+  {
+    "skuKey": "SRF-PER-BRK",
+    "fullPath": "SurfSight Equipment:SRF-PER-BRK",
+    "defaultPrice": 20.0,
+    "category": "SurfSight Equipment",
+    "desc": "SS - Mounting Brackets (10 Pack)"
+  },
+  {
+    "skuKey": "SRF-PER-CVR",
+    "fullPath": "SurfSight Equipment:SRF-PER-CVR",
+    "defaultPrice": 76.0,
+    "category": "SurfSight Equipment",
+    "desc": "SS - Lens Cover"
+  },
+  {
+    "skuKey": "SRF-PER-TPCS",
+    "fullPath": "SurfSight Equipment:SRF-PER-TPCS",
+    "defaultPrice": 0.0,
+    "category": "SurfSight Equipment",
+    "desc": "Tamper Proof Case"
+  },
+  {
+    "skuKey": "SS Reactivation Fee",
+    "fullPath": "Surfsight Service:SS Reactivation Fee",
+    "defaultPrice": 25.0,
+    "category": "Surfsight Service",
+    "desc": "SS Reactivation Fee"
   },
   {
     "skuKey": "SS Service Fee",
@@ -868,11 +5124,60 @@
     "desc": "Sourcewell SS Camera Service Fee  (1GB Data Limit)"
   },
   {
+    "skuKey": "SS Service Fee W/Aux",
+    "fullPath": "Surfsight Service:SS Service Fee W/Aux",
+    "defaultPrice": 33.0,
+    "category": "Surfsight Service",
+    "desc": "SS Cameras Service Fee with Aux Cameras (2GB Data Limit)"
+  },
+  {
+    "skuKey": "SS Suspension Fee",
+    "fullPath": "Surfsight Service:SS Suspension Fee",
+    "defaultPrice": 10.0,
+    "category": "Surfsight Service",
+    "desc": "SS Cameras Suspension Fee - Allows to reactivate the service without a reactivation fee"
+  },
+  {
+    "skuKey": "Staging and Kitting",
+    "fullPath": "eSquared Service:Staging and Kitting",
+    "defaultPrice": 35.0,
+    "category": "eSquared Service",
+    "desc": "Software loading, assembling testing, labeling, etc."
+  },
+  {
+    "skuKey": "Standard Sim",
+    "fullPath": "Aeris Equipment:Standard Sim",
+    "defaultPrice": 0.0,
+    "category": "Aeris Equipment",
+    "desc": "Aeris Standard 1FF Sim Card"
+  },
+  {
+    "skuKey": "Stanley Pliers Set",
+    "fullPath": "Installation Equipment:Stanley Pliers Set",
+    "defaultPrice": 0.0,
+    "category": "Installation Equipment",
+    "desc": "Stanley - Pliers Set 3 Pc."
+  },
+  {
+    "skuKey": "Starlite Solar",
+    "fullPath": "FleetHoster Equipment:Starlite Solar",
+    "defaultPrice": 225.0,
+    "category": "FleetHoster Equipment",
+    "desc": "Starlite Solar Asset Tracker"
+  },
+  {
     "skuKey": "State Fee",
     "fullPath": "SambaSafety Service:State Fee (State Fee)",
     "defaultPrice": 5.0,
     "category": "SambaSafety Service",
     "desc": "State Fee"
+  },
+  {
+    "skuKey": "StealthNet",
+    "fullPath": "Phillips Connect Equipment:StealthNet",
+    "defaultPrice": 0.0,
+    "category": "Phillips Connect Equipment",
+    "desc": "StealthNet Refrigerated"
   },
   {
     "skuKey": "Stellantis Premium (OEM)",
@@ -882,11 +5187,613 @@
     "desc": "Stellantis Premium Plan"
   },
   {
+    "skuKey": "Streamax C6D",
+    "fullPath": "Streamax:Streamax C6D",
+    "defaultPrice": 225.0,
+    "category": "Streamax",
+    "desc": "Streamax Dual-Facing Camera"
+  },
+  {
+    "skuKey": "Streamax C6D AI",
+    "fullPath": "Streamax:Streamax C6D AI",
+    "defaultPrice": 225.0,
+    "category": "Streamax",
+    "desc": "Streamax Dual-Facing Camera with AI technology"
+  },
+  {
+    "skuKey": "Streamax DSM-L",
+    "fullPath": "Streamax:Streamax DSM-L",
+    "defaultPrice": 50.0,
+    "category": "Streamax",
+    "desc": "Streamax AI Piece"
+  },
+  {
+    "skuKey": "Streamax Service Fee",
+    "fullPath": "Streamax Service:Streamax Service Fee",
+    "defaultPrice": 25.0,
+    "category": "Streamax Service",
+    "desc": "Streamax Camera Service Fee (2GB Data Limit)"
+  },
+  {
+    "skuKey": "STSC101A",
+    "fullPath": "Rosco Equipment:STSC101A",
+    "defaultPrice": 191.66,
+    "category": "Rosco Equipment",
+    "desc": "REAR MOUNT HD CAMERA 150\ufffd, w/ 4 HIGH OUTPUT INFRARED LEDs, w/ AUDIO, BLACK, 4-PIN (KITS 5065, 5265, 7165)"
+  },
+  {
+    "skuKey": "STSC109W",
+    "fullPath": "Rosco Equipment:STSC109W",
+    "defaultPrice": 0.0,
+    "category": "Rosco Equipment",
+    "desc": "Backup Camera - White"
+  },
+  {
+    "skuKey": "STSC112 CAM",
+    "fullPath": "Rosco Equipment:STSC112 CAM",
+    "defaultPrice": 131.99,
+    "category": "Rosco Equipment",
+    "desc": "Rearview License Plate Camera"
+  },
+  {
+    "skuKey": "STSC130B",
+    "fullPath": "Rosco Equipment:STSC130B",
+    "defaultPrice": 148.5,
+    "category": "Rosco Equipment",
+    "desc": "Black Mini-Backup HD..Cameras with Color"
+  },
+  {
+    "skuKey": "STSC130W",
+    "fullPath": "Rosco Equipment:STSC130W",
+    "defaultPrice": 148.5,
+    "category": "Rosco Equipment",
+    "desc": "WhitWhite Mini Backup Camera with Colore Mini Backup Camera with Color"
+  },
+  {
+    "skuKey": "STSC141",
+    "fullPath": "Rosco Equipment:STSC141",
+    "defaultPrice": 132.0,
+    "category": "Rosco Equipment",
+    "desc": "REAR HIGH MOUNT, LOOK DOWN CAMERA 110\ufffd (1/4\" SONY CCD) w/ INFRARED LEDs, w/ AUDIO, SILVER, 4 PIN"
+  },
+  {
+    "skuKey": "STSC167",
+    "fullPath": "Rosco Equipment:STSC167",
+    "defaultPrice": 198.0,
+    "category": "Rosco Equipment",
+    "desc": "Rosco STSC167 Right Side Camera"
+  },
+  {
+    "skuKey": "STSC168",
+    "fullPath": "Rosco Equipment:STSC168",
+    "defaultPrice": 198.0,
+    "category": "Rosco Equipment",
+    "desc": "Rosco STSC168 Left Side Camera"
+  },
+  {
+    "skuKey": "STSC169",
+    "fullPath": "Rosco Equipment:STSC169",
+    "defaultPrice": 198.0,
+    "category": "Rosco Equipment",
+    "desc": "Rosco STSC169 Black-Patient Compartment Camera"
+  },
+  {
+    "skuKey": "STSC169-DOME",
+    "fullPath": "Rosco Equipment:STSC169-DOME",
+    "defaultPrice": 198.0,
+    "category": "Rosco Equipment",
+    "desc": "Rosco STS169 Dome Camera"
+  },
+  {
+    "skuKey": "STSC170",
+    "fullPath": "Rosco Equipment:STSC170",
+    "defaultPrice": 198.0,
+    "category": "Rosco Equipment",
+    "desc": "Internal Dome Camera - White"
+  },
+  {
+    "skuKey": "STSC172",
+    "fullPath": "Rosco Equipment:STSC172",
+    "defaultPrice": 198.0,
+    "category": "Rosco Equipment",
+    "desc": "Rosco Dome Camera- Color..is Light Gray"
+  },
+  {
+    "skuKey": "STSC201",
+    "fullPath": "Rosco Equipment:STSC201",
+    "defaultPrice": 243.0,
+    "category": "Rosco Equipment",
+    "desc": "Rear mounted 1080P HD camera w/ 160\ufffd FOV with 4 high output IR LEDs w/ audio."
+  },
+  {
+    "skuKey": "STSC267 CAM",
+    "fullPath": "Rosco Equipment:STSC267 CAM",
+    "defaultPrice": 243.0,
+    "category": "Rosco Equipment",
+    "desc": "SIDE VIEW HD CAMERA, 145\ufffd LH FACING REAR, RH FACING FRONT, 12 INFRARED LEDS, SILVER"
+  },
+  {
+    "skuKey": "STSC268 CAM",
+    "fullPath": "Rosco Equipment:STSC268 CAM",
+    "defaultPrice": 243.0,
+    "category": "Rosco Equipment",
+    "desc": "SIDE VIEW HD CAMERA, 145\ufffd RH FACING REAR, LH FACING FRONT, 12 INFRARED LEDS, SILVER"
+  },
+  {
+    "skuKey": "STSDF1005AMPS",
+    "fullPath": "Rosco Equipment:STSDF1005AMPS",
+    "defaultPrice": 26.39,
+    "category": "Rosco Equipment",
+    "desc": "MOUNT, UNIVERSAL LCD MONITOR AMPS MOUNT, DOUBLE PIVOT JOINT 6\", PV"
+  },
+  {
+    "skuKey": "STSH130",
+    "fullPath": "Rosco Equipment:STSH130",
+    "defaultPrice": 14.02,
+    "category": "Rosco Equipment",
+    "desc": "10\" ADAPTER HARNESS 4-PIN MALE MINI TO 4-PIN FEMALE STANDARD, 4-PIN (STSC130 CAM TO ALL STANDARD 4-..PIN KITS)"
+  },
+  {
+    "skuKey": "STSH302",
+    "fullPath": "Rosco Equipment:STSH302",
+    "defaultPrice": 30.0,
+    "category": "Rosco Equipment",
+    "desc": "Rosco 65ft. Harness"
+  },
+  {
+    "skuKey": "STSH303",
+    "fullPath": "Rosco Equipment:STSH303",
+    "defaultPrice": 27.0,
+    "category": "Rosco Equipment",
+    "desc": "33' HARNESS w/ TWIST LOCK CONNECTORS, 4 PIN (KITS 5065, 7165, 5465, 7465 AND ALL STANDARD 4-PIN KITS)"
+  },
+  {
+    "skuKey": "STSH304",
+    "fullPath": "Rosco Equipment:STSH304",
+    "defaultPrice": 23.69,
+    "category": "Rosco Equipment",
+    "desc": "16.5' HARNESS w/ TWIST LOCK CONNECTORS, 4 PIN"
+  },
+  {
+    "skuKey": "STSH341-HRN",
+    "fullPath": "Rosco Equipment:STSH341-HRN",
+    "defaultPrice": 30.0,
+    "category": "Rosco Equipment",
+    "desc": "65' Harness - Grey"
+  },
+  {
+    "skuKey": "STSH343",
+    "fullPath": "Rosco Equipment:STSH343",
+    "defaultPrice": 32.39,
+    "category": "Rosco Equipment",
+    "desc": "33' HARNESS w/ TWIST LOCK CONNECTORS, GREY, 4 PIN (KITS 5065, 7165, 5465, 7465 AND ALL STANDARD 4-PIN"
+  },
+  {
+    "skuKey": "STSH345",
+    "fullPath": "Rosco Equipment:STSH345",
+    "defaultPrice": 23.69,
+    "category": "Rosco Equipment",
+    "desc": "4 Pin Extension Harness (16 FT) for Backup Camera"
+  },
+  {
+    "skuKey": "STSH365HD",
+    "fullPath": "Rosco Equipment:STSH365HD",
+    "defaultPrice": 34.29,
+    "category": "Rosco Equipment",
+    "desc": "360HD LEFT CAMERA EXTENSION HARNESS, 9M"
+  },
+  {
+    "skuKey": "STSH415",
+    "fullPath": "Rosco Equipment:STSH415",
+    "defaultPrice": 0.0,
+    "category": "Rosco Equipment",
+    "desc": "Video Magnification Cable"
+  },
+  {
+    "skuKey": "STSH430",
+    "fullPath": "Rosco Equipment:STSH430",
+    "defaultPrice": 206.25,
+    "category": "Rosco Equipment",
+    "desc": "Rosco Safe-T Scope Coil Harness"
+  },
+  {
+    "skuKey": "STSH496",
+    "fullPath": "Rosco Equipment:STSH496",
+    "defaultPrice": 29.7,
+    "category": "Rosco Equipment",
+    "desc": "Y-SPLITTER VIDEO CABLE, 4-PIN STANDARD MALE TO 2 FEMALE"
+  },
+  {
+    "skuKey": "STSK 4730B",
+    "fullPath": "Rosco Equipment:STSK 4730B",
+    "defaultPrice": 354.42,
+    "category": "Rosco Equipment",
+    "desc": "MOR-Vision\ufffd 7\" LCD Combo Rearview Mirror/Monitor Backup Camera Kit - Black"
+  },
+  {
+    "skuKey": "STSK360",
+    "fullPath": "Rosco Equipment:STSK360",
+    "defaultPrice": 1614.6,
+    "category": "Rosco Equipment",
+    "desc": "Rosco\ufffds Safe-T-Scope360- Everything included in Kit. Harness and power supplies"
+  },
+  {
+    "skuKey": "STSK361HD",
+    "fullPath": "Rosco Equipment:STSK361HD",
+    "defaultPrice": 765.0,
+    "category": "Rosco Equipment",
+    "desc": "CALIBRATION KIT FOR STSK360HD.."
+  },
+  {
+    "skuKey": "STSK4730W",
+    "fullPath": "Rosco Equipment:STSK4730W",
+    "defaultPrice": 354.42,
+    "category": "Rosco Equipment",
+    "desc": "MOR-Vision\ufffd 7\" LCD Combo Rearview Mirror/Monitor Backup Camera Kit - White"
+  },
+  {
+    "skuKey": "STSK5465",
+    "fullPath": "Rosco Equipment:STSK5465",
+    "defaultPrice": 330.0,
+    "category": "Rosco Equipment",
+    "desc": "Rosco Backup Camera System with 5\ufffd Color Backup Monitor"
+  },
+  {
+    "skuKey": "STSM208",
+    "fullPath": "Rosco Equipment:STSM208",
+    "defaultPrice": 206.25,
+    "category": "Rosco Equipment",
+    "desc": "5\" COLOR, LCD MONITOR w/ AUDIO, POWER HARNESS, MOUNT, 2 CAM MAX INPUT (KIT 5065, 5465)"
+  },
+  {
+    "skuKey": "STSM243",
+    "fullPath": "Rosco Equipment:STSM243",
+    "defaultPrice": 163.35,
+    "category": "Rosco Equipment",
+    "desc": "5\" COLOR, LIGHTWEIGHT LOW PROFILE LCD MONITOR, w/o AUDIO, 2 CAM MAX INPUT"
+  },
+  {
+    "skuKey": "STSM244",
+    "fullPath": "Rosco Equipment:STSM244",
+    "defaultPrice": 206.25,
+    "category": "Rosco Equipment",
+    "desc": "7\" MOR Vision Rearview Mirror Monitor"
+  },
+  {
+    "skuKey": "STSM251 7\" Monitor",
+    "fullPath": "Rosco Equipment:STSM251 7\" Monitor",
+    "defaultPrice": 231.0,
+    "category": "Rosco Equipment",
+    "desc": "STSM251.7\" Monitor"
+  },
+  {
+    "skuKey": "STSM270",
+    "fullPath": "Rosco Equipment:STSM270",
+    "defaultPrice": 297.0,
+    "category": "Rosco Equipment",
+    "desc": "7\ufffd Quad Screen Monitor with 4 Camera Inputs - Power Harness and Mount"
+  },
+  {
+    "skuKey": "STSM321 10\" Monitor",
+    "fullPath": "Rosco Equipment:STSM321 10\" Monitor",
+    "defaultPrice": 742.5,
+    "category": "Rosco Equipment",
+    "desc": "10\" DIGITAL HIGH BRIGHTNESS COLOR LCD W/AUDIO, 1 SYSTEM INPUT, FOR ROSCO 360HD SYSTEM ONLY..10\" DIGITAL HIGH BRIGHTNESS COLOR LCD W/AUDIO, 1 SYSTEM INPUT, FOR ROSCO 360HD SYSTEM ONLY.."
+  },
+  {
+    "skuKey": "STSM351 7\" Monitor",
+    "fullPath": "Rosco Equipment:STSM351 7\" Monitor",
+    "defaultPrice": 360.0,
+    "category": "Rosco Equipment",
+    "desc": "7\" HD COLOR LCD MONITOR, W/AUDIO, POWER HARNESS, 2 CAMERA MAX INPUT"
+  },
+  {
+    "skuKey": "STSM370",
+    "fullPath": "Rosco Equipment:STSM370",
+    "defaultPrice": 570.0,
+    "category": "Rosco Equipment",
+    "desc": "10inch monitor"
+  },
+  {
+    "skuKey": "STSS1200-- Multiplex- connect u",
+    "fullPath": "Rosco Equipment:STSS1200-- Multiplex- connect u",
+    "defaultPrice": 288.75,
+    "category": "Rosco Equipment",
+    "desc": "MULTIPLEXER KIT FOR TRADITIONAL APPLICATIONS & FEED TO DV609 FOR DV6 RECORDING, CONTAINS OUTPUT ..HD 4-PIN/6' HARNESS FOR FEED TO DV60"
+  },
+  {
+    "skuKey": "STSSA-1000",
+    "fullPath": "Rosco Equipment:STSSA-1000",
+    "defaultPrice": 206.25,
+    "category": "Rosco Equipment",
+    "desc": "Rosco STSSA-1000 Splitter Box"
+  },
+  {
+    "skuKey": "SUBS-APP-1xd",
+    "fullPath": "Geoforce Service:SUBS-APP-1xd",
+    "defaultPrice": 14.0,
+    "category": "Geoforce Service",
+    "desc": "Service Fee Geoforce"
+  },
+  {
+    "skuKey": "SUBS-APP-2xd",
+    "fullPath": "Geoforce Service:SUBS-APP-2xd",
+    "defaultPrice": 16.0,
+    "category": "Geoforce Service",
+    "desc": "Geoforce 2 Pings a day"
+  },
+  {
+    "skuKey": "SUBS-APP-4xd",
+    "fullPath": "Geoforce Service:SUBS-APP-4xd",
+    "defaultPrice": 18.0,
+    "category": "Geoforce Service",
+    "desc": "GT2 Service - Geoforce 4 Pings a day"
+  },
+  {
+    "skuKey": "Super Tag Monthly Subscription",
+    "fullPath": "Geotab Service:Super Tag Monthly Subscription",
+    "defaultPrice": 13.0,
+    "category": "Geotab Service",
+    "desc": "Link Labs Plan - SuperTag.."
+  },
+  {
+    "skuKey": "SV7QLCD-AV",
+    "fullPath": "Smartwitness Equipment:SV7QLCD-AV",
+    "defaultPrice": 8.0,
+    "category": "Smartwitness Equipment",
+    "desc": "Commercial Grade 7' LCD Monitor Cable"
+  },
+  {
+    "skuKey": "SV7QLCD-T",
+    "fullPath": "Smartwitness Equipment:SV7QLCD-T",
+    "defaultPrice": 124.99,
+    "category": "Smartwitness Equipment",
+    "desc": "Commercial Grade 7' LCD Monitor"
+  },
+  {
+    "skuKey": "SV7QLCD-T4",
+    "fullPath": "Smartwitness Equipment:SV7QLCD-T4",
+    "defaultPrice": 199.0,
+    "category": "Smartwitness Equipment",
+    "desc": "In Cab Video Monitor"
+  },
+  {
+    "skuKey": "SVA-05-EXT-B",
+    "fullPath": "Smartwitness Equipment:SVA-05-EXT-B",
+    "defaultPrice": 14.99,
+    "category": "Smartwitness Equipment",
+    "desc": "5M Camera cable for 12V Cameras"
+  },
+  {
+    "skuKey": "SVA-15-EXT-B",
+    "fullPath": "Smartwitness Equipment:SVA-15-EXT-B",
+    "defaultPrice": 29.0,
+    "category": "Smartwitness Equipment",
+    "desc": "Extension Harness for Rear Camera"
+  },
+  {
+    "skuKey": "SVA033-C",
+    "fullPath": "Smartwitness Equipment:SVA033-C",
+    "defaultPrice": 0.0,
+    "category": "Smartwitness Equipment",
+    "desc": "Smartwitness 120\ufffd wide-angle Camera (Side / Rear)"
+  },
+  {
+    "skuKey": "SVA034-A",
+    "fullPath": "Smartwitness Equipment:SVA034-A",
+    "defaultPrice": 104.99,
+    "category": "Smartwitness Equipment",
+    "desc": "Mini Dome Camera with IP66 Waterproofing rating. 720P HD, 10 LEDs, powered by 12 volts; optional audio capability"
+  },
+  {
+    "skuKey": "SVA035-5-B",
+    "fullPath": "Smartwitness Equipment:SVA035-5-B",
+    "defaultPrice": 154.98,
+    "category": "Smartwitness Equipment",
+    "desc": "Side Cameras - SVA-05-EXT-B Extension Cable Included"
+  },
+  {
+    "skuKey": "SVA035-A",
+    "fullPath": "Smartwitness Equipment:SVA035-A",
+    "defaultPrice": 0.0,
+    "category": "Smartwitness Equipment",
+    "desc": "Smartwitness Interior Camera"
+  },
+  {
+    "skuKey": "SVA035-A-5B",
+    "fullPath": "Smartwitness Equipment:SVA035-A-5B",
+    "defaultPrice": 154.0,
+    "category": "Smartwitness Equipment",
+    "desc": "Side Camera with Harness"
+  },
+  {
+    "skuKey": "SVA035-BRK-TB",
+    "fullPath": "Smartwitness Equipment:SVA035-BRK-TB",
+    "defaultPrice": 39.99,
+    "category": "Smartwitness Equipment",
+    "desc": "Side Camera Mounting Brackets"
+  },
+  {
+    "skuKey": "SVA037-A",
+    "fullPath": "Smartwitness Equipment:SVA037-A",
+    "defaultPrice": 99.0,
+    "category": "Smartwitness Equipment",
+    "desc": "Rear Camera"
+  },
+  {
+    "skuKey": "SVA037-A-5B",
+    "fullPath": "Smartwitness Equipment:SVA037-A-5B",
+    "defaultPrice": 104.98,
+    "category": "Smartwitness Equipment",
+    "desc": "Rear View Camera 720P Resolution; includes SVA-05-EXT-B Extension Cable"
+  },
+  {
+    "skuKey": "SVA040-A",
+    "fullPath": "Smartwitness Equipment:SVA040-A",
+    "defaultPrice": 0.0,
+    "category": "Smartwitness Equipment",
+    "desc": "Smartwitness Camera (Side / Rear)"
+  },
+  {
+    "skuKey": "SVA049-A",
+    "fullPath": "Smartwitness Equipment:SVA049-A",
+    "defaultPrice": 129.0,
+    "category": "Smartwitness Equipment",
+    "desc": "Dome Camera for Cargo Area"
+  },
+  {
+    "skuKey": "SVA055-AM",
+    "fullPath": "Smartwitness Equipment:SVA055-AM",
+    "defaultPrice": 154.99,
+    "category": "Smartwitness Equipment",
+    "desc": "Full Camera Set Up- Driver and Road Facing- 5M extension cable included"
+  },
+  {
+    "skuKey": "SVC1",
+    "fullPath": "Pressure Pro Service:SVC1",
+    "defaultPrice": 60.0,
+    "category": "Pressure Pro Service",
+    "desc": "Connect 1 Year Service"
+  },
+  {
+    "skuKey": "SW-PB",
+    "fullPath": "Smartwitness Equipment:SW-PB",
+    "defaultPrice": 19.0,
+    "category": "Smartwitness Equipment",
+    "desc": "Driver Panic Button"
+  },
+  {
+    "skuKey": "SWI6027",
+    "fullPath": "Rosco Equipment:SWI6027",
+    "defaultPrice": 0.0,
+    "category": "Rosco Equipment",
+    "desc": "Relay Harness"
+  },
+  {
+    "skuKey": "T.A.C (Cage Only)",
+    "fullPath": "Fleet Intelligence Equipment:T.A.C (Cage Only)",
+    "defaultPrice": 80.0,
+    "category": "Fleet Intelligence Equipment",
+    "desc": "Asset Cage for Oyster"
+  },
+  {
+    "skuKey": "Tac Board",
+    "fullPath": "Mobileye Equipment:Tac Board",
+    "defaultPrice": 150.0,
+    "category": "Mobileye Equipment",
+    "desc": "used for calibration of ME unit"
+  },
+  {
+    "skuKey": "Tamper Proof Case",
+    "fullPath": "Geotab Equipment:Tamper Proof Case",
+    "defaultPrice": 10.5,
+    "category": "Geotab Equipment",
+    "desc": "Tamper-proof case for Surfsight AI-12 dual-facing dashcam"
+  },
+  {
+    "skuKey": "Tariff",
+    "fullPath": "Shipping Service:Tariff",
+    "defaultPrice": 0.0,
+    "category": "Shipping Service",
+    "desc": "Tariff Fee"
+  },
+  {
+    "skuKey": "Tekton Bit Socket Set",
+    "fullPath": "Installation Equipment:Tekton Bit Socket Set",
+    "defaultPrice": 0.0,
+    "category": "Installation Equipment",
+    "desc": "Tekton - 1/4In. Drive Torx Bit Socket Set 10 Pc."
+  },
+  {
+    "skuKey": "Temp Sense",
+    "fullPath": "Phillips Connect Equipment:Temp Sense",
+    "defaultPrice": 0.0,
+    "category": "Phillips Connect Equipment",
+    "desc": "Temp Sense"
+  },
+  {
+    "skuKey": "Temperature Bluetooth Sensor",
+    "fullPath": "Didcom Equipment:Temperature Bluetooth Sensor",
+    "defaultPrice": 60.0,
+    "category": "Didcom Equipment",
+    "desc": ""
+  },
+  {
+    "skuKey": "TLD1-A",
+    "fullPath": "TopFly Equipment:TLD1-A",
+    "defaultPrice": 113.0,
+    "category": "TopFly Equipment",
+    "desc": "TopFly TLD1-A OBD Vehicle Tracker"
+  },
+  {
+    "skuKey": "TLD1-A-USED",
+    "fullPath": "TopFly Equipment:TLD1-A-USED",
+    "defaultPrice": 0.0,
+    "category": "TopFly Equipment",
+    "desc": "TopFly TLD1-A OBD Vehicle Tracker"
+  },
+  {
+    "skuKey": "TLD1-DA",
+    "fullPath": "TopFly Equipment:TLD1-DA",
+    "defaultPrice": 127.0,
+    "category": "TopFly Equipment",
+    "desc": "TopFly TLD1-DA  Vehicle Tracker"
+  },
+  {
+    "skuKey": "Toll Fee",
+    "fullPath": "Installation Service:Toll Fee",
+    "defaultPrice": 0.0,
+    "category": "Installation Service",
+    "desc": "Toll Fees for Trip"
+  },
+  {
+    "skuKey": "TPM Base",
+    "fullPath": "Didcom Equipment:TPM Base",
+    "defaultPrice": 109.0,
+    "category": "Didcom Equipment",
+    "desc": ""
+  },
+  {
+    "skuKey": "TPM Module Harness",
+    "fullPath": "Didcom Equipment:TPM Module Harness",
+    "defaultPrice": 36.23,
+    "category": "Didcom Equipment",
+    "desc": "5m, 4P"
+  },
+  {
+    "skuKey": "TPM Pro",
+    "fullPath": "Didcom Equipment:TPM Pro",
+    "defaultPrice": 139.0,
+    "category": "Didcom Equipment",
+    "desc": ""
+  },
+  {
+    "skuKey": "TPM Sensor Extension Harness",
+    "fullPath": "Didcom Equipment:TPM Sensor Extension Harness",
+    "defaultPrice": 20.22,
+    "category": "Didcom Equipment",
+    "desc": "5m, 3P"
+  },
+  {
     "skuKey": "Tracking Fee",
     "fullPath": "Phillips Connect Service:Tracking Fee (Phillips Connect Service Fee)",
     "defaultPrice": 12.5,
     "category": "Phillips Connect Service",
     "desc": "Phillips Connect Service Fee"
+  },
+  {
+    "skuKey": "Trip Fee",
+    "fullPath": "Installation Service:Trip Fee",
+    "defaultPrice": 0.58,
+    "category": "Installation Service",
+    "desc": "Per Mileage Charge"
+  },
+  {
+    "skuKey": "Trip Time",
+    "fullPath": "Installation Service:Trip Time",
+    "defaultPrice": 50.0,
+    "category": "Installation Service",
+    "desc": "Per Hour Drive Time"
   },
   {
     "skuKey": "True Fuel",
@@ -896,11 +5803,74 @@
     "desc": "True Fuel Service Fee"
   },
   {
+    "skuKey": "UI & API Basic",
+    "fullPath": "Phillips Connect Service:UI & API Basic",
+    "defaultPrice": 0.0,
+    "category": "Phillips Connect Service",
+    "desc": "UI & API Basic Messaging Monthly Subscription"
+  },
+  {
+    "skuKey": "Utility Camera",
+    "fullPath": "VideoProtects Equipment:Utility Camera",
+    "defaultPrice": 0.0,
+    "category": "VideoProtects Equipment",
+    "desc": "Cargo/Utility Camera"
+  },
+  {
+    "skuKey": "Vendor Comissions",
+    "fullPath": "Miscellaneous Fee:Vendor Comissions",
+    "defaultPrice": 0.0,
+    "category": "Miscellaneous Fee",
+    "desc": "Vendor Comissions"
+  },
+  {
+    "skuKey": "Vermeer AEMP",
+    "fullPath": "Geotab Service:Vermeer AEMP",
+    "defaultPrice": 7.5,
+    "category": "Geotab Service",
+    "desc": "Vermeer AEMP"
+  },
+  {
+    "skuKey": "Vermeer AEMP + Support",
+    "fullPath": "Geotab Service:Vermeer AEMP + Support",
+    "defaultPrice": 9.5,
+    "category": "Geotab Service",
+    "desc": "Vermeer AEMP + Support"
+  },
+  {
     "skuKey": "VisionTrack Service Plan",
     "fullPath": "VisionTrack Service:VisionTrack Service Plan (VisionTrack Plan)",
     "defaultPrice": 18.0,
     "category": "VisionTrack Service",
     "desc": "VisionTrack Plan"
+  },
+  {
+    "skuKey": "VM Fee",
+    "fullPath": "Pager Service:VM Fee",
+    "defaultPrice": 3.0,
+    "category": "Pager Service",
+    "desc": "VoiceMail Fee"
+  },
+  {
+    "skuKey": "VP2000D",
+    "fullPath": "VideoProtects Equipment:VP2000D",
+    "defaultPrice": 320.0,
+    "category": "VideoProtects Equipment",
+    "desc": "Streamax forward/driver facing AI camera with SD Card)"
+  },
+  {
+    "skuKey": "VT-3600AI-KIT-12",
+    "fullPath": "VisionTrack Equipment:VT-3600AI-KIT-12",
+    "defaultPrice": 454.0,
+    "category": "VisionTrack Equipment",
+    "desc": "Includes VT3600AI Dual facing camera, Back-up camera, and all necessary cabling, except 3 wire power cable."
+  },
+  {
+    "skuKey": "VT3600-KIT-1 BUNDLE",
+    "fullPath": "VisionTrack Equipment:VT3600-KIT-1 BUNDLE",
+    "defaultPrice": 0.0,
+    "category": "VisionTrack Equipment",
+    "desc": "VT3600 Dashcam with rear-facing camera,..128GB + 64GB SD cards and accessories"
   },
   {
     "skuKey": "VT3600-Kit-1 Bundled Service",
@@ -910,11 +5880,130 @@
     "desc": "VisionTrack VT3600-Kit-1 Bundled Service"
   },
   {
+    "skuKey": "VT648-AHD",
+    "fullPath": "VisionTrack Equipment:VT648-AHD",
+    "defaultPrice": 65.0,
+    "category": "VisionTrack Equipment",
+    "desc": "Rear Camera"
+  },
+  {
+    "skuKey": "VZW SIM Card",
+    "fullPath": "Podsystems Equipment:VZW SIM Card",
+    "defaultPrice": 0.0,
+    "category": "Podsystems Equipment",
+    "desc": "PodystemsVZW SIM Card"
+  },
+  {
+    "skuKey": "W-HARNESS",
+    "fullPath": "Geotab Equipment:W-HARNESS",
+    "defaultPrice": 35.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab W-Harness"
+  },
+  {
+    "skuKey": "Wait Time",
+    "fullPath": "Installation Service:Wait Time",
+    "defaultPrice": 50.0,
+    "category": "Installation Service",
+    "desc": "Wait Time - Installer unable to work for more than 30 minutes while on the job"
+  },
+  {
+    "skuKey": "Warrior Socket Drive Set",
+    "fullPath": "Installation Equipment:Warrior Socket Drive Set",
+    "defaultPrice": 0.0,
+    "category": "Installation Equipment",
+    "desc": "Warrior - Hex Shank Socket Drive Set 3 Pc."
+  },
+  {
+    "skuKey": "Weekend Fee",
+    "fullPath": "Installation Service:Weekend Fee",
+    "defaultPrice": 0.0,
+    "category": "Installation Service",
+    "desc": "Weekend Installation Fee"
+  },
+  {
+    "skuKey": "Whiparound Pro",
+    "fullPath": "Whiparound Service:Whiparound Pro",
+    "defaultPrice": 10.0,
+    "category": "Whiparound Service",
+    "desc": ""
+  },
+  {
+    "skuKey": "Whiparound Standard",
+    "fullPath": "Whiparound Service:Whiparound Standard",
+    "defaultPrice": 6.0,
+    "category": "Whiparound Service",
+    "desc": ""
+  },
+  {
+    "skuKey": "White Labeling",
+    "fullPath": "BlueArrow Fuel:White Labeling",
+    "defaultPrice": 1000.0,
+    "category": "BlueArrow Fuel",
+    "desc": "BlueArrow Fuel White Labeling"
+  },
+  {
     "skuKey": "Wifi Service",
     "fullPath": "Rosco Service:Wifi Service (Service Fee (Wifi))",
     "defaultPrice": 20.0,
     "category": "Rosco Service",
     "desc": "Service Fee (Wifi)"
+  },
+  {
+    "skuKey": "WIFI-FC",
+    "fullPath": "FleetCam Service:WIFI-FC",
+    "defaultPrice": 15.0,
+    "category": "FleetCam Service",
+    "desc": "FleetCam Service Fee (Wifi)"
+  },
+  {
+    "skuKey": "WIFI-GATEWAY",
+    "fullPath": "Bewhere Equipment:WIFI-GATEWAY",
+    "defaultPrice": 125.0,
+    "category": "Bewhere Equipment",
+    "desc": "Bewhere Wifi Gateway"
+  },
+  {
+    "skuKey": "Wire Stripper",
+    "fullPath": "Installation Equipment:Wire Stripper",
+    "defaultPrice": 0.0,
+    "category": "Installation Equipment",
+    "desc": "Klein Tools - Klein-Kurve Long-Nose Wire Stripper, Wire Cutter, Crimping Tool"
+  },
+  {
+    "skuKey": "XP5S PTT Kit",
+    "fullPath": "GPS LockBox Equipment:XP5S PTT Kit",
+    "defaultPrice": 310.0,
+    "category": "GPS LockBox Equipment",
+    "desc": "Locking Cradle, Noise Cancelling Palm Microphone, Speaker, 4\" Metal Post with 4-Hole AMPS Base, 2.4A Wiring Harness, Installation Kit & Instructions"
+  },
+  {
+    "skuKey": "XT - 4700",
+    "fullPath": "Xirgo Equipment:XT - 4700",
+    "defaultPrice": 0.0,
+    "category": "Xirgo Equipment",
+    "desc": ""
+  },
+  {
+    "skuKey": "XT2060 - 901",
+    "fullPath": "Xirgo Equipment:XT2060 - 901",
+    "defaultPrice": 99.0,
+    "category": "Xirgo Equipment",
+    "desc": "XT2060 - 901"
+  },
+  {
+    "skuKey": "XT2060 - B01",
+    "fullPath": "Xirgo Equipment:XT2060 - B01",
+    "defaultPrice": 99.0,
+    "category": "Xirgo Equipment",
+    "desc": "XT2060 - B01"
+  },
+  {
+    "skuKey": "XT2469 - 901",
+    "fullPath": "Xirgo Equipment:XT2469 - 901",
+    "defaultPrice": 99.0,
+    "category": "Xirgo Equipment",
+    "desc": "XT2469 - 901"
   },
   {
     "skuKey": "Xtract Service Fee",
@@ -929,5 +6018,110 @@
     "defaultPrice": 4.0,
     "category": "Xtract Service",
     "desc": "Digital FNOL and incident reconstruction solution"
+  },
+  {
+    "skuKey": "XXX-Transfer",
+    "fullPath": "Geotab Service:XXX-Transfer",
+    "defaultPrice": 100.0,
+    "category": "Geotab Service",
+    "desc": "Geotab Device Transfer"
+  },
+  {
+    "skuKey": "Yabby Edge - USED",
+    "fullPath": "Digital Matter Equipment:Yabby Edge - USED",
+    "defaultPrice": 130.0,
+    "category": "Digital Matter Equipment",
+    "desc": "Yabby Edge - Indoor/Outdoor asset tracker featuring up to 12 years battery life in a small rugged housing"
+  },
+  {
+    "skuKey": "Yabby-Edge",
+    "fullPath": "Digital Matter Equipment:Yabby-Edge",
+    "defaultPrice": 130.0,
+    "category": "Digital Matter Equipment",
+    "desc": "Small Rugged Indoor/Outdoor Batter-Powered Asset Tracker"
+  },
+  {
+    "skuKey": "Yabby3",
+    "fullPath": "Digital Matter Equipment:Yabby3",
+    "defaultPrice": 130.0,
+    "category": "Digital Matter Equipment",
+    "desc": "Small Ultra-Rugged Battery-Powered Asset Tracker"
+  },
+  {
+    "skuKey": "ZD.323.1.15",
+    "fullPath": "Zone Defense Equipment:ZD.323.1.15",
+    "defaultPrice": 0.0,
+    "category": "Zone Defense Equipment",
+    "desc": "Monitor LCD 7\" (auto switch) with color Camera and 15 meter / 49 feet Cable"
+  },
+  {
+    "skuKey": "ZenduForms",
+    "fullPath": "Zendu Solutions:ZenduForms",
+    "defaultPrice": 3.0,
+    "category": "Zendu Solutions",
+    "desc": ""
+  },
+  {
+    "skuKey": "ZenduLearn",
+    "fullPath": "Zendu Solutions:ZenduLearn",
+    "defaultPrice": 0.0,
+    "category": "Zendu Solutions",
+    "desc": ""
+  },
+  {
+    "skuKey": "ZenduMA - Basic User",
+    "fullPath": "Zendu Solutions:ZenduMA - Basic User",
+    "defaultPrice": 29.0,
+    "category": "Zendu Solutions",
+    "desc": "Per User Charge"
+  },
+  {
+    "skuKey": "ZenduMA - Basic Vehicle",
+    "fullPath": "Zendu Solutions:ZenduMA - Basic Vehicle",
+    "defaultPrice": 3.0,
+    "category": "Zendu Solutions",
+    "desc": "Per Vehicle Charge"
+  },
+  {
+    "skuKey": "ZenduMA - Pro User",
+    "fullPath": "Zendu Solutions:ZenduMA - Pro User",
+    "defaultPrice": 35.0,
+    "category": "Zendu Solutions",
+    "desc": "Professional Plan - By User"
+  },
+  {
+    "skuKey": "ZenduMA - Pro Vehicle",
+    "fullPath": "Zendu Solutions:ZenduMA - Pro Vehicle",
+    "defaultPrice": 4.0,
+    "category": "Zendu Solutions",
+    "desc": "Professional Plan - By Vehicle"
+  },
+  {
+    "skuKey": "ZenduMaps",
+    "fullPath": "Zendu Solutions:ZenduMaps",
+    "defaultPrice": 3.0,
+    "category": "Zendu Solutions",
+    "desc": "Per Vehicle Charge"
+  },
+  {
+    "skuKey": "ZenduMaps - Compliance",
+    "fullPath": "Zendu Solutions:ZenduMaps - Compliance",
+    "defaultPrice": 5.0,
+    "category": "Zendu Solutions",
+    "desc": "Compliance Plan by Vehicle"
+  },
+  {
+    "skuKey": "ZenduWork",
+    "fullPath": "Zendu Solutions:ZenduWork",
+    "defaultPrice": 10.0,
+    "category": "Zendu Solutions",
+    "desc": "Per User"
+  },
+  {
+    "skuKey": "ZenScore",
+    "fullPath": "Zendu Solutions:ZenScore",
+    "defaultPrice": 0.0,
+    "category": "Zendu Solutions",
+    "desc": ""
   }
 ]

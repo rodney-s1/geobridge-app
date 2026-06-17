@@ -801,22 +801,22 @@ function CustomerOverridesTab({ overrides, catalog, onRefresh }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 //  TAB 4 — Import CSV
 // ═══════════════════════════════════════════════════════════════════════════════
-function ImportCsvTab({ onRefresh }) {
-  const [file, setFile] = useState(null)
+
+// Reusable drop-zone uploader card
+function ImportCard({ title, description, columns, endpoint, resultFields, onRefresh, acceptHint }) {
+  const [file, setFile]         = useState(null)
   const [uploading, setUploading] = useState(false)
-  const [result, setResult] = useState(null)
-  const [error, setError] = useState(null)
-  const fileRef = useRef()
+  const [result, setResult]     = useState(null)
+  const [error, setError]       = useState(null)
+  const fileRef                 = useRef()
 
   async function handleUpload() {
     if (!file) return
-    setUploading(true)
-    setResult(null)
-    setError(null)
+    setUploading(true); setResult(null); setError(null)
     const fd = new FormData()
     fd.append('file', file)
     try {
-      const r = await fetch(`${API}/api/settings/import-qb-skus`, { method: 'POST', body: fd })
+      const r    = await fetch(`${API}${endpoint}`, { method: 'POST', body: fd })
       const data = await r.json()
       if (!r.ok) throw new Error(data.detail || JSON.stringify(data))
       setResult(data)
@@ -831,82 +831,136 @@ function ImportCsvTab({ onRefresh }) {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 space-y-4">
-        <div>
-          <h3 className="text-sm font-semibold text-slate-200 mb-1">Import QB Invoice Export CSV</h3>
-          <p className="text-xs text-slate-400">
-            Upload a QuickBooks monthly invoice export to automatically populate the SKU catalog and
-            per-customer price overrides. The parser reads the doubled-comma CSV format and extracts
-            SKU keys from the Item column (last parenthesised group).
-          </p>
-        </div>
-
-        <div className="bg-slate-700/50 rounded-lg p-4 text-xs text-slate-400 space-y-1">
-          <div className="font-medium text-slate-300 mb-2">Expected Column Layout</div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 font-mono">
-            <span className="text-blue-400">Col N (13)</span><span>Customer Name</span>
-            <span className="text-blue-400">Col P (15)</span><span>Item / SKU path</span>
-            <span className="text-blue-400">Col R (17)</span><span>Qty</span>
-            <span className="text-blue-400">Col T (19)</span><span>Sales Price</span>
-          </div>
-          <div className="mt-2 text-slate-500">Note: doubled-comma format — every other column is blank.</div>
-        </div>
-
-        <div
-          className="border-2 border-dashed border-slate-600 rounded-xl p-6 text-center cursor-pointer hover:border-blue-500 transition-colors"
-          onClick={() => fileRef.current?.click()}
-          onDragOver={e => e.preventDefault()}
-          onDrop={e => { e.preventDefault(); setFile(e.dataTransfer.files[0]) }}
-        >
-          {file ? (
-            <div>
-              <div className="text-blue-400 text-2xl mb-2">📄</div>
-              <div className="text-sm text-slate-200 font-medium">{file.name}</div>
-              <div className="text-xs text-slate-400 mt-1">{(file.size / 1024).toFixed(1)} KB</div>
-            </div>
-          ) : (
-            <div>
-              <div className="text-slate-500 text-3xl mb-2">📂</div>
-              <div className="text-sm text-slate-400">Drop a CSV file here or click to browse</div>
-              <div className="text-xs text-slate-500 mt-1">QuickBooks monthly invoice export (.csv)</div>
-            </div>
-          )}
-          <input ref={fileRef} type="file" accept=".csv,text/csv,text/plain" className="hidden"
-            onChange={e => setFile(e.target.files[0])} />
-        </div>
-
-        <button
-          disabled={!file || uploading}
-          onClick={handleUpload}
-          className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition-colors"
-        >
-          {uploading ? 'Importing…' : 'Import CSV'}
-        </button>
-
-        {error && (
-          <div className="bg-red-900/40 border border-red-700/40 rounded-lg px-4 py-3 text-sm text-red-300">
-            {error}
-          </div>
-        )}
-
-        {result && (
-          <div className="bg-emerald-900/30 border border-emerald-700/40 rounded-lg px-4 py-3 space-y-1">
-            <div className="text-sm font-medium text-emerald-300">Import successful!</div>
-            <div className="grid grid-cols-2 gap-1 text-xs text-slate-300 mt-2">
-              <span className="text-slate-400">SKUs added:</span><span>{result.skusAdded}</span>
-              <span className="text-slate-400">SKUs updated:</span><span>{result.skusUpdated}</span>
-              <span className="text-slate-400">Price overrides added:</span><span>{result.ovrAdded}</span>
-              <span className="text-slate-400">Price overrides updated:</span><span>{result.ovrUpdated}</span>
-              <span className="text-slate-400">Total SKUs in catalog:</span><span className="font-semibold text-white">{result.totalSkus}</span>
-              <span className="text-slate-400">Customers processed:</span><span className="font-semibold text-white">{result.totalCustomers}</span>
-            </div>
-          </div>
-        )}
+    <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 space-y-4">
+      <div>
+        <h3 className="text-sm font-semibold text-slate-200 mb-1">{title}</h3>
+        <p className="text-xs text-slate-400">{description}</p>
       </div>
+
+      {/* Column layout reference */}
+      <div className="bg-slate-700/50 rounded-lg p-4 text-xs text-slate-400">
+        <div className="font-medium text-slate-300 mb-2">Expected Column Layout</div>
+        <div className="grid grid-cols-2 gap-x-6 gap-y-0.5 font-mono">
+          {columns.map(([col, label]) => (
+            <>
+              <span key={col} className="text-blue-400">{col}</span>
+              <span key={label}>{label}</span>
+            </>
+          ))}
+        </div>
+        <div className="mt-2 text-slate-500">Note: doubled-comma format — every other column is blank.</div>
+      </div>
+
+      {/* Drop zone */}
+      <div
+        className="border-2 border-dashed border-slate-600 rounded-xl p-6 text-center cursor-pointer hover:border-blue-500 transition-colors"
+        onClick={() => fileRef.current?.click()}
+        onDragOver={e => e.preventDefault()}
+        onDrop={e => { e.preventDefault(); setFile(e.dataTransfer.files[0]) }}
+      >
+        {file ? (
+          <div>
+            <div className="text-blue-400 text-2xl mb-2">📄</div>
+            <div className="text-sm text-slate-200 font-medium">{file.name}</div>
+            <div className="text-xs text-slate-400 mt-1">{(file.size / 1024).toFixed(1)} KB</div>
+          </div>
+        ) : (
+          <div>
+            <div className="text-slate-500 text-3xl mb-2">📂</div>
+            <div className="text-sm text-slate-400">Drop a CSV here or click to browse</div>
+            <div className="text-xs text-slate-500 mt-1">{acceptHint}</div>
+          </div>
+        )}
+        <input ref={fileRef} type="file" accept=".csv,text/csv,text/plain" className="hidden"
+          onChange={e => setFile(e.target.files[0])} />
+      </div>
+
+      <button
+        disabled={!file || uploading}
+        onClick={handleUpload}
+        className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition-colors"
+      >
+        {uploading ? 'Importing…' : 'Import'}
+      </button>
+
+      {error && (
+        <div className="bg-red-900/40 border border-red-700/40 rounded-lg px-4 py-3 text-sm text-red-300">
+          {error}
+        </div>
+      )}
+
+      {result && (
+        <div className="bg-emerald-900/30 border border-emerald-700/40 rounded-lg px-4 py-3 space-y-2">
+          <div className="text-sm font-medium text-emerald-300">✓ Import successful</div>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-0.5 text-xs mt-1">
+            {resultFields.map(({ key, label, bold }) => (
+              result[key] !== undefined && <>
+                <span key={`l-${key}`} className="text-slate-400">{label}:</span>
+                <span key={`v-${key}`} className={bold ? 'font-semibold text-white' : 'text-slate-200'}>
+                  {typeof result[key] === 'number' ? result[key].toLocaleString() : result[key]}
+                </span>
+              </>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
+
+function ImportCsvTab({ onRefresh }) {
+  return (
+    <div className="space-y-6 max-w-2xl">
+
+      {/* ── Card 1: QB Invoice Export ── */}
+      <ImportCard
+        title="QB Monthly Invoice Export"
+        description="Upload a QuickBooks monthly invoice export to populate the SKU catalog and per-customer price overrides. SKU keys are extracted from the Item column (Group:SKU Name (Description) format)."
+        columns={[
+          ['Col N (13)', 'Customer Name'],
+          ['Col P (15)', 'Item / SKU path'],
+          ['Col R (17)', 'Qty'],
+          ['Col T (19)', 'Sales Price (per customer)'],
+        ]}
+        endpoint="/api/settings/import-qb-skus"
+        acceptHint="QuickBooks monthly invoice export (.csv)"
+        resultFields={[
+          { key: 'skusAdded',    label: 'SKUs added' },
+          { key: 'skusUpdated',  label: 'SKUs updated' },
+          { key: 'ovrAdded',     label: 'Customer prices added' },
+          { key: 'ovrUpdated',   label: 'Customer prices updated' },
+          { key: 'totalSkus',    label: 'Total SKUs in catalog', bold: true },
+          { key: 'totalCustomers', label: 'Customers processed', bold: true },
+        ]}
+        onRefresh={onRefresh}
+      />
+
+      {/* ── Card 2: QB Item Price List ── */}
+      <ImportCard
+        title="QB Item Price List"
+        description="Upload a QuickBooks Item Price List to fill pricing gaps and add new SKUs. Existing SKUs with a price already set are never overwritten — this is the source of truth for default pricing only."
+        columns={[
+          ['Col C (2)', 'Item (Group:SKU Name)'],
+          ['Col E (4)', 'Description'],
+          ['Col G (6)', 'Our Cost'],
+          ['Col I (8)', 'Price to Customer'],
+        ]}
+        endpoint="/api/settings/import-price-list"
+        acceptHint="QuickBooks Item Price List export (.csv)"
+        resultFields={[
+          { key: 'added',       label: 'New SKUs added' },
+          { key: 'updated',     label: 'Prices filled ($0 → real price)' },
+          { key: 'skipped',     label: 'Skipped (price already set)' },
+          { key: 'totalItems',  label: 'Items in file' },
+          { key: 'totalSkus',   label: 'Total SKUs in catalog', bold: true },
+        ]}
+        onRefresh={onRefresh}
+      />
+
+    </div>
+  )
+}
+
 
 // ═══════════════════════════════════════════════════════════════════════════════
 //  ROOT COMPONENT
