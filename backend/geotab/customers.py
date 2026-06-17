@@ -1,9 +1,7 @@
-from __future__ import annotations  # allow list[dict], X | Y hints on Python 3.9
-
 from fastapi import APIRouter, HTTPException, UploadFile, File, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, List
 import asyncio
 import csv
 import io
@@ -47,14 +45,14 @@ def _save_json(path: str, data) -> None:
     os.replace(tmp, path)
 
 # ─── In-memory stores — pre-loaded from disk on startup ──────────────────────
-billing_overrides:  dict[str, str]  = _load_json(OVERRIDES_FILE, {})
-qb_customers:       dict[str, dict] = _load_json(QB_DATA_FILE, {})
-qb_items:           list[dict]      = []
-name_to_company_id: dict[str, str]  = {}   # normalize(name) -> companyId, built on sync
+billing_overrides:  Dict[str, str]  = _load_json(OVERRIDES_FILE, {})
+qb_customers:       Dict[str, dict] = _load_json(QB_DATA_FILE, {})
+qb_items:           List[dict]      = []
+name_to_company_id: Dict[str, str]  = {}   # normalize(name) -> companyId, built on sync
 
 # ─── MyAdmin sync cache ───────────────────────────────────────────────────────
 CACHE_TTL_HOURS = 12
-_sync_cache: dict = _load_json(SYNC_CACHE_FILE, {})
+_sync_cache: Dict = _load_json(SYNC_CACHE_FILE, {})
 
 # ─── Sync lock — prevents concurrent fetches when multiple requests arrive ───
 _sync_lock = asyncio.Lock()
@@ -69,7 +67,7 @@ if _sync_cache.get("fetched_at"):
 
 # ─── Real-time sync progress state ────────────────────────────────────────────
 # Updated by _fetch_myadmin_customers(); polled by the SSE endpoint.
-_sync_progress: dict = {
+_sync_progress: Dict = {
     "active":           False,   # True while a sync is running
     "step":             "",      # "step1" | "step2" | "processing" | "done" | "error"
     "step_label":       "",      # Human-readable current phase
@@ -147,7 +145,7 @@ def enrich_customer(customer: dict) -> dict:
     }
 
 
-async def _fetch_myadmin_customers(force_refresh: bool = False) -> list[dict]:
+async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
     """
     Pull customer + device data from MyAdmin using TWO steps.
 
@@ -309,7 +307,7 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> list[dict]:
         message="Building customer list…",
     )
 
-    device_id_to_company: dict[str, dict] = {}
+    device_id_to_company: Dict[str, dict] = {}
     for c in all_contracts:
         device   = c.get("device") or {}
         dev_id   = str(device.get("id") or "")
@@ -325,7 +323,7 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> list[dict]:
 
     _set_progress(pct=85, message="Grouping by company…")
 
-    company_map: dict[str, dict] = {}
+    company_map: Dict[str, dict] = {}
     for rec in all_device_dbs:
         dev_id   = str(rec.get("DeviceId") or rec.get("deviceId") or "")
         db_name  = rec.get("DatabaseName") or rec.get("databaseName") or ""
@@ -522,7 +520,7 @@ async def get_qb_summary():
             "itemsLoaded":          len(qb_items),
             "billingTypeBreakdown": {},
         }
-    breakdown: dict[str, int] = {}
+    breakdown: Dict[str, int] = {}
     for qb in qb_customers.values():
         bt = qb.get("billingType") or "Unknown"
         breakdown[bt] = breakdown.get(bt, 0) + 1
@@ -555,7 +553,7 @@ async def get_dashboard_stats():
     total_customers = len(customers)
     total_devices   = sum(c.get("deviceCount") or 0 for c in customers)
 
-    billing_breakdown: dict[str, int] = {}
+    billing_breakdown: Dict[str, int] = {}
     for c in customers:
         bt = c.get("billingType") or "Unknown"
         billing_breakdown[bt] = billing_breakdown.get(bt, 0) + 1
@@ -692,7 +690,7 @@ async def get_customer(account_id: str):
 
         # Build a deviceId -> DatabaseName lookup from the cached device-db map
         # so we can show the real DB name (e.g. "bluearrow") instead of a numeric ID
-        device_db_map: dict[str, str] = {}
+        device_db_map: Dict[str, str] = {}
         for rec in (_sync_cache.get("device_db_records") or []):
             dev_id  = str(rec.get("DeviceId") or rec.get("deviceId") or "")
             db_name = rec.get("DatabaseName") or rec.get("databaseName") or ""

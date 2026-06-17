@@ -22,9 +22,8 @@ Key logic:
        not_in_qb   — customer has no QB data / no invoiced price
 """
 
-from __future__ import annotations  # allow list[dict], X | Y hints on Python 3.9
-
 from fastapi import APIRouter, HTTPException
+from typing import Dict, Optional, Tuple
 import json
 import os
 
@@ -55,7 +54,7 @@ def _normalize(s: str) -> str:
 
 # ─── Helper: resolve expected price for (customerName, skuKey) ───────────────
 def _resolve_price(customer_name: str, sku_key: str,
-                   ovr_index: dict, catalog_index: dict) -> tuple[float | None, str]:
+                   ovr_index: dict, catalog_index: dict) -> Tuple[Optional[float], str]:
     """
     Returns (price, source) where source is 'override' | 'catalog' | 'none'.
     ovr_index  : {(norm_customer, skuKey) -> price}
@@ -139,30 +138,30 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     catalog, mappings, overrides = _get_stores()
 
     # skuKey → defaultPrice
-    catalog_index: dict[str, float] = {
+    catalog_index: Dict[str, float] = {
         s["skuKey"]: float(s.get("defaultPrice") or 0)
         for s in catalog
     }
     # skuKey → skuName (full label)
-    catalog_name: dict[str, str] = {
+    catalog_name: Dict[str, str] = {
         s["skuKey"]: s.get("skuKey", "")
         for s in catalog
     }
 
     # promoCode (upper) → skuKey
-    mapping_index: dict[str, str] = {
+    mapping_index: Dict[str, str] = {
         (m.get("promoCode") or "").upper(): m.get("skuKey") or ""
         for m in mappings
     }
 
     # (norm_customerName, skuKey) → price
-    ovr_index: dict[tuple, float] = {
+    ovr_index: Dict[tuple, float] = {
         (_normalize(o["customerName"]), o["skuKey"]): float(o.get("price") or 0)
         for o in overrides
     }
 
     # ── Group contracts by company ────────────────────────────────────────────
-    device_db_map: dict[str, str] = {}
+    device_db_map: Dict[str, str] = {}
     for rec in device_db_records:
         dev_id  = str(rec.get("DeviceId") or rec.get("deviceId") or "")
         db_name = rec.get("DatabaseName") or rec.get("databaseName") or ""
@@ -170,7 +169,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             device_db_map[dev_id] = db_name
 
     # company_id → {name, devices: [...]}
-    company_map: dict[str, dict] = {}
+    company_map: Dict[str, dict] = {}
 
     for c in contracts:
         if c.get("isTerminated"):

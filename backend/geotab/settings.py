@@ -23,11 +23,9 @@ Endpoints:
   GET  /api/settings/unmapped-rate-plans       rate plan codes seen in MyAdmin with no mapping
 """
 
-from __future__ import annotations  # allow list[dict], X | Y hints on Python 3.9
-
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, List, Tuple
 import csv
 import io
 import json
@@ -230,7 +228,7 @@ async def delete_override(override_id: str):
 #  IMPORT QB INVOICE CSV  →  populate sku_catalog (and customer overrides)
 # ════════════════════════════════════════════════════════════════════════════════
 
-def _parse_item(item_str: str) -> tuple[str, str, str]:
+def _parse_item(item_str: str) -> Tuple[str, str, str]:
     """
     Parse a QB Item (col P) string into (group, sku_name, desc).
 
@@ -406,13 +404,13 @@ async def import_qb_skus(file: UploadFile = File(...)):
 #  IMPORT ITEM PRICE LIST CSV  →  fill $0 gaps + add new SKUs, never override
 # ════════════════════════════════════════════════════════════════════════════════
 
-def _parse_price(s: str) -> float | None:
+def _parse_price(s: str) -> Optional[float]:
     s = s.strip().replace(',', '')
     try:    return float(s)
     except: return None
 
 
-def _parse_price_list_csv(content: str) -> list[dict]:
+def _parse_price_list_csv(content: str) -> List[dict]:
     """
     Parse a QB Item Price List CSV (doubled-comma format).
     Col 2 = Item (Group:SKU Name), Col 4 = Description, Col 6 = Cost, Col 8 = Price
@@ -535,9 +533,14 @@ async def get_unmapped_rate_plans():
     Returns codes that have no mapping yet.
     """
     # Import here to avoid circular import
-    from . import customers as cust_mod
+    try:
+        from . import customers as cust_mod
+        raw = cust_mod._sync_cache.get("raw_customers") or []
+    except Exception as e:
+        import traceback
+        print(f"[settings] unmapped-rate-plans import error: {e}\n{traceback.format_exc()}")
+        return {"unmapped": [], "total": 0, "hasCachedData": False, "_importError": str(e)}
 
-    raw = cust_mod._sync_cache.get("raw_customers") or []
     if not raw:
         return {"unmapped": [], "total": 0, "hasCachedData": False}
 
@@ -576,7 +579,24 @@ async def get_unmapped_rate_plans():
 
 @router.get("/settings/summary")
 async def get_settings_summary():
-    from . import customers as cust_mod
+    try:
+        from . import customers as cust_mod
+        _raw_check = cust_mod._sync_cache  # verify accessible
+    except Exception as e:
+        import traceback
+        print(f"[settings] summary import error: {e}\n{traceback.format_exc()}")
+        # Return counts from disk even if customers module fails to import
+        catalog_now   = _catalog()
+        mappings_now  = _mappings()
+        overrides_now = _overrides()
+        return {
+            "skuCount":      len(catalog_now),
+            "mappingCount":  len(mappings_now),
+            "overrideCount": len(overrides_now),
+            "unmappedCount": 0,
+            "hasCachedData": False,
+            "_importError":  str(e),
+        }
 
     raw = cust_mod._sync_cache.get("raw_customers") or []
     seen_codes: set = set()
