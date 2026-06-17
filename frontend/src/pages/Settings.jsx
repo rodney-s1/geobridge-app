@@ -981,29 +981,39 @@ export default function Settings() {
 
   const fetchAll = useCallback(async () => {
     setFetchError(null)
+    // Use allSettled so one failing endpoint doesn't cancel the others
+    const [catR, mapR, ovrR, unmR, sumR] = await Promise.allSettled([
+      fetch(`${API}/api/settings/sku-catalog`),
+      fetch(`${API}/api/settings/sku-mappings`),
+      fetch(`${API}/api/settings/customer-overrides`),
+      fetch(`${API}/api/settings/unmapped-rate-plans`),
+      fetch(`${API}/api/settings/summary`),
+    ])
+    const errors = []
     try {
-      const [catR, mapR, ovrR, unmR, sumR] = await Promise.all([
-        fetch(`${API}/api/settings/sku-catalog`),
-        fetch(`${API}/api/settings/sku-mappings`),
-        fetch(`${API}/api/settings/customer-overrides`),
-        fetch(`${API}/api/settings/unmapped-rate-plans`),
-        fetch(`${API}/api/settings/summary`),
-      ])
-      const errors = []
-      if (catR.ok) setCatalog(await catR.json())
-      else errors.push(`catalog HTTP ${catR.status}`)
-      if (mapR.ok) setMappings(await mapR.json())
-      else errors.push(`mappings HTTP ${mapR.status}`)
-      if (ovrR.ok) setOverrides(await ovrR.json())
-      else errors.push(`overrides HTTP ${ovrR.status}`)
-      if (unmR.ok) { const d = await unmR.json(); setUnmapped(d.unmapped || []) }
-      if (sumR.ok) setSummary(await sumR.json())
-      if (errors.length) setFetchError(`Fetch errors — ${errors.join(', ')}`)
-    } catch (e) {
-      setFetchError(`Network error: ${e.message}`)
-    } finally {
-      setLoading(false)
-    }
+      if (catR.status === 'fulfilled' && catR.value.ok) setCatalog(await catR.value.json())
+      else errors.push(`catalog: ${catR.reason?.message || 'HTTP ' + catR.value?.status}`)
+    } catch(e) { errors.push(`catalog parse: ${e.message}`) }
+    try {
+      if (mapR.status === 'fulfilled' && mapR.value.ok) setMappings(await mapR.value.json())
+      else errors.push(`mappings: ${mapR.reason?.message || 'HTTP ' + mapR.value?.status}`)
+    } catch(e) { errors.push(`mappings parse: ${e.message}`) }
+    try {
+      if (ovrR.status === 'fulfilled' && ovrR.value.ok) setOverrides(await ovrR.value.json())
+      else errors.push(`overrides: ${ovrR.reason?.message || 'HTTP ' + ovrR.value?.status}`)
+    } catch(e) { errors.push(`overrides parse: ${e.message}`) }
+    try {
+      if (unmR.status === 'fulfilled' && unmR.value.ok) {
+        const d = await unmR.value.json(); setUnmapped(d.unmapped || [])
+      }
+      // unmapped failing is non-critical — don't add to errors
+    } catch(e) { /* non-critical */ }
+    try {
+      if (sumR.status === 'fulfilled' && sumR.value.ok) setSummary(await sumR.value.json())
+      // summary failing is non-critical — don't add to errors
+    } catch(e) { /* non-critical */ }
+    if (errors.length) setFetchError(`Fetch errors — ${errors.join(', ')}`)
+    setLoading(false)
   }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])

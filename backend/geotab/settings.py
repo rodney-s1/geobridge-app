@@ -534,31 +534,37 @@ async def get_unmapped_rate_plans():
     Compare rate plan codes seen in the MyAdmin sync cache against sku_mappings.
     Reads myadmin_cache.json directly — no import of customers module needed.
     """
-    cache = _myadmin_cache()
-    raw   = cache.get("raw_customers") or []
-    if not raw:
-        return {"unmapped": [], "total": 0, "hasCachedData": False}
+    try:
+        cache = _myadmin_cache()
+        raw   = cache.get("raw_customers") or []
+        if not raw:
+            return {"unmapped": [], "total": 0, "hasCachedData": False}
 
-    seen_codes: set = set()
-    code_counts: dict = {}
-    for c in raw:
-        for d in (c.get("devices") or []):
-            code = (d.get("promoCode") or "").strip().upper()
-            if code:
-                seen_codes.add(code)
-                code_counts[code] = code_counts.get(code, 0) + 1
+        seen_codes: set = set()
+        code_counts: dict = {}
+        for c in raw:
+            for d in (c.get("devices") or []):
+                code = (d.get("promoCode") or "").strip().upper()
+                if code:
+                    seen_codes.add(code)
+                    code_counts[code] = code_counts.get(code, 0) + 1
 
-    mapped_codes = {m["ratePlanCode"].upper() for m in _mappings()}
-    unmapped     = sorted(seen_codes - mapped_codes)
+        mapped_codes = {m["ratePlanCode"].upper() for m in _mappings()}
+        unmapped     = sorted(seen_codes - mapped_codes)
 
-    return {
-        "unmapped": [
-            {"ratePlanCode": code, "deviceCount": code_counts.get(code, 0)}
-            for code in unmapped
-        ],
-        "total":        len(unmapped),
-        "hasCachedData": True,
-    }
+        return {
+            "unmapped": [
+                {"ratePlanCode": code, "deviceCount": code_counts.get(code, 0)}
+                for code in unmapped
+            ],
+            "total":        len(unmapped),
+            "hasCachedData": True,
+        }
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        print(f"[settings] unmapped-rate-plans ERROR: {e}\n{tb}")
+        return {"unmapped": [], "total": 0, "hasCachedData": False, "_error": str(e)}
 
 
 # ════════════════════════════════════════════════════════════════════════════════
@@ -571,29 +577,47 @@ async def get_settings_summary():
     Summary counts for the Settings page header cards.
     Reads myadmin_cache.json directly — no import of customers module needed.
     """
-    cache        = _myadmin_cache()
-    raw          = cache.get("raw_customers") or []
-    catalog_now  = _catalog()
-    mappings_now = _mappings()
-    overrides_now= _overrides()
+    try:
+        cache        = _myadmin_cache()
+        raw          = cache.get("raw_customers") or []
+        catalog_now  = _catalog()
+        mappings_now = _mappings()
+        overrides_now= _overrides()
 
-    seen_codes: set = set()
-    for c in raw:
-        for d in (c.get("devices") or []):
-            code = (d.get("promoCode") or "").strip().upper()
-            if code:
-                seen_codes.add(code)
+        seen_codes: set = set()
+        for c in raw:
+            for d in (c.get("devices") or []):
+                code = (d.get("promoCode") or "").strip().upper()
+                if code:
+                    seen_codes.add(code)
 
-    mapped_codes   = {m["ratePlanCode"].upper() for m in mappings_now}
-    unmapped_count = len(seen_codes - mapped_codes)
+        mapped_codes   = {m["ratePlanCode"].upper() for m in mappings_now}
+        unmapped_count = len(seen_codes - mapped_codes)
 
-    return {
-        "skuCount":      len(catalog_now),
-        "mappingCount":  len(mappings_now),
-        "overrideCount": len(overrides_now),
-        "unmappedCount": unmapped_count,
-        "hasCachedData": bool(raw),
-    }
+        return {
+            "skuCount":      len(catalog_now),
+            "mappingCount":  len(mappings_now),
+            "overrideCount": len(overrides_now),
+            "unmappedCount": unmapped_count,
+            "hasCachedData": bool(raw),
+        }
+    except Exception as e:
+        import traceback
+        tb = traceback.format_exc()
+        print(f"[settings] summary ERROR: {e}\n{tb}")
+        # Return disk counts even on error so the page still shows data
+        try:
+            return {
+                "skuCount":      len(_catalog()),
+                "mappingCount":  len(_mappings()),
+                "overrideCount": len(_overrides()),
+                "unmappedCount": 0,
+                "hasCachedData": False,
+                "_error": str(e),
+            }
+        except Exception:
+            return {"skuCount": 0, "mappingCount": 0, "overrideCount": 0,
+                    "unmappedCount": 0, "hasCachedData": False, "_error": str(e)}
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
