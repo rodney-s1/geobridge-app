@@ -18,16 +18,16 @@ session_store = {
     "account_id": None,   # currently selected accountId for API calls
 }
 
-# ─── Request Models ───────────────────────────────────────────
+# --- Request Models -------------------------------------------
 class LoginRequest(BaseModel):
     username: str
     password: str
 
-# ─── Helper: Make MyAdmin API Call ───────────────────────────
+# --- Helper: Make MyAdmin API Call ---------------------------
 async def myadmin_call(method: str, params: dict, timeout: float = 120.0):
     """
     Make a JSON-RPC call to the Geotab MyAdmin API.
-    Default timeout is 120 s — long enough for paginated GetDeviceContractsByPage
+    Default timeout is 120 s -- long enough for paginated GetDeviceContractsByPage
     calls across large accounts (CELU01 has 2000+ customers / 5000+ contracts).
     Pass a custom timeout for one-off calls that need a different limit.
     """
@@ -45,7 +45,7 @@ async def myadmin_call(method: str, params: dict, timeout: float = 120.0):
         response.raise_for_status()
         return response.json()
 
-# ─── Login Route ─────────────────────────────────────────────
+# --- Login Route ---------------------------------------------
 @router.post("/login")
 async def login(request: LoginRequest):
     try:
@@ -88,7 +88,7 @@ async def login(request: LoginRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# ─── Logout Route ─────────────────────────────────────────────
+# --- Logout Route ---------------------------------------------
 @router.post("/logout")
 async def logout():
     session_store["user_id"] = None
@@ -98,7 +98,7 @@ async def logout():
     session_store["account_id"] = None
     return {"success": True, "message": "Logged out successfully"}
 
-# ─── Session Check Route ──────────────────────────────────────
+# --- Session Check Route --------------------------------------
 @router.get("/session")
 async def get_session():
     if not session_store["session_id"]:
@@ -109,7 +109,7 @@ async def get_session():
         "username": session_store["username"]
     }
 
-# ─── Accounts Route ───────────────────────────────────────────
+# --- Accounts Route -------------------------------------------
 @router.get("/accounts")
 async def get_accounts():
     if not session_store["session_id"]:
@@ -118,7 +118,7 @@ async def get_accounts():
         "accounts": session_store.get("accounts") or []
     }
 
-# ─── Select Account Route ─────────────────────────────────────
+# --- Select Account Route -------------------------------------
 class SelectAccountRequest(BaseModel):
     account_id: str
 

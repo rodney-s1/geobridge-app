@@ -1,5 +1,5 @@
 """
-reconciliation.py — Billing Reconciliation API
+reconciliation.py -- Billing Reconciliation API
 ===============================================
 Compares what MyAdmin says customers have (devices + rate plan codes)
 against the QB SKU catalog and per-customer price overrides to surface
@@ -7,19 +7,19 @@ billing discrepancies.
 
 Key logic:
   1. Load all cached MyAdmin contracts (promoCode per device).
-  2. For each device, look up promoCode → skuKey via sku_mappings.
+  2. For each device, look up promoCode -> skuKey via sku_mappings.
   3. Look up the expected price:
        - customer-specific override (from sku_customer_overrides) if it exists
        - else catalog default price
   4. Look up the actual QB-invoiced price from sku_customer_overrides
      (since that's where invoice import stored per-customer prices).
   5. Emit per-device rows and per-customer summary rows with status:
-       ok         — expected == actual
-       over        — actual > expected  (customer billed more than catalog)
-       under       — actual < expected  (customer billed less than catalog)
-       unmapped    — promoCode has no SKU mapping
-       no_price    — SKU exists but no price anywhere
-       not_in_qb   — customer has no QB data / no invoiced price
+       ok         -- expected == actual
+       over        -- actual > expected  (customer billed more than catalog)
+       under       -- actual < expected  (customer billed less than catalog)
+       unmapped    -- promoCode has no SKU mapping
+       no_price    -- SKU exists but no price anywhere
+       not_in_qb   -- customer has no QB data / no invoiced price
 """
 
 from fastapi import APIRouter, HTTPException
@@ -31,7 +31,7 @@ router = APIRouter()
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 
-# ─── Shared stores (imported lazily so circular-import safe) ─────────────────
+# --- Shared stores (imported lazily so circular-import safe) -----------------
 def _load(path, default):
     try:
         with open(path, "r", encoding="utf-8") as f:
@@ -52,7 +52,7 @@ def _normalize(s: str) -> str:
     return (s or "").strip().lower()
 
 
-# ─── Helper: resolve expected price for (customerName, skuKey) ───────────────
+# --- Helper: resolve expected price for (customerName, skuKey) ---------------
 def _resolve_price(customer_name: str, sku_key: str,
                    ovr_index: dict, catalog_index: dict) -> Tuple[Optional[float], str]:
     """
@@ -69,9 +69,9 @@ def _resolve_price(customer_name: str, sku_key: str,
     return None, "none"
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# ===============================================================================
 #  GET /api/reconciliation
-# ═══════════════════════════════════════════════════════════════════════════════
+# ===============================================================================
 
 @router.get("/reconciliation")
 async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
@@ -121,7 +121,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
       ]
     }
     """
-    # ── Import here to avoid circular imports ─────────────────────────────────
+    # -- Import here to avoid circular imports ---------------------------------
     from geotab.customers import _sync_cache
 
     contracts = _sync_cache.get("contracts") or []
@@ -134,33 +134,33 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
 
     device_db_records = _sync_cache.get("device_db_records") or []
 
-    # ── Build indexes ─────────────────────────────────────────────────────────
+    # -- Build indexes ---------------------------------------------------------
     catalog, mappings, overrides = _get_stores()
 
-    # skuKey → defaultPrice
+    # skuKey -> defaultPrice
     catalog_index: Dict[str, float] = {
         s["skuKey"]: float(s.get("defaultPrice") or 0)
         for s in catalog
     }
-    # skuKey → skuName (full label)
+    # skuKey -> skuName (full label)
     catalog_name: Dict[str, str] = {
         s["skuKey"]: s.get("skuKey", "")
         for s in catalog
     }
 
-    # promoCode (upper) → skuKey
+    # promoCode (upper) -> skuKey
     mapping_index: Dict[str, str] = {
         (m.get("promoCode") or "").upper(): m.get("skuKey") or ""
         for m in mappings
     }
 
-    # (norm_customerName, skuKey) → price
+    # (norm_customerName, skuKey) -> price
     ovr_index: Dict[tuple, float] = {
         (_normalize(o["customerName"]), o["skuKey"]): float(o.get("price") or 0)
         for o in overrides
     }
 
-    # ── Group contracts by company ────────────────────────────────────────────
+    # -- Group contracts by company --------------------------------------------
     device_db_map: Dict[str, str] = {}
     for rec in device_db_records:
         dev_id  = str(rec.get("DeviceId") or rec.get("deviceId") or "")
@@ -168,7 +168,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         if dev_id:
             device_db_map[dev_id] = db_name
 
-    # company_id → {name, devices: [...]}
+    # company_id -> {name, devices: [...]}
     company_map: Dict[str, dict] = {}
 
     for c in contracts:
@@ -199,7 +199,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             "ratePlanCode": rate_plan,
         })
 
-    # ── Per-device reconciliation ─────────────────────────────────────────────
+    # -- Per-device reconciliation ---------------------------------------------
     STATUS_PRIORITY = {"discrepancy": 0, "unmapped": 1, "no_price": 2, "not_in_qb": 3, "ok": 4}
 
     result_customers = []
@@ -317,7 +317,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 "status":        status,
             })
 
-        # ── Customer-level status ─────────────────────────────────────────────
+        # -- Customer-level status ---------------------------------------------
         has_discrepancy = (cust_over + cust_under) > 0
         has_unmapped    = cust_unmapped > 0
         has_no_price    = cust_no_price > 0
@@ -331,7 +331,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         else:
             cust_status = "ok"
 
-        # ── Apply status filter ───────────────────────────────────────────────
+        # -- Apply status filter -----------------------------------------------
         if status_filter and cust_status != status_filter:
             continue
 
@@ -386,9 +386,9 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     }
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# ===============================================================================
 #  GET /api/reconciliation/customer/{customer_id}
-# ═══════════════════════════════════════════════════════════════════════════════
+# ===============================================================================
 
 @router.get("/reconciliation/customer/{customer_id}")
 async def get_customer_reconciliation(customer_id: str):

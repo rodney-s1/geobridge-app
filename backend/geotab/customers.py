@@ -11,7 +11,7 @@ import sys
 import time
 from .auth import myadmin_call, session_store
 
-# ─── Windows-safe print (avoids CP1252 UnicodeEncodeError on arrow chars) ─────
+# --- Windows-safe print (avoids CP1252 UnicodeEncodeError on arrow chars) -----
 def _print(*args, **kwargs):
     """print() wrapper that replaces un-encodable chars instead of crashing."""
     msg = " ".join(str(a) for a in args)
@@ -22,10 +22,10 @@ def _print(*args, **kwargs):
 
 router = APIRouter()
 
-# ─── CELU01 is the only MyAdmin account we pull device data for ───────────────
+# --- CELU01 is the only MyAdmin account we pull device data for ---------------
 MYADMIN_ACCOUNT = "CELU01"
 
-# ─── Disk persistence paths ───────────────────────────────────────────────────
+# --- Disk persistence paths ---------------------------------------------------
 _HERE = os.path.dirname(os.path.abspath(__file__))
 QB_DATA_FILE    = os.path.join(_HERE, "qb_customers.json")
 OVERRIDES_FILE  = os.path.join(_HERE, "billing_overrides.json")
@@ -44,28 +44,28 @@ def _save_json(path: str, data) -> None:
         json.dump(data, f, ensure_ascii=False, indent=2)
     os.replace(tmp, path)
 
-# ─── In-memory stores — pre-loaded from disk on startup ──────────────────────
+# --- In-memory stores -- pre-loaded from disk on startup ----------------------
 billing_overrides:  Dict[str, str]  = _load_json(OVERRIDES_FILE, {})
 qb_customers:       Dict[str, dict] = _load_json(QB_DATA_FILE, {})
 qb_items:           List[dict]      = []
 name_to_company_id: Dict[str, str]  = {}   # normalize(name) -> companyId, built on sync
 
-# ─── MyAdmin sync cache ───────────────────────────────────────────────────────
+# --- MyAdmin sync cache -------------------------------------------------------
 CACHE_TTL_HOURS = 12
 _sync_cache: Dict = _load_json(SYNC_CACHE_FILE, {})
 
-# ─── Sync lock — prevents concurrent fetches when multiple requests arrive ───
+# --- Sync lock -- prevents concurrent fetches when multiple requests arrive ---
 _sync_lock = asyncio.Lock()
 
 _qb_loaded = bool(qb_customers)
 print(f"[customers] QB data: {len(qb_customers)} customers loaded from disk"
-      if _qb_loaded else "[customers] QB data: no saved file — import a CSV to populate")
+      if _qb_loaded else "[customers] QB data: no saved file -- import a CSV to populate")
 if _sync_cache.get("fetched_at"):
     age_h = (time.time() - _sync_cache["fetched_at"]) / 3600
     print(f"[customers] MyAdmin cache: {len(_sync_cache.get('customers', []))} customers, "
           f"{age_h:.1f}h old (TTL {CACHE_TTL_HOURS}h)")
 
-# ─── Real-time sync progress state ────────────────────────────────────────────
+# --- Real-time sync progress state --------------------------------------------
 # Updated by _fetch_myadmin_customers(); polled by the SSE endpoint.
 _sync_progress: Dict = {
     "active":           False,   # True while a sync is running
@@ -84,7 +84,7 @@ def _set_progress(**kwargs):
     _sync_progress.update(kwargs)
 
 
-# ─── Billing type map ─────────────────────────────────────────────────────────
+# --- Billing type map ---------------------------------------------------------
 QB_JOB_TYPE_MAP = {
     "standard":                     "Standard",
     "cua":                          "CUA",
@@ -149,30 +149,30 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
     """
     Pull customer + device data from MyAdmin using TWO steps.
 
-    Step 1 — GetCurrentDeviceDatabases (FAST, ~10-30s total)
+    Step 1 -- GetCurrentDeviceDatabases (FAST, ~10-30s total)
         Returns: device serial, DeviceId, DatabaseName (real Geotab DB name)
 
-    Step 2 — GetDeviceContractsByPage (SLOW, ~2-5min, but cached 12h)
+    Step 2 -- GetDeviceContractsByPage (SLOW, ~2-5min, but cached 12h)
         Returns: userCompany.name (customer name), isTerminated, device.id
 
     Progress is emitted to _sync_progress so the SSE endpoint can stream it
     to the frontend in real time.
     """
-    # ── Reset / start progress ─────────────────────────────────────────────────
+    # -- Reset / start progress -------------------------------------------------
     _set_progress(
         active=True,
         step="step1",
-        step_label="Step 1/2 — Fetching device databases…",
+        step_label="Step 1/2 -- Fetching device databases...",
         page=0,
         total_pages_est=0,
         records=0,
         pct=2,
-        message="Contacting MyAdmin…",
+        message="Contacting MyAdmin...",
         error="",
     )
 
-    # ── Step 1: GetCurrentDeviceDatabases ────────────────────────────────────
-    print("[sync] Step 1: Fetching current device databases (fast)…")
+    # -- Step 1: GetCurrentDeviceDatabases ------------------------------------
+    print("[sync] Step 1: Fetching current device databases (fast)...")
     all_device_dbs = []
     next_id = 0
     page_num = 0
@@ -180,10 +180,10 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
         page_num += 1
         _set_progress(
             step="step1",
-            step_label=f"Step 1/2 — Fetching device databases (page {page_num})…",
+            step_label=f"Step 1/2 -- Fetching device databases (page {page_num})...",
             page=page_num,
             pct=min(2 + page_num * 3, 20),   # grows to ~20% during step 1
-            message=f"Device database page {page_num}…",
+            message=f"Device database page {page_num}...",
         )
         result = await myadmin_call(
             "GetCurrentDeviceDatabases",
@@ -209,12 +209,12 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
     _sync_cache["device_db_records"] = all_device_dbs
     _set_progress(
         step="step1",
-        step_label="Step 1/2 — Device databases fetched ✓",
+        step_label="Step 1/2 -- Device databases fetched ok",
         pct=20,
         message=f"{len(all_device_dbs):,} device-db records",
     )
 
-    # ── Step 2: GetDeviceContractsByPage ─────────────────────────────────────
+    # -- Step 2: GetDeviceContractsByPage -------------------------------------
     cache_age = time.time() - (_sync_cache.get("fetched_at") or 0)
     cache_ok  = (
         not force_refresh
@@ -227,18 +227,18 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
         all_contracts = _sync_cache["contracts"]
         _set_progress(
             step="step2",
-            step_label="Step 2/2 — Using cached contracts ✓",
+            step_label="Step 2/2 -- Using cached contracts ok",
             pct=75,
             message=f"{len(all_contracts):,} contracts from 12-hour cache",
         )
     else:
-        print("[sync] Step 2: Fetching device contracts (slow — customer names)…")
+        print("[sync] Step 2: Fetching device contracts (slow -- customer names)...")
         all_contracts = []
         next_id  = 0
         page_num = 0
 
         # We'll estimate ~120 pages for CELU01 (100k+ contracts / 1000 per page).
-        # The bar runs from 20% → 75% during step 2.
+        # The bar runs from 20% -> 75% during step 2.
         STEP2_START_PCT = 20
         STEP2_END_PCT   = 75
         STEP2_PCT_RANGE = STEP2_END_PCT - STEP2_START_PCT
@@ -246,27 +246,27 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
 
         _set_progress(
             step="step2",
-            step_label="Step 2/2 — Fetching device contracts…",
+            step_label="Step 2/2 -- Fetching device contracts...",
             pct=STEP2_START_PCT,
-            message="Starting contract fetch…",
+            message="Starting contract fetch...",
         )
 
         while True:
             page_num += 1
             # Progress within step 2: linear up to 95% of the step's range,
-            # then clamp — we don't know total pages until the last batch < 1000.
+            # then clamp -- we don't know total pages until the last batch < 1000.
             step2_fraction = min(page_num / max(EST_PAGES, page_num + 1), 0.95)
             current_pct    = int(STEP2_START_PCT + step2_fraction * STEP2_PCT_RANGE)
             _set_progress(
                 step="step2",
-                step_label=f"Step 2/2 — Fetching contracts (page {page_num})…",
+                step_label=f"Step 2/2 -- Fetching contracts (page {page_num})...",
                 page=page_num,
                 total_pages_est=max(EST_PAGES, page_num),
                 records=len(all_contracts),
                 pct=current_pct,
-                message=f"Page {page_num} · {len(all_contracts):,} contracts so far…",
+                message=f"Page {page_num} * {len(all_contracts):,} contracts so far...",
             )
-            print(f"[sync] Step 2 page {page_num} (nextId={next_id})…")
+            print(f"[sync] Step 2 page {page_num} (nextId={next_id})...")
             result = await myadmin_call(
                 "GetDeviceContractsByPage",
                 {
@@ -289,7 +289,7 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
         print(f"[sync] Step 2 complete: {len(all_contracts)} total contracts")
         _set_progress(
             step="step2",
-            step_label="Step 2/2 — Contracts fetched ✓",
+            step_label="Step 2/2 -- Contracts fetched ok",
             records=len(all_contracts),
             pct=75,
             message=f"{len(all_contracts):,} total contracts fetched",
@@ -299,12 +299,12 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
         _sync_cache["device_db_records"]  = all_device_dbs   # keep in sync with contracts
         _save_json(SYNC_CACHE_FILE, _sync_cache)
 
-    # ── Processing: join + group ───────────────────────────────────────────────
+    # -- Processing: join + group -----------------------------------------------
     _set_progress(
         step="processing",
-        step_label="Processing — Joining device & contract data…",
+        step_label="Processing -- Joining device & contract data...",
         pct=80,
-        message="Building customer list…",
+        message="Building customer list...",
     )
 
     device_id_to_company: Dict[str, dict] = {}
@@ -321,7 +321,7 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
             "terminated":  bool(c.get("isTerminated")),
         }
 
-    _set_progress(pct=85, message="Grouping by company…")
+    _set_progress(pct=85, message="Grouping by company...")
 
     company_map: Dict[str, dict] = {}
     for rec in all_device_dbs:
@@ -363,18 +363,18 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
     _print(f"[sync] {len(all_device_dbs)} device-db records -> "
            f"{len(company_map)} companies -> {len(raw)} with active devices")
 
-    # ── Rebuild name → companyId lookup ─────────────────────────────────────
+    # -- Rebuild name -> companyId lookup -------------------------------------
     global name_to_company_id
     name_to_company_id = {
         normalize(v["customerName"]): v["companyId"]
         for v in raw if v["customerName"]
     }
 
-    # ── Done ─────────────────────────────────────────────────────────────────
+    # -- Done -----------------------------------------------------------------
     _set_progress(
         active=False,
         step="done",
-        step_label="Sync complete ✓",
+        step_label="Sync complete ok",
         pct=100,
         message=f"{len(raw):,} customers loaded",
     )
@@ -382,7 +382,7 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
     return raw
 
 
-# ─── GET /api/customers/sync-progress  (SSE — MUST be before wildcard route) ─
+# --- GET /api/customers/sync-progress  (SSE -- MUST be before wildcard route) -
 @router.get("/customers/sync-progress")
 async def sync_progress_sse():
     """
@@ -395,7 +395,7 @@ async def sync_progress_sse():
       - If the sync never becomes active within 5 s we close with the idle state.
     """
     async def event_stream():
-        # ── Phase 1: wait for the sync to start (up to 5 s) ──────────────────
+        # -- Phase 1: wait for the sync to start (up to 5 s) ------------------
         waited = 0.0
         while not _sync_progress["active"] and waited < 5.0:
             yield f"data: {json.dumps(_sync_progress)}\n\n"
@@ -403,11 +403,11 @@ async def sync_progress_sse():
             waited += 0.3
 
         if not _sync_progress["active"]:
-            # Sync never started — close the stream
+            # Sync never started -- close the stream
             yield f"data: {json.dumps(_sync_progress)}\n\n"
             return
 
-        # ── Phase 2: stream while active ─────────────────────────────────────
+        # -- Phase 2: stream while active -------------------------------------
         last_json = None
         while _sync_progress["active"] or _sync_progress["step"] not in ("done", "error", ""):
             current = dict(_sync_progress)
@@ -417,7 +417,7 @@ async def sync_progress_sse():
                 last_json = current_json
             await asyncio.sleep(0.3)
 
-        # ── Final flush ───────────────────────────────────────────────────────
+        # -- Final flush -------------------------------------------------------
         yield f"data: {json.dumps(_sync_progress)}\n\n"
 
     return StreamingResponse(
@@ -431,7 +431,7 @@ async def sync_progress_sse():
     )
 
 
-# ─── GET /api/customers ────────────────────────────────────────────────────────
+# --- GET /api/customers --------------------------------------------------------
 @router.get("/customers")
 async def get_customers(
     page:         int = Query(1, ge=1),
@@ -456,7 +456,7 @@ async def get_customers(
             raw = _sync_cache["raw_customers"]
         else:
             # Use a lock so concurrent page-load requests don't all trigger
-            # simultaneous full syncs — only the first one fetches, the rest
+            # simultaneous full syncs -- only the first one fetches, the rest
             # wait and then use the freshly-populated cache.
             async with _sync_lock:
                 # Re-check cache inside the lock (another request may have
@@ -511,7 +511,7 @@ async def get_customers(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ─── GET /api/customers/qb-data/summary ───────────────────────────────────────
+# --- GET /api/customers/qb-data/summary ---------------------------------------
 @router.get("/customers/qb-data/summary")
 async def get_qb_summary():
     if not qb_customers:
@@ -531,7 +531,7 @@ async def get_qb_summary():
     }
 
 
-# ─── GET /api/dashboard/stats ─────────────────────────────────────────────────
+# --- GET /api/dashboard/stats -------------------------------------------------
 @router.get("/dashboard/stats")
 async def get_dashboard_stats():
     """Return summary counts for the dashboard home page."""
@@ -569,7 +569,7 @@ async def get_dashboard_stats():
     }
 
 
-# ─── POST /api/customers/import-qb ────────────────────────────────────────────
+# --- POST /api/customers/import-qb --------------------------------------------
 @router.post("/customers/import-qb")
 async def import_qb_customers(file: UploadFile = File(...)):
     global qb_customers
@@ -660,7 +660,7 @@ async def import_qb_customers(file: UploadFile = File(...)):
 
 
 
-# ─── GET /api/customers/{account_id} ──────────────────────────────────────────
+# --- GET /api/customers/{account_id} ------------------------------------------
 @router.get("/customers/{account_id}")
 async def get_customer(account_id: str):
     if not session_store.get("session_id"):
@@ -702,25 +702,25 @@ async def get_customer(account_id: str):
             device = d.get("device") or {}
             dev_id = str(device.get("id") or "")
 
-            # ── Active Billing Plan: activeDevicePlan.name ────────────────────
+            # -- Active Billing Plan: activeDevicePlan.name --------------------
             # Confirmed field from API: d["activeDevicePlan"]["name"]
             # e.g. "Pro Mode", "Base Mode: Live"
             adp = d.get("activeDevicePlan") or {}
             active_billing_plan = adp.get("name") or ""
 
-            # ── Rate Plan Code: promoCode ─────────────────────────────────────
+            # -- Rate Plan Code: promoCode -------------------------------------
             # Confirmed from contract inspection: the rate plan code shown in
             # MyAdmin (e.g. "CELU-TP-250", "SWELL-NOINS3") lives at top level
             # as promoCode, not productCode or ratePlanName.
             rate_plan_code = (d.get("promoCode") or "").upper()
 
-            # ── Database: latestDeviceDatabase.databaseName ───────────────────
-            # Confirmed field from API — directly on the contract, no lookup needed
+            # -- Database: latestDeviceDatabase.databaseName -------------------
+            # Confirmed field from API -- directly on the contract, no lookup needed
             # e.g. "wray_roofing"
             ldd = d.get("latestDeviceDatabase") or {}
             db_name = ldd.get("databaseName") or device_db_map.get(dev_id) or ""
 
-            # ── Dates: trim ISO datetime to yyyy-mm-dd ────────────────────────
+            # -- Dates: trim ISO datetime to yyyy-mm-dd ------------------------
             def _date(raw: str) -> str:
                 return (raw or "")[:10]
 
@@ -747,7 +747,7 @@ async def get_customer(account_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ─── POST /api/customers/{account_id}/billing-type ───────────────────────────
+# --- POST /api/customers/{account_id}/billing-type ---------------------------
 class BillingTypeUpdate(BaseModel):
     billing_type: str
 
@@ -765,7 +765,7 @@ async def set_billing_type(account_id: str, body: BillingTypeUpdate):
     return {"success": True, "customerId": account_id, "billingType": body.billing_type}
 
 
-# ─── GET /api/customers/{account_id}/devices ─────────────────────────────────
+# --- GET /api/customers/{account_id}/devices ---------------------------------
 @router.get("/customers/{account_id}/devices")
 async def get_customer_devices(account_id: str):
     return await get_customer(account_id)

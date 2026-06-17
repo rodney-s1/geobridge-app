@@ -1,17 +1,17 @@
 """
-settings.py — QB SKU / Rate-Plan mapping backend
+settings.py -- QB SKU / Rate-Plan mapping backend
 =================================================
 Persists two files next to this module:
 
-  sku_catalog.json      — list of QB SKU objects discovered from invoice imports
-  sku_mappings.json     — list of {ratePlanCode, skuKey, defaultPrice, notes} rows
+  sku_catalog.json      -- list of QB SKU objects discovered from invoice imports
+  sku_mappings.json     -- list of {ratePlanCode, skuKey, defaultPrice, notes} rows
 
 Endpoints:
   GET  /api/settings/sku-catalog              list all known SKUs
   POST /api/settings/sku-catalog              upsert a SKU (key, fullPath, defaultPrice)
   DELETE /api/settings/sku-catalog/{sku_key}  remove a SKU
 
-  GET  /api/settings/sku-mappings             list rate-plan → SKU mappings
+  GET  /api/settings/sku-mappings             list rate-plan -> SKU mappings
   POST /api/settings/sku-mappings             upsert a mapping
   DELETE /api/settings/sku-mappings/{rate_plan_code}  remove a mapping
 
@@ -19,7 +19,7 @@ Endpoints:
   POST /api/settings/customer-overrides            upsert {customerName, skuKey, price}
   DELETE /api/settings/customer-overrides/{id}     remove override by id (customerName|skuKey)
 
-  POST /api/settings/import-qb-skus           parse uploaded QB CSV → populate sku_catalog
+  POST /api/settings/import-qb-skus           parse uploaded QB CSV -> populate sku_catalog
   GET  /api/settings/unmapped-rate-plans       rate plan codes seen in MyAdmin with no mapping
 """
 
@@ -35,7 +35,7 @@ import time
 
 router = APIRouter()
 
-# ─── Disk paths ──────────────────────────────────────────────────────────────
+# --- Disk paths --------------------------------------------------------------
 _HERE = os.path.dirname(os.path.abspath(__file__))
 SKU_CATALOG_FILE        = os.path.join(_HERE, "sku_catalog.json")
 SKU_MAPPINGS_FILE       = os.path.join(_HERE, "sku_mappings.json")
@@ -70,7 +70,7 @@ def _save(path, data):
         raise
 
 
-# ─── In-memory stores ─────────────────────────────────────────────────────────
+# --- In-memory stores ---------------------------------------------------------
 # These are loaded from disk on every read operation (GET endpoints) to avoid
 # stale-cache issues when the JSON files are updated externally (e.g. after a
 # git pull or a previous import before the process was restarted).
@@ -117,7 +117,7 @@ def _mappings() -> list:
     needs_migration = any("ratePlanCode" not in m for m in raw)
     if needs_migration and normalised:
         print(f"[settings] Migrating sku_mappings.json: "
-              f"{len(normalised)} entries updated from promoCode→ratePlanCode schema")
+              f"{len(normalised)} entries updated from promoCode->ratePlanCode schema")
         _save(SKU_MAPPINGS_FILE, normalised)
     return normalised
 
@@ -131,9 +131,9 @@ print(f"[settings] SKU catalog: {len(sku_catalog)} SKUs, "
       f"{len(sku_mappings)} mappings, {len(cust_ovr)} overrides")
 
 
-# ════════════════════════════════════════════════════════════════════════════════
+# ================================================================================
 #  SKU CATALOG
-# ════════════════════════════════════════════════════════════════════════════════
+# ================================================================================
 
 class SkuUpsert(BaseModel):
     skuKey: str
@@ -174,9 +174,9 @@ async def delete_sku(sku_key: str):
     return {"success": True, "removed": before - len(sku_catalog)}
 
 
-# ════════════════════════════════════════════════════════════════════════════════
-#  SKU MAPPINGS  (rate plan code → QB SKU)
-# ════════════════════════════════════════════════════════════════════════════════
+# ================================================================================
+#  SKU MAPPINGS  (rate plan code -> QB SKU)
+# ================================================================================
 
 class MappingUpsert(BaseModel):
     ratePlanCode: str
@@ -216,9 +216,9 @@ async def delete_mapping(rate_plan_code: str):
     return {"success": True, "removed": before - len(sku_mappings)}
 
 
-# ════════════════════════════════════════════════════════════════════════════════
+# ================================================================================
 #  CUSTOMER PRICE OVERRIDES
-# ════════════════════════════════════════════════════════════════════════════════
+# ================================================================================
 
 class OverrideUpsert(BaseModel):
     customerName: str
@@ -261,9 +261,9 @@ async def delete_override(override_id: str):
     return {"success": True, "removed": before - len(cust_ovr)}
 
 
-# ════════════════════════════════════════════════════════════════════════════════
-#  IMPORT QB INVOICE CSV  →  populate sku_catalog (and customer overrides)
-# ════════════════════════════════════════════════════════════════════════════════
+# ================================================================================
+#  IMPORT QB INVOICE CSV  ->  populate sku_catalog (and customer overrides)
+# ================================================================================
 
 def _parse_item(item_str: str) -> Tuple[str, str, str]:
     """
@@ -387,7 +387,7 @@ async def import_qb_skus(file: UploadFile = File(...)):
     ovr_added    = 0
     ovr_updated  = 0
 
-    # ── Upsert SKU catalog ────────────────────────────────────────────────────
+    # -- Upsert SKU catalog ----------------------------------------------------
     for sku_key, data in parsed['skus'].items():
         existing = next((s for s in sku_catalog if s['skuKey'] == sku_key), None)
         entry = {
@@ -406,7 +406,7 @@ async def import_qb_skus(file: UploadFile = File(...)):
 
     _save(SKU_CATALOG_FILE, sku_catalog)
 
-    # ── Upsert customer price overrides ──────────────────────────────────────
+    # -- Upsert customer price overrides --------------------------------------
     for cust_name, skus in parsed['customers'].items():
         for sku_key, price in skus.items():
             oid = _ovr_id(cust_name, sku_key)
@@ -437,9 +437,9 @@ async def import_qb_skus(file: UploadFile = File(...)):
     }
 
 
-# ════════════════════════════════════════════════════════════════════════════════
-#  IMPORT ITEM PRICE LIST CSV  →  fill $0 gaps + add new SKUs, never override
-# ════════════════════════════════════════════════════════════════════════════════
+# ================================================================================
+#  IMPORT ITEM PRICE LIST CSV  ->  fill $0 gaps + add new SKUs, never override
+# ================================================================================
 
 def _parse_price(s: str) -> Optional[float]:
     s = s.strip().replace(',', '')
@@ -499,9 +499,9 @@ async def import_price_list(file: UploadFile = File(...)):
     Upload a QB Item Price List CSV.
 
     Rules:
-      - If SKU not in catalog → ADD it (new SKU).
-      - If SKU in catalog with defaultPrice == 0 → UPDATE price (fill the gap).
-      - If SKU in catalog with defaultPrice > 0  → SKIP (never override
+      - If SKU not in catalog -> ADD it (new SKU).
+      - If SKU in catalog with defaultPrice == 0 -> UPDATE price (fill the gap).
+      - If SKU in catalog with defaultPrice > 0  -> SKIP (never override
         customer-specific pricing derived from invoice imports).
     """
     global sku_catalog
@@ -522,7 +522,7 @@ async def import_price_list(file: UploadFile = File(...)):
     for item in items:
         existing = catalog_index.get(item['skuKey'])
         if existing is None:
-            # Brand-new SKU — add to catalog
+            # Brand-new SKU -- add to catalog
             new_entry = {
                 'skuKey':       item['skuKey'],
                 'fullPath':     item['fullPath'],
@@ -535,7 +535,7 @@ async def import_price_list(file: UploadFile = File(...)):
             catalog_index[item['skuKey']] = new_entry
             added += 1
         elif (existing.get('defaultPrice') or 0.0) == 0.0 and item['defaultPrice'] > 0:
-            # Existing SKU with $0 price — fill the gap
+            # Existing SKU with $0 price -- fill the gap
             existing['defaultPrice'] = item['defaultPrice']
             if item.get('cost'):
                 existing['cost'] = item['cost']
@@ -543,7 +543,7 @@ async def import_price_list(file: UploadFile = File(...)):
                 existing['desc'] = item['desc']
             updated += 1
         else:
-            # Existing SKU with a real price already — do not touch
+            # Existing SKU with a real price already -- do not touch
             skipped += 1
 
     sku_catalog.sort(key=lambda x: x.get('skuKey', '').lower())
@@ -559,15 +559,15 @@ async def import_price_list(file: UploadFile = File(...)):
     }
 
 
-# ════════════════════════════════════════════════════════════════════════════════
+# ================================================================================
 #  UNMAPPED RATE PLANS  (rate plan codes in MyAdmin with no SKU mapping)
-# ════════════════════════════════════════════════════════════════════════════════
+# ================================================================================
 
 @router.get("/settings/unmapped-rate-plans")
 async def get_unmapped_rate_plans():
     """
     Compare rate plan codes seen in the MyAdmin sync cache against sku_mappings.
-    Reads myadmin_cache.json directly — no import of customers module needed.
+    Reads myadmin_cache.json directly -- no import of customers module needed.
     """
     try:
         cache = _myadmin_cache()
@@ -602,15 +602,15 @@ async def get_unmapped_rate_plans():
         return {"unmapped": [], "total": 0, "hasCachedData": False, "_error": str(e)}
 
 
-# ════════════════════════════════════════════════════════════════════════════════
+# ================================================================================
 #  SUMMARY  (for Settings page header cards)
-# ════════════════════════════════════════════════════════════════════════════════
+# ================================================================================
 
 @router.get("/settings/summary")
 async def get_settings_summary():
     """
     Summary counts for the Settings page header cards.
-    Reads myadmin_cache.json directly — no import of customers module needed.
+    Reads myadmin_cache.json directly -- no import of customers module needed.
     """
     try:
         cache        = _myadmin_cache()
@@ -655,13 +655,13 @@ async def get_settings_summary():
                     "unmappedCount": 0, "hasCachedData": False, "_error": str(e)}
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
+# ===============================================================================
 #  DEBUG  (open in browser to diagnose file-path / content issues)
-# ═══════════════════════════════════════════════════════════════════════════════
+# ===============================================================================
 
 @router.get("/settings/debug")
 async def debug_settings():
-    """Diagnostic endpoint — open http://127.0.0.1:8001/api/settings/debug in browser."""
+    """Diagnostic endpoint -- open http://127.0.0.1:8001/api/settings/debug in browser."""
     def file_info(path):
         exists = os.path.exists(path)
         size   = os.path.getsize(path) if exists else 0
@@ -690,7 +690,7 @@ async def debug_settings():
         }
 
     return {
-        "version":   "schema-migration",   # git commit — if you see this, new code is running
+        "version":   "schema-migration",   # git commit -- if you see this, new code is running
         "here":      _HERE,
         "cwd":       os.getcwd(),
         "catalog":   file_info(SKU_CATALOG_FILE),

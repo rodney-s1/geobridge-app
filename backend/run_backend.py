@@ -16,7 +16,7 @@ import subprocess
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-# ── Kill any existing process on port 8001 ───────────────────────────────────
+# -- Kill any existing process on port 8001 -----------------------------------
 # This ensures a fresh restart always picks up the latest code.
 print("=" * 60)
 print("  GeoBridge Backend Launcher")
@@ -50,7 +50,7 @@ try:
 except Exception as e:
     print(f"  (port-kill skipped: {e})")
 
-# ── Print git commit so we know which version is running ─────────────────────
+# -- Print git commit so we know which version is running ---------------------
 try:
     repo_root = os.path.dirname(HERE)
     git_hash = subprocess.run(
