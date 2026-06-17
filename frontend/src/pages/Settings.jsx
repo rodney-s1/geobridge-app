@@ -532,76 +532,78 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh }) {
                 </td>
               </tr>
             ) : filtered.map(m => (
-              editCode === m.ratePlanCode ? (
-                <tr key={m.ratePlanCode} className="border-b border-slate-700/50 bg-slate-750">
-                  <td className="px-4 py-2" colSpan={5}>
-                    <div className="grid grid-cols-2 gap-3 mb-2">
-                      <div>
-                        <label className="block text-xs text-slate-400 mb-1">Rate Plan Code</label>
-                        <input value={editForm.ratePlanCode} readOnly
-                          className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm font-mono text-slate-300 cursor-not-allowed" />
+              <React.Fragment key={m.ratePlanCode}>
+                {editCode === m.ratePlanCode ? (
+                  <tr className="border-b border-slate-700/50 bg-slate-750">
+                    <td className="px-4 py-2" colSpan={5}>
+                      <div className="grid grid-cols-2 gap-3 mb-2">
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Rate Plan Code</label>
+                          <input value={editForm.ratePlanCode} readOnly
+                            className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm font-mono text-slate-300 cursor-not-allowed" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">QB SKU</label>
+                          <select value={editForm.skuKey}
+                            onChange={e => {
+                              const key = e.target.value
+                              const found = catalog.find(s => s.skuKey === key)
+                              setEditForm(f => ({ ...f, skuKey: key, defaultPrice: found ? found.defaultPrice : f.defaultPrice }))
+                            }}
+                            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+                            <option value="">— select SKU —</option>
+                            {skuOptions.map(k => <option key={k} value={k}>{k}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Default Price</label>
+                          <input type="number" step="0.01" value={editForm.defaultPrice}
+                            onChange={e => setEditForm(f => ({ ...f, defaultPrice: e.target.value }))}
+                            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Notes</label>
+                          <input value={editForm.notes || ''}
+                            onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
+                            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-xs text-slate-400 mb-1">QB SKU</label>
-                        <select value={editForm.skuKey}
-                          onChange={e => {
-                            const key = e.target.value
-                            const found = catalog.find(s => s.skuKey === key)
-                            setEditForm(f => ({ ...f, skuKey: key, defaultPrice: found ? found.defaultPrice : f.defaultPrice }))
-                          }}
-                          className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
-                          <option value="">— select SKU —</option>
-                          {skuOptions.map(k => <option key={k} value={k}>{k}</option>)}
-                        </select>
+                      <div className="flex gap-2">
+                        <button disabled={saving}
+                          onClick={() => saveMapping({ ...editForm, defaultPrice: parseFloat(editForm.defaultPrice) || 0 })}
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded font-medium">
+                          {saving ? 'Saving…' : 'Save'}
+                        </button>
+                        <button onClick={() => setEditCode(null)} className="px-3 py-1 text-slate-400 hover:text-white text-sm">Cancel</button>
                       </div>
-                      <div>
-                        <label className="block text-xs text-slate-400 mb-1">Default Price</label>
-                        <input type="number" step="0.01" value={editForm.defaultPrice}
-                          onChange={e => setEditForm(f => ({ ...f, defaultPrice: e.target.value }))}
-                          className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                    </td>
+                  </tr>
+                ) : (
+                  <tr className="border-b border-slate-700/50 hover:bg-slate-750 transition-colors group">
+                    <td className="px-4 py-2.5 overflow-hidden">
+                      <span className="font-mono text-xs bg-slate-700 text-amber-300 px-1.5 py-0.5 rounded block truncate" title={m.ratePlanCode}>
+                        {m.ratePlanCode}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 overflow-hidden">
+                      <span className="font-mono text-xs bg-slate-700 text-blue-300 px-1.5 py-0.5 rounded block truncate" title={m.skuKey}>
+                        {m.skuKey}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono text-slate-200">
+                      {fmtPrice(m.defaultPrice)}
+                    </td>
+                    <td className="px-4 py-2.5 text-slate-400 text-xs hidden lg:table-cell truncate" title={m.notes}>{m.notes || '—'}</td>
+                    <td className="px-4 py-2.5 text-right">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onClick={() => { setEditCode(m.ratePlanCode); setEditForm({ ...m }) }}
+                          className="text-xs px-2 py-0.5 text-blue-400 hover:text-blue-300">Edit</button>
+                        <DeleteBtn small onConfirm={() => deleteMapping(m.ratePlanCode)} />
                       </div>
-                      <div>
-                        <label className="block text-xs text-slate-400 mb-1">Notes</label>
-                        <input value={editForm.notes || ''}
-                          onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
-                          className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button disabled={saving}
-                        onClick={() => saveMapping({ ...editForm, defaultPrice: parseFloat(editForm.defaultPrice) || 0 })}
-                        className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded font-medium">
-                        {saving ? 'Saving…' : 'Save'}
-                      </button>
-                      <button onClick={() => setEditCode(null)} className="px-3 py-1 text-slate-400 hover:text-white text-sm">Cancel</button>
-                    </div>
-                  </td>
-                </tr>
-              ) : (
-                <tr key={m.ratePlanCode} className="border-b border-slate-700/50 hover:bg-slate-750 transition-colors group">
-                  <td className="px-4 py-2.5 overflow-hidden">
-                    <span className="font-mono text-xs bg-slate-700 text-amber-300 px-1.5 py-0.5 rounded block truncate" title={m.ratePlanCode}>
-                      {m.ratePlanCode}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 overflow-hidden">
-                    <span className="font-mono text-xs bg-slate-700 text-blue-300 px-1.5 py-0.5 rounded block truncate" title={m.skuKey}>
-                      {m.skuKey}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2.5 text-right font-mono text-slate-200">
-                    {fmtPrice(m.defaultPrice)}
-                  </td>
-                  <td className="px-4 py-2.5 text-slate-400 text-xs hidden lg:table-cell truncate" title={m.notes}>{m.notes || '—'}</td>
-                  <td className="px-4 py-2.5 text-right">
-                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button onClick={() => { setEditCode(m.ratePlanCode); setEditForm({ ...m }) }}
-                        className="text-xs px-2 py-0.5 text-blue-400 hover:text-blue-300">Edit</button>
-                      <DeleteBtn small onConfirm={() => deleteMapping(m.ratePlanCode)} />
-                    </div>
-                  </td>
-                </tr>
-              )
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
             ))}
           </tbody>
         </table>
