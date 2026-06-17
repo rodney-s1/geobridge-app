@@ -50,3 +50,7 @@ app.include_router(customers_router, prefix="/api", tags=["Customers"])
 # Settings Routes (QB SKU / Rate-Plan mapping)
 from geotab.settings import router as settings_router
 app.include_router(settings_router, prefix="/api", tags=["Settings"])
+
+# Reconciliation Routes
+from geotab.reconciliation import router as reconciliation_router
+app.include_router(reconciliation_router, prefix="/api", tags=["Reconciliation"])

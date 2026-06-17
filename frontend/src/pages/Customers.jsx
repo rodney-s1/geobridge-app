@@ -276,7 +276,7 @@ function DeviceSubTable({ devices }) {
 
 // ─── Sub-account row (indented, inside an expanded parent group) ──────────────
 // devices prop is pre-loaded by the parent; expandable to show the device table.
-function SubAccountRow({ customer, devices, loadingDevices, onBillingTypeChange }) {
+function SubAccountRow({ customer, devices, loadingDevices, onBillingTypeChange, onDetail }) {
   const [expanded, setExpanded] = useState(false)
   const subLabel = getSubLabel(customer.name)
 
@@ -370,8 +370,8 @@ function SubAccountRow({ customer, devices, loadingDevices, onBillingTypeChange 
         {/* Actions */}
         <td className="px-4 py-2.5">
           <button
-            onClick={e => { e.stopPropagation() }}
-            className="text-xs text-blue-500/60 hover:text-blue-400 transition-colors"
+            onClick={e => { e.stopPropagation(); onDetail && onDetail(customer.id, customer.name) }}
+            className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
           >
             Detail →
           </button>
@@ -389,7 +389,7 @@ function SubAccountRow({ customer, devices, loadingDevices, onBillingTypeChange 
 // ─── Parent group row (with optional sub-accounts) ───────────────────────────
 // When expanded, fetches all sub-accounts' devices in parallel,
 // then shows a combined RPC breakdown + indented sub-account rows.
-function ParentGroupRow({ group, onBillingTypeChange }) {
+function ParentGroupRow({ group, onBillingTypeChange, onDetail }) {
   const { parentName, parent, subs, combinedDeviceCount } = group
   const hasSubs = subs.length > 0
 
@@ -629,7 +629,7 @@ function ParentGroupRow({ group, onBillingTypeChange }) {
         {/* Actions */}
         <td className="px-4 py-3">
           <button
-            onClick={e => { e.stopPropagation() }}
+            onClick={e => { e.stopPropagation(); onDetail && onDetail(parent?.id, parentName) }}
             className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
           >
             Detail →
@@ -698,6 +698,7 @@ function ParentGroupRow({ group, onBillingTypeChange }) {
           devices={devicesByCustomer[sub.id] || null}
           loadingDevices={loadingDevices && !devicesByCustomer[sub.id]}
           onBillingTypeChange={onBillingTypeChange}
+          onDetail={onDetail}
         />
       ))}
     </>
@@ -803,7 +804,7 @@ function CustomerRow({ customer, onBillingTypeChange }) {
         {/* Actions */}
         <td className="px-4 py-3">
           <button
-            onClick={e => { e.stopPropagation(); /* TODO: open detail page */ }}
+            onClick={e => { e.stopPropagation(); onDetail && onDetail(customer.id, customer.name) }}
             className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
           >
             Detail →
@@ -820,7 +821,7 @@ function CustomerRow({ customer, onBillingTypeChange }) {
 }
 
 // ─── Main Customers page ──────────────────────────────────────────────────────
-export default function Customers() {
+export default function Customers({ onDetail }) {
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(false)
   const [loadingStart, setLoadingStart] = useState(null)
@@ -1275,6 +1276,7 @@ export default function Customers() {
                   key={group.parentName}
                   group={group}
                   onBillingTypeChange={handleBillingTypeChange}
+                  onDetail={onDetail}
                 />
               ))
             )}

@@ -1,11 +1,26 @@
 import { useState, useEffect } from 'react'
 import Customers from './Customers'
+import CustomerDetail from './CustomerDetail'
 import Settings from './Settings'
+import Reconciliation from './Reconciliation'
 
 const API = 'http://localhost:8001'
 
 function Dashboard({ sessionData, onLogout }) {
-  const [activePage, setActivePage] = useState('home')
+  const [activePage,       setActivePage]       = useState('home')
+  const [detailCustomerId, setDetailCustomerId] = useState(null)
+  const [detailCustomerName, setDetailCustomerName] = useState('')
+
+  function handleOpenDetail(id, name) {
+    setDetailCustomerId(id)
+    setDetailCustomerName(name || '')
+    setActivePage('customers')
+  }
+
+  function handleBackFromDetail() {
+    setDetailCustomerId(null)
+    setDetailCustomerName('')
+  }
 
   return (
     <div style={styles.container}>
@@ -32,6 +47,12 @@ function Dashboard({ sessionData, onLogout }) {
             label="Customers"
             active={activePage === 'customers'}
             onClick={() => setActivePage('customers')}
+          />
+          <NavItem
+            icon="&#9632;"
+            label="Reconciliation"
+            active={activePage === 'reconciliation'}
+            onClick={() => setActivePage('reconciliation')}
           />
           <NavItem
             icon="&#9632;"
@@ -86,7 +107,8 @@ function Dashboard({ sessionData, onLogout }) {
         <div style={styles.topbar}>
           <h2 style={styles.pageTitle}>
             {activePage === 'home' && 'Dashboard'}
-            {activePage === 'customers' && 'Customers'}
+            {activePage === 'customers' && (detailCustomerId ? detailCustomerName || 'Customer Detail' : 'Customers')}
+            {activePage === 'reconciliation' && 'Reconciliation'}
             {activePage === 'invoices' && 'Invoices'}
             {activePage === 'sync' && 'Sync Status'}
             {activePage === 'reports' && 'Reports'}
@@ -102,11 +124,19 @@ function Dashboard({ sessionData, onLogout }) {
         {/* Page Content */}
         <div style={styles.content}>
           {activePage === 'home' && <HomePage sessionData={sessionData} />}
-          {/* Customers is always mounted (never unmounted) so sync state
-              survives navigation away and back. Hidden via display:none. */}
+          {/* Customers is always mounted so sync state survives navigation.
+              CustomerDetail overlays on top when a detail row is clicked. */}
           <div style={{ display: activePage === 'customers' ? 'contents' : 'none' }}>
-            <Customers />
+            {detailCustomerId
+              ? <CustomerDetail
+                  customerId={detailCustomerId}
+                  customerName={detailCustomerName}
+                  onBack={handleBackFromDetail}
+                />
+              : <Customers onDetail={handleOpenDetail} />
+            }
           </div>
+          {activePage === 'reconciliation' && <Reconciliation />}
           {activePage === 'invoices' && <ComingSoon page="Invoices" />}
           {activePage === 'sync' && <ComingSoon page="Sync Status" />}
           {activePage === 'reports' && <ComingSoon page="Reports" />}
