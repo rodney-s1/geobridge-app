@@ -10,11 +10,14 @@ Usage (PowerShell - from ANY directory):
 
 import sys
 import os
+import subprocess
 
 # Force sys.path to THIS directory (backend/)
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
+# ── Kill any existing process on port 8001 ───────────────────────────────────
+# This ensures a fresh restart always picks up the latest code.
 print("=" * 60)
 print("  GeoBridge Backend Launcher")
 print("=" * 60)
@@ -22,15 +25,55 @@ print("  Python:  " + sys.executable)
 print("  CWD:     " + os.getcwd())
 print("  Backend: " + HERE)
 
-main_py = os.path.join(HERE, "main.py")
+try:
+    # Windows: find and kill PID using port 8001
+    result = subprocess.run(
+        ["netstat", "-ano"],
+        capture_output=True, text=True, timeout=10
+    )
+    killed = []
+    for line in result.stdout.splitlines():
+        if ":8001 " in line and "LISTENING" in line:
+            parts = line.split()
+            pid = parts[-1]
+            try:
+                subprocess.run(["taskkill", "/F", "/PID", pid],
+                               capture_output=True, timeout=5)
+                killed.append(pid)
+            except Exception:
+                pass
+    if killed:
+        print(f"  Killed old backend PID(s): {', '.join(killed)}")
+        import time; time.sleep(1)   # brief pause so port is released
+    else:
+        print("  No existing process on port 8001")
+except Exception as e:
+    print(f"  (port-kill skipped: {e})")
+
+# ── Print git commit so we know which version is running ─────────────────────
+try:
+    repo_root = os.path.dirname(HERE)
+    git_hash = subprocess.run(
+        ["git", "-C", repo_root, "rev-parse", "--short", "HEAD"],
+        capture_output=True, text=True, timeout=5
+    ).stdout.strip()
+    git_msg = subprocess.run(
+        ["git", "-C", repo_root, "log", "-1", "--pretty=%s"],
+        capture_output=True, text=True, timeout=5
+    ).stdout.strip()
+    print(f"  Git commit: {git_hash}  {git_msg}")
+except Exception:
+    pass
+
+main_py      = os.path.join(HERE, "main.py")
+settings_py  = os.path.join(HERE, "geotab", "settings.py")
 customers_py = os.path.join(HERE, "geotab", "customers.py")
-print("  main.py:      " + main_py)
-print("    size: " + str(os.path.getsize(main_py)) + " bytes")
-print("  customers.py: " + customers_py)
-print("    size: " + str(os.path.getsize(customers_py)) + " bytes")
+print(f"  main.py:      {os.path.getsize(main_py)} bytes")
+print(f"  settings.py:  {os.path.getsize(settings_py)} bytes")
+print(f"  customers.py: {os.path.getsize(customers_py)} bytes")
 print("")
 
-# Show last 5 lines of main.py to confirm router prefix
+# Show last 5 lines of main.py to confirm router registration
 print("  Last 5 lines of main.py:")
 with open(main_py, "r", encoding="utf-8-sig") as f:
     lines = f.readlines()

@@ -631,6 +631,7 @@ async def debug_settings():
         }
 
     return {
+        "version":   "5d7e0d0",   # git commit — if you see this, new code is running
         "here":      _HERE,
         "cwd":       os.getcwd(),
         "catalog":   file_info(SKU_CATALOG_FILE),
