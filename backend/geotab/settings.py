@@ -33,6 +33,13 @@ import os
 import re
 import time
 
+# S3 sync -- imported lazily so the app still works if boto3 is missing
+try:
+    from geotab.s3_sync import upload_file_async as _s3_push
+except Exception:
+    def _s3_push(filename: str) -> None:  # type: ignore
+        pass
+
 router = APIRouter()
 
 # --- Disk paths --------------------------------------------------------------
@@ -65,7 +72,10 @@ def _save(path, data):
         with open(tmp, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
         os.replace(tmp, path)
+        filename = os.path.basename(path)
         print(f"[settings] Saved {len(data)} items to {path}")
+        # Mirror to S3 in a background thread -- never blocks the response
+        _s3_push(filename)
     except Exception as e:
         print(f"[settings] ERROR saving {path}: {e}")
         raise
