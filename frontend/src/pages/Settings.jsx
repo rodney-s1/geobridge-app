@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useRef, useCallback } from 'react'
 
 const API = 'http://localhost:8001'
 
@@ -803,7 +803,7 @@ function CustomerOverridesTab({ overrides, catalog, onRefresh }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // Reusable drop-zone uploader card
-function ImportCard({ title, description, columns, endpoint, resultFields, onRefresh, acceptHint }) {
+function ImportCard({ title, description, columns, columnNote, endpoint, resultFields, onRefresh, acceptHint }) {
   const [file, setFile]         = useState(null)
   const [uploading, setUploading] = useState(false)
   const [result, setResult]     = useState(null)
@@ -842,13 +842,13 @@ function ImportCard({ title, description, columns, endpoint, resultFields, onRef
         <div className="font-medium text-slate-300 mb-2">Expected Column Layout</div>
         <div className="grid grid-cols-2 gap-x-6 gap-y-0.5 font-mono">
           {columns.map(([col, label]) => (
-            <>
-              <span key={col} className="text-blue-400">{col}</span>
-              <span key={label}>{label}</span>
-            </>
+            <React.Fragment key={col}>
+              <span className="text-blue-400">{col}</span>
+              <span>{label}</span>
+            </React.Fragment>
           ))}
         </div>
-        <div className="mt-2 text-slate-500">Note: doubled-comma format — every other column is blank.</div>
+        {columnNote && <div className="mt-2 text-slate-500">{columnNote}</div>}
       </div>
 
       {/* Drop zone */}
@@ -894,12 +894,13 @@ function ImportCard({ title, description, columns, endpoint, resultFields, onRef
           <div className="text-sm font-medium text-emerald-300">✓ Import successful</div>
           <div className="grid grid-cols-2 gap-x-6 gap-y-0.5 text-xs mt-1">
             {resultFields.map(({ key, label, bold }) => (
-              result[key] !== undefined && <>
-                <span key={`l-${key}`} className="text-slate-400">{label}:</span>
-                <span key={`v-${key}`} className={bold ? 'font-semibold text-white' : 'text-slate-200'}>
+              result[key] !== undefined &&
+              <React.Fragment key={key}>
+                <span className="text-slate-400">{label}:</span>
+                <span className={bold ? 'font-semibold text-white' : 'text-slate-200'}>
                   {typeof result[key] === 'number' ? result[key].toLocaleString() : result[key]}
                 </span>
-              </>
+              </React.Fragment>
             ))}
           </div>
         </div>
@@ -922,6 +923,7 @@ function ImportCsvTab({ onRefresh }) {
           ['Col R (17)', 'Qty'],
           ['Col T (19)', 'Sales Price (per customer)'],
         ]}
+        columnNote="Note: doubled-comma format — every other column is blank."
         endpoint="/api/settings/import-qb-skus"
         acceptHint="QuickBooks monthly invoice export (.csv)"
         resultFields={[
@@ -945,6 +947,7 @@ function ImportCsvTab({ onRefresh }) {
           ['Col G (6)', 'Our Cost'],
           ['Col I (8)', 'Price to Customer'],
         ]}
+        columnNote="Note: Item Price List uses standard (non-doubled) column format."
         endpoint="/api/settings/import-price-list"
         acceptHint="QuickBooks Item Price List export (.csv)"
         resultFields={[
