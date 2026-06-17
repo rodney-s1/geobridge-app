@@ -1,620 +1,933 @@
 [
   {
-    "skuKey": "1.5 V AA Lithium Battery",
-    "fullPath": "Batteries:AA Lithium",
+    "skuKey": "(GO BUNDLE) Service - USA Civil",
+    "fullPath": "Geotab Service:(GO BUNDLE) Service - USA Civil (Service Fee Geotab (GO) BUNDLE)",
+    "defaultPrice": 24.5,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (GO) BUNDLE"
+  },
+  {
+    "skuKey": "(GO BUNDLE) Service - VA Green",
+    "fullPath": "Geotab Service:(GO BUNDLE) Service - VA Green (Service Fee Geotab (GO) BUNDLE)",
+    "defaultPrice": 1.94,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (GO) BUNDLE"
+  },
+  {
+    "skuKey": "(GO BUNDLE) Service - Wayne Bro",
+    "fullPath": "Geotab Service:(GO BUNDLE) Service - Wayne Bro (Service Fee Geotab (GO) BUNDLE)",
+    "defaultPrice": 21.0,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (GO) BUNDLE"
+  },
+  {
+    "skuKey": "AA Lithium",
+    "fullPath": "Batteries:AA Lithium (1.5 V AA Lithium Battery)",
     "defaultPrice": 0.0,
-    "category": "Batteries"
+    "category": "Batteries",
+    "desc": "1.5 V AA Lithium Battery"
   },
   {
-    "skuKey": "2MB Data Limit",
-    "fullPath": "Xirgo Service:Service Fee Xirgo (Basic) (Service Fee Xirgo (Basic) (2MB Data Limit))",
-    "defaultPrice": 16.95,
-    "category": "Xirgo Service"
+    "skuKey": "AEMP Service (Premium)",
+    "fullPath": "Geotab Service:AEMP Service (Premium) (AEMP Service (Premium))",
+    "defaultPrice": 5.0,
+    "category": "Geotab Service",
+    "desc": "AEMP Service (Premium)"
   },
   {
-    "skuKey": "AEMP Service (Premium",
+    "skuKey": "AEMP Service (Premium) - RS",
     "fullPath": "Geotab Service:AEMP Service (Premium) - RS (AEMP Service (Premium))",
     "defaultPrice": 4.0,
-    "category": "Geotab Service"
+    "category": "Geotab Service",
+    "desc": "AEMP Service (Premium)"
   },
   {
-    "skuKey": "BlueArrow Fuel",
-    "fullPath": "BlueArrow Fuel:BlueArrow Fuel Service",
+    "skuKey": "BlueArrow Fuel Service",
+    "fullPath": "BlueArrow Fuel:BlueArrow Fuel Service (BlueArrow Fuel)",
     "defaultPrice": 0.0,
-    "category": "BlueArrow Fuel"
+    "category": "BlueArrow Fuel",
+    "desc": "BlueArrow Fuel"
   },
   {
-    "skuKey": "CAT AEMP OEM",
-    "fullPath": "Geotab Service:CAT AEMP (OEM)",
-    "defaultPrice": 7.5,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "Citizen Insights Monthly Fee (Population up to 50k",
-    "fullPath": "Geotab Service:MKT-FEE-CITIZENS1 (Citizen Insights Monthly Fee (Population up to 50k) Ohio Contr...",
-    "defaultPrice": 487.5,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "Cloud Base Services",
-    "fullPath": "Geotab Service:Sensata Service",
+    "skuKey": "Bundle Service (GO Focus-SBWI) (GO Focus Bundle Service Fee - Safety Bundle with ...",
+    "fullPath": "Geotab Service:Bundle Service (GO Focus-SBWI) (GO Focus Bundle Service Fee - Safety Bundle with ...",
     "defaultPrice": 20.0,
-    "category": "Geotab Service"
+    "category": "Geotab Service",
+    "desc": ""
   },
   {
-    "skuKey": "Compact Ultra-Rugged Battery-Powered Asset Tracker",
-    "fullPath": "Digital Matter Equipment:Oyster3",
-    "defaultPrice": 155.0,
-    "category": "Digital Matter Equipment"
+    "skuKey": "Bundle Service Fee (GFP-SB)",
+    "fullPath": "Geotab Service:Bundle Service Fee (GFP-SB) (GO Focus Plus Bundle Service Fee - Safety Bundle)",
+    "defaultPrice": 6.29,
+    "category": "Geotab Service",
+    "desc": "GO Focus Plus Bundle Service Fee - Safety Bundle"
   },
   {
-    "skuKey": "Custom Geotab Report",
-    "fullPath": "Misc. Service:Custom Report",
+    "skuKey": "CAT AEMP (OEM)",
+    "fullPath": "Geotab Service:CAT AEMP (OEM) (CAT AEMP OEM)",
+    "defaultPrice": 7.5,
+    "category": "Geotab Service",
+    "desc": "CAT AEMP OEM"
+  },
+  {
+    "skuKey": "Custom Report",
+    "fullPath": "Misc. Service:Custom Report (Custom Geotab Report)",
     "defaultPrice": 100.0,
-    "category": "Misc. Service"
+    "category": "Misc. Service",
+    "desc": "Custom Geotab Report"
   },
   {
-    "skuKey": "Data Processing, hosting, support, and maintenance",
-    "fullPath": "Fleet Nova Services:Hosting Fee",
-    "defaultPrice": 2.0,
-    "category": "Fleet Nova Services"
+    "skuKey": "DM Service (Hardwire) - RS",
+    "fullPath": "Digital Matter Service:DM Service (Hardwire) - RS (DM Service Fee (Hardwire Plan) - 10MB)",
+    "defaultPrice": 6.5,
+    "category": "Digital Matter Service",
+    "desc": "DM Service Fee (Hardwire Plan) - 10MB"
   },
   {
-    "skuKey": "Digital FNOL and incident reconstruction solution",
-    "fullPath": "Xtract Service:Xtract Service Fee (Baker)",
-    "defaultPrice": 4.0,
-    "category": "Xtract Service"
+    "skuKey": "DM Service (Movement) - RS",
+    "fullPath": "Digital Matter Service:DM Service (Movement) - RS (DM Service Fee (Movement Plan) - 3MB)",
+    "defaultPrice": 7.5,
+    "category": "Digital Matter Service",
+    "desc": "DM Service Fee (Movement Plan) - 3MB"
   },
   {
-    "skuKey": "Distracted Driving Solution",
-    "fullPath": "LifeSaver Service",
-    "defaultPrice": 15.0,
-    "category": ""
-  },
-  {
-    "skuKey": "Distracted Driving Solution by PortNexus",
-    "fullPath": "Associate Pledge Service:Pledge - Enterprise",
-    "defaultPrice": 8.0,
-    "category": "Associate Pledge Service"
+    "skuKey": "DM Service (Periodic) - RS",
+    "fullPath": "Digital Matter Service:DM Service (Periodic) - RS (DM Service Fee (Periodic Plan) - 1MB)",
+    "defaultPrice": 5.0,
+    "category": "Digital Matter Service",
+    "desc": "DM Service Fee (Periodic Plan) - 1MB"
   },
   {
     "skuKey": "DM Service Fee",
-    "fullPath": "Digital Matter Service:DM Service Fee (Enterprise)",
-    "defaultPrice": 9.0,
-    "category": "Digital Matter Service"
+    "fullPath": "Digital Matter Service:DM Service Fee (OEM Server Fee - 2MB Data Plan)",
+    "defaultPrice": 11.0,
+    "category": "Digital Matter Service",
+    "desc": "OEM Server Fee - 2MB Data Plan"
   },
   {
-    "skuKey": "DM Service Fee (Barra Plan",
+    "skuKey": "DM Service Fee (Barra) - RS",
     "fullPath": "Digital Matter Service:DM Service Fee (Barra) - RS (DM Service Fee (Barra Plan) 1-4 Pings)",
     "defaultPrice": 7.0,
-    "category": "Digital Matter Service"
+    "category": "Digital Matter Service",
+    "desc": "DM Service Fee (Barra Plan) 1-4 Pings"
   },
   {
-    "skuKey": "DM Service Fee (Hardwire Plan",
-    "fullPath": "Digital Matter Service:DM Service (Hardwire) - RS (DM Service Fee (Hardwire Plan) - 10MB)",
-    "defaultPrice": 6.5,
-    "category": "Digital Matter Service"
+    "skuKey": "DM Service Fee (Enterprise)",
+    "fullPath": "Digital Matter Service:DM Service Fee (Enterprise) (DM Service Fee)",
+    "defaultPrice": 9.0,
+    "category": "Digital Matter Service",
+    "desc": "DM Service Fee"
   },
   {
-    "skuKey": "DM Service Fee (Movement Plan",
+    "skuKey": "DM Service Fee (Hardwire)",
+    "fullPath": "Digital Matter Service:DM Service Fee (Hardwire) (DM Service Fee (Hardwire Plan) - 10MB)",
+    "defaultPrice": 9.0,
+    "category": "Digital Matter Service",
+    "desc": "DM Service Fee (Hardwire Plan) - 10MB"
+  },
+  {
+    "skuKey": "DM Service Fee (Movement)",
     "fullPath": "Digital Matter Service:DM Service Fee (Movement) (DM Service Fee (Movement Plan) - 3MB)",
-    "defaultPrice": 7.5,
-    "category": "Digital Matter Service"
+    "defaultPrice": 8.0,
+    "category": "Digital Matter Service",
+    "desc": "DM Service Fee (Movement Plan) - 3MB"
   },
   {
-    "skuKey": "DM Service Fee (Periodic Plan",
+    "skuKey": "DM Service Fee (Periodic)",
     "fullPath": "Digital Matter Service:DM Service Fee (Periodic) (DM Service Fee (Periodic Plan) - 1MB)",
-    "defaultPrice": 5.0,
-    "category": "Digital Matter Service"
+    "defaultPrice": 6.9,
+    "category": "Digital Matter Service",
+    "desc": "DM Service Fee (Periodic Plan) - 1MB"
   },
   {
-    "skuKey": "Drivewyze Service",
-    "fullPath": "Drivewyze Service:Service Fee Drivewyze",
-    "defaultPrice": 17.99,
-    "category": "Drivewyze Service"
+    "skuKey": "Essentials",
+    "fullPath": "SambaSafety Service:Essentials (License Subscription)",
+    "defaultPrice": 2.99,
+    "category": "SambaSafety Service",
+    "desc": "License Subscription"
   },
   {
-    "skuKey": "FedEx Shipping Tracking#:",
-    "fullPath": "Shipping Service:Main Shipping",
-    "defaultPrice": 46.54,
-    "category": "Shipping Service"
+    "skuKey": "Extendable Services - Pro",
+    "fullPath": "Geotab Service:Extendable Services - Pro (Multi Stream data to additional databases)",
+    "defaultPrice": 14.0,
+    "category": "Geotab Service",
+    "desc": "Multi Stream data to additional databases"
   },
   {
     "skuKey": "FleetShare Hosting",
-    "fullPath": "FleetShare Hosting",
+    "fullPath": "FleetShare Hosting (FleetShare Hosting)",
     "defaultPrice": 45.0,
-    "category": ""
+    "category": "",
+    "desc": "FleetShare Hosting"
   },
   {
-    "skuKey": "Ford OEM Integration (Premium",
+    "skuKey": "Freightliner (OEM)",
+    "fullPath": "Geotab Service:Freightliner (OEM) (Freightliner OEM Service)",
+    "defaultPrice": 22.95,
+    "category": "Geotab Service",
+    "desc": "Freightliner OEM Service"
+  },
+  {
+    "skuKey": "Geoforce Service (GT1s)",
+    "fullPath": "Geoforce Service:Geoforce Service (GT1s) (Geoforce GT1 Satellite Service)",
+    "defaultPrice": 14.5,
+    "category": "Geoforce Service",
+    "desc": "Geoforce GT1 Satellite Service"
+  },
+  {
+    "skuKey": "Geoforce Service (GT2c)",
+    "fullPath": "Geoforce Service:Geoforce Service (GT2c) (Geoforce GT2 Cellular Service)",
+    "defaultPrice": 18.0,
+    "category": "Geoforce Service",
+    "desc": "Geoforce GT2 Cellular Service"
+  },
+  {
+    "skuKey": "Geoforce Service (GT2h)",
+    "fullPath": "Geoforce Service:Geoforce Service (GT2h) (Geoforce GT2 Cellular/Satellite Service)",
+    "defaultPrice": 18.0,
+    "category": "Geoforce Service",
+    "desc": "Geoforce GT2 Cellular/Satellite Service"
+  },
+  {
+    "skuKey": "Geotab Ford (Premium (OEM))",
     "fullPath": "Geotab Service:Geotab Ford (Premium (OEM)) (Ford OEM Integration (Premium))",
     "defaultPrice": 17.75,
-    "category": "Geotab Service"
+    "category": "Geotab Service",
+    "desc": "Ford OEM Integration (Premium)"
   },
   {
-    "skuKey": "Freightliner OEM Service",
-    "fullPath": "Geotab Service:Freightliner (OEM)",
-    "defaultPrice": 22.95,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "Geoforce GT1 Satellite Service",
-    "fullPath": "Geoforce Service:Geoforce Service (GT1s)",
-    "defaultPrice": 14.5,
-    "category": "Geoforce Service"
-  },
-  {
-    "skuKey": "Geoforce GT2 Cellular Service",
-    "fullPath": "Geoforce Service:Geoforce Service (GT2c)",
-    "defaultPrice": 18.0,
-    "category": "Geoforce Service"
-  },
-  {
-    "skuKey": "Geoforce GT2 Cellular/Satellite Service",
-    "fullPath": "Geoforce Service:Geoforce Service (GT2h)",
-    "defaultPrice": 18.0,
-    "category": "Geoforce Service"
-  },
-  {
-    "skuKey": "Geotab GO9 - Sourcewell  (1 Year Warranty",
-    "fullPath": "Geotab Equipment:GO9 SW (Geotab GO9 - Sourcewell  (1 Year Warranty))",
-    "defaultPrice": 0.0,
-    "category": "Geotab Equipment"
-  },
-  {
-    "skuKey": "Geotab Mack OEM Premium Integration",
-    "fullPath": "Geotab Service:Geotab Mack (Premium (OEM))",
-    "defaultPrice": 24.95,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "Geotab Only Basic Messaging Monthly Subscription",
-    "fullPath": "Phillips Connect Service:Geotab Only",
-    "defaultPrice": 15.95,
-    "category": "Phillips Connect Service"
-  },
-  {
-    "skuKey": "Geotab Volvo OEM Integration (Regulatory",
-    "fullPath": "Geotab Service:Geotab Volvo (Regulatory (OEM)) (Geotab Volvo OEM Integration (Regulatory))",
-    "defaultPrice": 22.95,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "Geotab Volvo OEM Integration - Premium",
-    "fullPath": "Geotab Service:Geotab Volvo (Premium (OEM))",
-    "defaultPrice": 24.95,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "GM OEM Integration (Premium",
+    "skuKey": "Geotab GM (Premium (OEM))",
     "fullPath": "Geotab Service:Geotab GM (Premium (OEM)) (GM OEM Integration (Premium))",
     "defaultPrice": 21.95,
-    "category": "Geotab Service"
+    "category": "Geotab Service",
+    "desc": "GM OEM Integration (Premium)"
+  },
+  {
+    "skuKey": "Geotab Mack (Premium (OEM))",
+    "fullPath": "Geotab Service:Geotab Mack (Premium (OEM)) (Geotab Mack OEM Premium Integration)",
+    "defaultPrice": 24.95,
+    "category": "Geotab Service",
+    "desc": "Geotab Mack OEM Premium Integration"
+  },
+  {
+    "skuKey": "Geotab Mercedes (MBCON Premium)",
+    "fullPath": "Geotab Service:Geotab Mercedes (MBCON Premium) (Mercedes OEM Integration (Premium))",
+    "defaultPrice": 25.5,
+    "category": "Geotab Service",
+    "desc": "Mercedes OEM Integration (Premium)"
+  },
+  {
+    "skuKey": "Geotab Navistar (Premium (OEM))",
+    "fullPath": "Geotab Service:Geotab Navistar (Premium (OEM)) (International OEM Integration (Premium))",
+    "defaultPrice": 22.95,
+    "category": "Geotab Service",
+    "desc": "International OEM Integration (Premium)"
+  },
+  {
+    "skuKey": "Geotab Off-Road (GO)",
+    "fullPath": "Geotab Service:Geotab Off-Road (GO) (Service Fee Geotab Off-Road (GO))",
+    "defaultPrice": 15.0,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab Off-Road (GO)"
+  },
+  {
+    "skuKey": "Geotab Only",
+    "fullPath": "Phillips Connect Service:Geotab Only (Geotab Only Basic Messaging Monthly Subscription)",
+    "defaultPrice": 15.95,
+    "category": "Phillips Connect Service",
+    "desc": "Geotab Only Basic Messaging Monthly Subscription"
+  },
+  {
+    "skuKey": "Geotab Service (GO + Support)",
+    "fullPath": "Geotab Service:Geotab Service (GO + Support) (Service Fee Geotab GO Plan + Premium Support)",
+    "defaultPrice": 1.82,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab GO Plan + Premium Support"
+  },
+  {
+    "skuKey": "Geotab Service (GO BUNDLE)",
+    "fullPath": "Geotab Service:Geotab Service (GO BUNDLE) (Service Fee Geotab (GO) BUNDLE)",
+    "defaultPrice": 22.95,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (GO) BUNDLE"
+  },
+  {
+    "skuKey": "Geotab Service (GO Bundle-SB)",
+    "fullPath": "Geotab Service:Geotab Service (GO Bundle-SB) (Service Fee Geotab (GO BUNDLE) - Satefy Bundle Plan)",
+    "defaultPrice": 5.8,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (GO BUNDLE) - Satefy Bundle Plan"
+  },
+  {
+    "skuKey": "Geotab Service (GO Bundle-SBWI) (Service Fee Geotab (GO BUNDLE) - Satefy Bundle P...",
+    "fullPath": "Geotab Service:Geotab Service (GO Bundle-SBWI) (Service Fee Geotab (GO BUNDLE) - Satefy Bundle P...",
+    "defaultPrice": 26.0,
+    "category": "Geotab Service",
+    "desc": ""
+  },
+  {
+    "skuKey": "Geotab Service (GO Focus Plus)",
+    "fullPath": "Geotab Service:Geotab Service (GO Focus Plus) (GO Focus Plus Service Fee)",
+    "defaultPrice": 19.5,
+    "category": "Geotab Service",
+    "desc": "GO Focus Plus Service Fee"
+  },
+  {
+    "skuKey": "Geotab Service (GO Plan)",
+    "fullPath": "Geotab Service:Geotab Service (GO Plan) (Service Fee Geotab (GO))",
+    "defaultPrice": 1.61,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (GO)"
+  },
+  {
+    "skuKey": "Geotab Service (GO SW-SI)",
+    "fullPath": "Geotab Service:Geotab Service (GO SW-SI) (Service Fee Geotab (GO) SW Self-Install)",
+    "defaultPrice": 19.25,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (GO) SW Self-Install"
+  },
+  {
+    "skuKey": "Geotab Service (GO SW-SI2)",
+    "fullPath": "Geotab Service:Geotab Service (GO SW-SI2) (Service Fee Geotab (GO) SW2 Self-Install)",
+    "defaultPrice": 19.25,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (GO) SW2 Self-Install"
+  },
+  {
+    "skuKey": "Geotab Service (GO SW-SI3)",
+    "fullPath": "Geotab Service:Geotab Service (GO SW-SI3) (Service Fee Geotab (GO) SW3 Self-Install)",
+    "defaultPrice": 2.48,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (GO) SW3 Self-Install"
+  },
+  {
+    "skuKey": "Geotab Service (GO SWELL-CC)",
+    "fullPath": "Geotab Service:Geotab Service (GO SWELL-CC) (Service Fee Geotab (GO SWELL-CC))",
+    "defaultPrice": 16.0,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (GO SWELL-CC)"
+  },
+  {
+    "skuKey": "Geotab Service (GO SWELL3)",
+    "fullPath": "Geotab Service:Geotab Service (GO SWELL3) (Service Fee Geotab (GO SWELL3))",
+    "defaultPrice": 19.25,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (GO SWELL3)"
+  },
+  {
+    "skuKey": "Geotab Service (GO SWELL3-CC)",
+    "fullPath": "Geotab Service:Geotab Service (GO SWELL3-CC) (Service Fee Geotab (GO SWELL3-CC))",
+    "defaultPrice": 8.77,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (GO SWELL3-CC)"
+  },
+  {
+    "skuKey": "Geotab Service (PP+PW-Ohio)",
+    "fullPath": "Geotab Service:Geotab Service (PP+PW-Ohio) (Service Fee Geotab (ProPlus+Public Works) Ohio Bundle)",
+    "defaultPrice": 15.25,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (ProPlus+Public Works) Ohio Bundle"
+  },
+  {
+    "skuKey": "Geotab Service (Pro-Ohio)",
+    "fullPath": "Geotab Service:Geotab Service (Pro-Ohio) (Service Fee Geotab (Pro) Ohio Bundle)",
+    "defaultPrice": 15.0,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (Pro) Ohio Bundle"
+  },
+  {
+    "skuKey": "Geotab Service (Proplus SW-SI)",
+    "fullPath": "Geotab Service:Geotab Service (Proplus SW-SI) (Service Fee Geotab (ProPlus) SW Self-Install)",
+    "defaultPrice": 18.87,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (ProPlus) SW Self-Install"
+  },
+  {
+    "skuKey": "Geotab Service (Proplus SW-SI2)",
+    "fullPath": "Geotab Service:Geotab Service (Proplus SW-SI2) (Service Fee Geotab (ProPlus) SW2 Self-Install)",
+    "defaultPrice": 19.25,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (ProPlus) SW2 Self-Install"
+  },
+  {
+    "skuKey": "Geotab Service (Proplus SWELL)",
+    "fullPath": "Geotab Service:Geotab Service (Proplus SWELL) (Service Fee Geotab (ProPlus SWELL))",
+    "defaultPrice": 20.15,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (ProPlus SWELL)"
+  },
+  {
+    "skuKey": "Geotab Service (Proplus SWELL2)",
+    "fullPath": "Geotab Service:Geotab Service (Proplus SWELL2) (Service Fee Geotab (ProPlus SWELL2))",
+    "defaultPrice": 20.5,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (ProPlus SWELL2)"
+  },
+  {
+    "skuKey": "Geotab Service (ProPlus-Ohio)",
+    "fullPath": "Geotab Service:Geotab Service (ProPlus-Ohio) (Service Fee Geotab (ProPlus) Ohio Bundle)",
+    "defaultPrice": 19.75,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (ProPlus) Ohio Bundle"
+  },
+  {
+    "skuKey": "Geotab Service Fee (HANOVER)",
+    "fullPath": "Geotab Service:Geotab Service Fee (HANOVER) (Service Fee Geotab (GO))",
+    "defaultPrice": 1.45,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (GO)"
+  },
+  {
+    "skuKey": "Geotab Shipping",
+    "fullPath": "Shipping Service:Geotab Shipping (Insured Flat Rate Shipping from Geotab)",
+    "defaultPrice": 15.0,
+    "category": "Shipping Service",
+    "desc": "Insured Flat Rate Shipping from Geotab"
+  },
+  {
+    "skuKey": "Geotab Volvo (Premium (OEM))",
+    "fullPath": "Geotab Service:Geotab Volvo (Premium (OEM)) (Geotab Volvo OEM Integration - Premium)",
+    "defaultPrice": 24.95,
+    "category": "Geotab Service",
+    "desc": "Geotab Volvo OEM Integration - Premium"
+  },
+  {
+    "skuKey": "Geotab Volvo (Regulatory (OEM))",
+    "fullPath": "Geotab Service:Geotab Volvo (Regulatory (OEM)) (Geotab Volvo OEM Integration (Regulatory))",
+    "defaultPrice": 22.95,
+    "category": "Geotab Service",
+    "desc": "Geotab Volvo OEM Integration (Regulatory)"
   },
   {
     "skuKey": "GO Anywhere Plan",
-    "fullPath": "Geotab Service:GO Anywhere Plan",
+    "fullPath": "Geotab Service:GO Anywhere Plan (GO Anywhere Plan)",
     "defaultPrice": 7.0,
-    "category": "Geotab Service"
+    "category": "Geotab Service",
+    "desc": "GO Anywhere Plan"
   },
   {
-    "skuKey": "GO Anywhere Plan - Bundle",
-    "fullPath": "Geotab Service:GO Anywhere Plan (Bundle)",
+    "skuKey": "GO Anywhere Plan (Bundle)",
+    "fullPath": "Geotab Service:GO Anywhere Plan (Bundle) (GO Anywhere Plan - Bundle)",
     "defaultPrice": 12.0,
-    "category": "Geotab Service"
+    "category": "Geotab Service",
+    "desc": "GO Anywhere Plan - Bundle"
   },
   {
-    "skuKey": "GO Anywhere Plan - Sourcewell Contract Self Installation",
-    "fullPath": "Geotab Service:GO Anywhere Plan (SWSI)",
+    "skuKey": "GO Anywhere Plan (SWSI)",
+    "fullPath": "Geotab Service:GO Anywhere Plan (SWSI) (GO Anywhere Plan - Sourcewell Contract Self Installation)",
     "defaultPrice": 9.0,
-    "category": "Geotab Service"
+    "category": "Geotab Service",
+    "desc": "GO Anywhere Plan - Sourcewell Contract Self Installation"
   },
   {
-    "skuKey": "GO Anywhere Plus Service Fee - Bundle",
-    "fullPath": "Geotab Service:GO Anywhere Plus Plan - Bundle",
+    "skuKey": "GO Anywhere Plus Plan - Bundle",
+    "fullPath": "Geotab Service:GO Anywhere Plus Plan - Bundle (GO Anywhere Plus Service Fee - Bundle)",
     "defaultPrice": 15.0,
-    "category": "Geotab Service"
+    "category": "Geotab Service",
+    "desc": "GO Anywhere Plus Service Fee - Bundle"
   },
   {
-    "skuKey": "GO Focus Plus Aux Cam Bundle",
-    "fullPath": "Geotab Service:Service (GFPlus + Aux) Bundle",
-    "defaultPrice": 29.0,
-    "category": "Geotab Service"
+    "skuKey": "GO9 SW",
+    "fullPath": "Geotab Equipment:GO9 SW (Geotab GO9 - Sourcewell  (1 Year Warranty))",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "Geotab GO9 - Sourcewell  (1 Year Warranty)"
   },
   {
-    "skuKey": "GO Focus Plus Bundle Service Fee",
-    "fullPath": "Geotab Service:Service (GO Focus Plus) Bundle",
-    "defaultPrice": 12.34,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "GO Focus Plus Bundle Service Fee - Safety Bundle",
-    "fullPath": "Geotab Service:Bundle Service Fee (GFP-SB)",
-    "defaultPrice": 6.29,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "GO Focus Plus Service Fee",
-    "fullPath": "Geotab Service:Geotab Service (GO Focus Plus)",
-    "defaultPrice": 19.5,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "GO Focus Service Fee",
-    "fullPath": "Geotab Service:Service Fee (GO Focus)",
-    "defaultPrice": 6.0,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "GO Focus-SBWI",
-    "fullPath": "Geotab Service:Bundle Service (GO Focus-SBWI) (GO Focus Bundle Service Fee - Safety Bundle with ...",
-    "defaultPrice": 20.0,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "GoAnalytics - Data",
-    "fullPath": "GoGPS Service:GoAnalytics",
+    "skuKey": "GoAnalytics",
+    "fullPath": "GoGPS Service:GoAnalytics (GoAnalytics - Data)",
     "defaultPrice": 1.0,
-    "category": "GoGPS Service"
+    "category": "GoGPS Service",
+    "desc": "GoAnalytics - Data"
   },
   {
     "skuKey": "Haas Alert",
-    "fullPath": "Haas Services:Haas Alert",
+    "fullPath": "Haas Services:Haas Alert (Haas Alert)",
     "defaultPrice": 5.0,
-    "category": "Haas Services"
+    "category": "Haas Services",
+    "desc": "Haas Alert"
   },
   {
-    "skuKey": "Hosting/Maintenance Fee",
-    "fullPath": "Integration Services:Hosting Fee",
+    "skuKey": "Hosting Fee",
+    "fullPath": "Integration Services:Hosting Fee (Hosting/Maintenance Fee)",
     "defaultPrice": 2.0,
-    "category": "Integration Services"
+    "category": "Integration Services",
+    "desc": "Hosting/Maintenance Fee"
   },
   {
-    "skuKey": "Insured Flat Rate Shipping from Geotab",
-    "fullPath": "Shipping Service:Geotab Shipping",
-    "defaultPrice": 15.0,
-    "category": "Shipping Service"
+    "skuKey": "HRN-GS16K22 SW",
+    "fullPath": "Geotab Equipment:HRN-GS16K22 SW (Universal OBDII Y-Harness Kit - Sourcewell)",
+    "defaultPrice": 0.0,
+    "category": "Geotab Equipment",
+    "desc": "Universal OBDII Y-Harness Kit - Sourcewell"
   },
   {
-    "skuKey": "International OEM Integration (Premium",
-    "fullPath": "Geotab Service:Geotab Navistar (Premium (OEM)) (International OEM Integration (Premium))",
-    "defaultPrice": 22.95,
-    "category": "Geotab Service"
+    "skuKey": "IFTA Plus",
+    "fullPath": "IFTA Plus Services:IFTA Plus (One click IFTA  statements)",
+    "defaultPrice": 4.0,
+    "category": "IFTA Plus Services",
+    "desc": "One click IFTA  statements"
   },
   {
     "skuKey": "International Payment Fee",
-    "fullPath": "International Payment Fee",
+    "fullPath": "International Payment Fee (International Payment Fee)",
     "defaultPrice": 10.0,
-    "category": ""
+    "category": "",
+    "desc": "International Payment Fee"
   },
   {
-    "skuKey": "John Deere AEMP OEM",
-    "fullPath": "Geotab Service:John Deere AEMP (OEM)",
+    "skuKey": "John Deere AEMP (OEM)",
+    "fullPath": "Geotab Service:John Deere AEMP (OEM) (John Deere AEMP OEM)",
     "defaultPrice": 5.0,
-    "category": "Geotab Service"
+    "category": "Geotab Service",
+    "desc": "John Deere AEMP OEM"
   },
   {
-    "skuKey": "Komatsu AEMP OEM Service",
-    "fullPath": "Geotab Service:Komatsu AEMP (OEM)",
+    "skuKey": "Komatsu AEMP (OEM)",
+    "fullPath": "Geotab Service:Komatsu AEMP (OEM) (Komatsu AEMP OEM Service)",
     "defaultPrice": 5.0,
-    "category": "Geotab Service"
+    "category": "Geotab Service",
+    "desc": "Komatsu AEMP OEM Service"
   },
   {
-    "skuKey": "License Subscription",
-    "fullPath": "SambaSafety Service:Essentials",
-    "defaultPrice": 2.99,
-    "category": "SambaSafety Service"
+    "skuKey": "LifeSaver Service",
+    "fullPath": "LifeSaver Service (Distracted Driving Solution)",
+    "defaultPrice": 15.0,
+    "category": "",
+    "desc": "Distracted Driving Solution"
+  },
+  {
+    "skuKey": "Main Shipping",
+    "fullPath": "Shipping Service:Main Shipping (FedEx Shipping Tracking#:)",
+    "defaultPrice": 46.54,
+    "category": "Shipping Service",
+    "desc": "FedEx Shipping Tracking#:"
   },
   {
     "skuKey": "Manage Services",
-    "fullPath": "Manage Services",
+    "fullPath": "Manage Services (Manage Services)",
     "defaultPrice": 3.0,
-    "category": ""
+    "category": "",
+    "desc": "Manage Services"
   },
   {
-    "skuKey": "Mercedes OEM Integration (Premium",
-    "fullPath": "Geotab Service:Geotab Mercedes (MBCON Premium) (Mercedes OEM Integration (Premium))",
-    "defaultPrice": 25.5,
-    "category": "Geotab Service"
+    "skuKey": "MKT-FEE-CITIZENS1 (Citizen Insights Monthly Fee (Population up to 50k) Ohio Contr...",
+    "fullPath": "Geotab Service:MKT-FEE-CITIZENS1 (Citizen Insights Monthly Fee (Population up to 50k) Ohio Contr...",
+    "defaultPrice": 487.5,
+    "category": "Geotab Service",
+    "desc": ""
   },
   {
-    "skuKey": "Multi Stream data to additional databases",
-    "fullPath": "Geotab Service:Extendable Services - Pro",
-    "defaultPrice": 14.0,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "Nano 4FF Sim Card",
-    "fullPath": "Aeris Equipment:Nano Sim",
+    "skuKey": "Nano Sim",
+    "fullPath": "Aeris Equipment:Nano Sim (Nano 4FF Sim Card)",
     "defaultPrice": 0.0,
-    "category": "Aeris Equipment"
-  },
-  {
-    "skuKey": "OEM Server Fee - 2MB Data Plan",
-    "fullPath": "Digital Matter Service:DM Service Fee",
-    "defaultPrice": 11.0,
-    "category": "Digital Matter Service"
-  },
-  {
-    "skuKey": "One click IFTA  statements",
-    "fullPath": "IFTA Plus Services:IFTA Plus",
-    "defaultPrice": 4.0,
-    "category": "IFTA Plus Services"
+    "category": "Aeris Equipment",
+    "desc": "Nano 4FF Sim Card"
   },
   {
     "skuKey": "ORIGOInspect Plan",
-    "fullPath": "Geotab Service:ORIGOInspect Plan",
+    "fullPath": "Geotab Service:ORIGOInspect Plan (ORIGOInspect Plan)",
     "defaultPrice": 3.5,
-    "category": "Geotab Service"
+    "category": "Geotab Service",
+    "desc": "ORIGOInspect Plan"
+  },
+  {
+    "skuKey": "Oyster3",
+    "fullPath": "Digital Matter Equipment:Oyster3 (Compact Ultra-Rugged Battery-Powered Asset Tracker)",
+    "defaultPrice": 155.0,
+    "category": "Digital Matter Equipment",
+    "desc": "Compact Ultra-Rugged Battery-Powered Asset Tracker"
   },
   {
     "skuKey": "Pairing Script",
-    "fullPath": "Integration Services:Pairing Script",
+    "fullPath": "Integration Services:Pairing Script (Pairing Script)",
     "defaultPrice": 0.1,
-    "category": "Integration Services"
+    "category": "Integration Services",
+    "desc": "Pairing Script"
   },
   {
-    "skuKey": "Phillips Connect Service Fee",
-    "fullPath": "Phillips Connect Service:Tracking Fee",
-    "defaultPrice": 12.5,
-    "category": "Phillips Connect Service"
+    "skuKey": "Pledge - Enterprise",
+    "fullPath": "Associate Pledge Service:Pledge - Enterprise (Distracted Driving Solution by PortNexus)",
+    "defaultPrice": 8.0,
+    "category": "Associate Pledge Service",
+    "desc": "Distracted Driving Solution by PortNexus"
   },
   {
-    "skuKey": "Predictive Coach Service Fee - Automated Driver Coaching",
-    "fullPath": "Geotab Service:Predictive Coach",
+    "skuKey": "Predictive Coach",
+    "fullPath": "Geotab Service:Predictive Coach (Predictive Coach Service Fee - Automated Driver Coaching)",
     "defaultPrice": 6.0,
-    "category": "Geotab Service"
+    "category": "Geotab Service",
+    "desc": "Predictive Coach Service Fee - Automated Driver Coaching"
   },
   {
-    "skuKey": "Predictive Coach:Predictive Coach Service Fee (Predictive Coach Service Fee - Automated Driver C...",
+    "skuKey": "Predictive Coach Service Fee (Predictive Coach Service Fee - Automated Driver C...",
     "fullPath": "Predictive Coach:Predictive Coach Service Fee (Predictive Coach Service Fee - Automated Driver C...",
     "defaultPrice": 9.0,
-    "category": "Predictive Coach"
+    "category": "Predictive Coach",
+    "desc": ""
   },
   {
-    "skuKey": "Pressure Pro Service Fee",
-    "fullPath": "Pressure Pro Service:Pressure Pro FX Service",
+    "skuKey": "Pressure Pro FX Service",
+    "fullPath": "Pressure Pro Service:Pressure Pro FX Service (Pressure Pro Service Fee)",
     "defaultPrice": 5.0,
-    "category": "Pressure Pro Service"
+    "category": "Pressure Pro Service",
+    "desc": "Pressure Pro Service Fee"
   },
   {
-    "skuKey": "Rasters Turn By Turn Plan",
-    "fullPath": "Geotab Service:Rasters Plan",
-    "defaultPrice": 33.0,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "Rosco Service:Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
-    "fullPath": "Rosco Service:Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
-    "defaultPrice": 23.0,
-    "category": "Rosco Service"
-  },
-  {
-    "skuKey": "Rosco Service:Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
-    "fullPath": "Rosco Service:Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
-    "defaultPrice": 23.0,
-    "category": "Rosco Service"
-  },
-  {
-    "skuKey": "Service Fee (Wifi",
-    "fullPath": "Rosco Service:Wifi Service (Service Fee (Wifi))",
-    "defaultPrice": 20.0,
-    "category": "Rosco Service"
-  },
-  {
-    "skuKey": "Service Fee CalAmp (Asset",
-    "fullPath": "Fleethoster Service:Service Fee CalAmp (Asset) (Service Fee CalAmp (Asset))",
-    "defaultPrice": 12.95,
-    "category": "Fleethoster Service"
-  },
-  {
-    "skuKey": "Service Fee DoForms (Basic",
-    "fullPath": "DoForms Service:Service Fee DoForms (Basic) (Service Fee DoForms (Basic))",
-    "defaultPrice": 9.95,
-    "category": "DoForms Service"
-  },
-  {
-    "skuKey": "Service Fee Fleetio (Advanced",
-    "fullPath": "Fleetio Service:Service Fee Fleetio (Advanced) (Service Fee Fleetio (Advanced))",
-    "defaultPrice": 7.5,
-    "category": "Fleetio Service"
-  },
-  {
-    "skuKey": "Service Fee Geotab (Asset",
-    "fullPath": "Geotab Service:Service Fee Geotab (Asset) (Service Fee Geotab (Asset) - 2MB Data Limit)",
-    "defaultPrice": 12.0,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "Service Fee Geotab (Base",
-    "fullPath": "Geotab Service:Service Fee Geotab (Base) (Service Fee Geotab (Base))",
-    "defaultPrice": 2.57,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "Service Fee Geotab (GO",
-    "fullPath": "Geotab Service:Geotab Service (GO Plan) (Service Fee Geotab (GO))",
-    "defaultPrice": 1.45,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "Service Fee Geotab (GO BUNDLE",
-    "fullPath": "Geotab Service:Geotab Service (GO Bundle-SBWI) (Service Fee Geotab (GO BUNDLE) - Satefy Bundle P...",
-    "defaultPrice": 5.8,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "Service Fee Geotab (GO SWELL-CC",
-    "fullPath": "Geotab Service:Geotab Service (GO SWELL-CC) (Service Fee Geotab (GO SWELL-CC))",
-    "defaultPrice": 16.0,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "Service Fee Geotab (GO SWELL3",
-    "fullPath": "Geotab Service:Geotab Service (GO SWELL3) (Service Fee Geotab (GO SWELL3))",
-    "defaultPrice": 19.25,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "Service Fee Geotab (GO SWELL3-CC",
-    "fullPath": "Geotab Service:Geotab Service (GO SWELL3-CC) (Service Fee Geotab (GO SWELL3-CC))",
-    "defaultPrice": 8.77,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "Service Fee Geotab (HOS",
-    "fullPath": "Geotab Service:Service Fee Geotab (HOS V2) (Service Fee Geotab (HOS))",
-    "defaultPrice": 15.0,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "Service Fee Geotab (Pro",
-    "fullPath": "Geotab Service:Service Fee Geotab (Pro) (Service Fee Geotab (Pro))",
-    "defaultPrice": 3.22,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "Service Fee Geotab (ProPlus",
-    "fullPath": "Geotab Service:Service Fee Geotab (ProPlus) (Service Fee Geotab (ProPlus))",
-    "defaultPrice": 1.8,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "Service Fee Geotab (ProPlus + Keyless",
+    "skuKey": "ProPlus + Keyless (SW)",
     "fullPath": "Geotab Service:ProPlus + Keyless (SW) (Service Fee Geotab (ProPlus + Keyless) SW)",
     "defaultPrice": 64.25,
-    "category": "Geotab Service"
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (ProPlus + Keyless) SW"
   },
   {
-    "skuKey": "Service Fee Geotab (ProPlus SWELL",
-    "fullPath": "Geotab Service:Geotab Service (Proplus SWELL) (Service Fee Geotab (ProPlus SWELL))",
-    "defaultPrice": 20.15,
-    "category": "Geotab Service"
+    "skuKey": "Rasters Plan",
+    "fullPath": "Geotab Service:Rasters Plan (Rasters Turn By Turn Plan)",
+    "defaultPrice": 33.0,
+    "category": "Geotab Service",
+    "desc": "Rasters Turn By Turn Plan"
   },
   {
-    "skuKey": "Service Fee Geotab (ProPlus SWELL2",
-    "fullPath": "Geotab Service:Geotab Service (Proplus SWELL2) (Service Fee Geotab (ProPlus SWELL2))",
-    "defaultPrice": 20.5,
-    "category": "Geotab Service"
+    "skuKey": "Sensata Service",
+    "fullPath": "Geotab Service:Sensata Service (Cloud Base Services)",
+    "defaultPrice": 20.0,
+    "category": "Geotab Service",
+    "desc": "Cloud Base Services"
   },
   {
-    "skuKey": "Service Fee Geotab (ProPlus+Public Works",
-    "fullPath": "Geotab Service:Geotab Service (PP+PW-Ohio) (Service Fee Geotab (ProPlus+Public Works) Ohio Bundle)",
-    "defaultPrice": 15.25,
-    "category": "Geotab Service"
+    "skuKey": "Service (GFPlus + Aux) Bundle",
+    "fullPath": "Geotab Service:Service (GFPlus + Aux) Bundle (GO Focus Plus Aux Cam Bundle)",
+    "defaultPrice": 29.0,
+    "category": "Geotab Service",
+    "desc": "GO Focus Plus Aux Cam Bundle"
   },
   {
-    "skuKey": "Service Fee Geotab (Suspend",
+    "skuKey": "Service (GO Focus Plus) Bundle",
+    "fullPath": "Geotab Service:Service (GO Focus Plus) Bundle (GO Focus Plus Bundle Service Fee)",
+    "defaultPrice": 12.34,
+    "category": "Geotab Service",
+    "desc": "GO Focus Plus Bundle Service Fee"
+  },
+  {
+    "skuKey": "Service (GO Focus Plus) SW-SI3",
+    "fullPath": "Geotab Service:Service (GO Focus Plus) SW-SI3 (GO Focus Plus Bundle Service Fee)",
+    "defaultPrice": 20.0,
+    "category": "Geotab Service",
+    "desc": "GO Focus Plus Bundle Service Fee"
+  },
+  {
+    "skuKey": "Service (GO Focus Plus) SWELL3",
+    "fullPath": "Geotab Service:Service (GO Focus Plus) SWELL3 (GO Focus Plus Bundle Service Fee)",
+    "defaultPrice": 20.0,
+    "category": "Geotab Service",
+    "desc": "GO Focus Plus Bundle Service Fee"
+  },
+  {
+    "skuKey": "Service Fee (GO Focus)",
+    "fullPath": "Geotab Service:Service Fee (GO Focus) (GO Focus Service Fee)",
+    "defaultPrice": 6.0,
+    "category": "Geotab Service",
+    "desc": "GO Focus Service Fee"
+  },
+  {
+    "skuKey": "Service Fee (GO) - Nextlink",
+    "fullPath": "Geotab Service:Service Fee (GO) - Nextlink (Service Fee Geotab (GO) - Nextlink)",
+    "defaultPrice": 25.0,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (GO) - Nextlink"
+  },
+  {
+    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "fullPath": "Geotab Service:Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "defaultPrice": 8.0,
+    "category": "Geotab Service",
+    "desc": ""
+  },
+  {
+    "skuKey": "Service Fee (HANOVER-CS) Han (Service Fee Geotab (GO) - Hanover Cost Share for Ha...",
+    "fullPath": "Geotab Service:Service Fee (HANOVER-CS) Han (Service Fee Geotab (GO) - Hanover Cost Share for Ha...",
+    "defaultPrice": 8.0,
+    "category": "Geotab Service",
+    "desc": ""
+  },
+  {
+    "skuKey": "Service Fee (Motorpool SW)",
+    "fullPath": "Geotab Service:Service Fee (Motorpool SW) (Service Fee Geotab (ProPlus + Keyless) SW)",
+    "defaultPrice": 64.25,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (ProPlus + Keyless) SW"
+  },
+  {
+    "skuKey": "Service Fee CalAmp (Asset)",
+    "fullPath": "Fleethoster Service:Service Fee CalAmp (Asset) (Service Fee CalAmp (Asset))",
+    "defaultPrice": 12.95,
+    "category": "Fleethoster Service",
+    "desc": "Service Fee CalAmp (Asset)"
+  },
+  {
+    "skuKey": "Service Fee DoForms (Basic)",
+    "fullPath": "DoForms Service:Service Fee DoForms (Basic) (Service Fee DoForms (Basic))",
+    "defaultPrice": 9.95,
+    "category": "DoForms Service",
+    "desc": "Service Fee DoForms (Basic)"
+  },
+  {
+    "skuKey": "Service Fee Drivewyze",
+    "fullPath": "Drivewyze Service:Service Fee Drivewyze (Drivewyze Service)",
+    "defaultPrice": 17.99,
+    "category": "Drivewyze Service",
+    "desc": "Drivewyze Service"
+  },
+  {
+    "skuKey": "Service Fee Fleetio (Advanced)",
+    "fullPath": "Fleetio Service:Service Fee Fleetio (Advanced) (Service Fee Fleetio (Advanced))",
+    "defaultPrice": 7.5,
+    "category": "Fleetio Service",
+    "desc": "Service Fee Fleetio (Advanced)"
+  },
+  {
+    "skuKey": "Service Fee Geotab (Asset)",
+    "fullPath": "Geotab Service:Service Fee Geotab (Asset) (Service Fee Geotab (Asset) - 2MB Data Limit)",
+    "defaultPrice": 12.0,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (Asset) - 2MB Data Limit"
+  },
+  {
+    "skuKey": "Service Fee Geotab (Base V2)",
+    "fullPath": "Geotab Service:Service Fee Geotab (Base V2) (Service Fee Geotab (Base))",
+    "defaultPrice": 17.0,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (Base)"
+  },
+  {
+    "skuKey": "Service Fee Geotab (Base)",
+    "fullPath": "Geotab Service:Service Fee Geotab (Base) (Service Fee Geotab (Base))",
+    "defaultPrice": 2.57,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (Base)"
+  },
+  {
+    "skuKey": "Service Fee Geotab (HOS V2)",
+    "fullPath": "Geotab Service:Service Fee Geotab (HOS V2) (Service Fee Geotab (HOS))",
+    "defaultPrice": 22.95,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (HOS)"
+  },
+  {
+    "skuKey": "Service Fee Geotab (HOS)",
+    "fullPath": "Geotab Service:Service Fee Geotab (HOS) (Service Fee Geotab (HOS))",
+    "defaultPrice": 15.0,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (HOS)"
+  },
+  {
+    "skuKey": "Service Fee Geotab (PP)-Bundle",
+    "fullPath": "Geotab Service:Service Fee Geotab (PP)-Bundle (Service Fee Geotab (ProPlus) - Bundle)",
+    "defaultPrice": 30.25,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (ProPlus) - Bundle"
+  },
+  {
+    "skuKey": "Service Fee Geotab (Pro V2)",
+    "fullPath": "Geotab Service:Service Fee Geotab (Pro V2) (Service Fee Geotab (Pro))",
+    "defaultPrice": 21.95,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (Pro)"
+  },
+  {
+    "skuKey": "Service Fee Geotab (Pro)",
+    "fullPath": "Geotab Service:Service Fee Geotab (Pro) (Service Fee Geotab (Pro))",
+    "defaultPrice": 3.22,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (Pro)"
+  },
+  {
+    "skuKey": "Service Fee Geotab (Pro)-Bundle",
+    "fullPath": "Geotab Service:Service Fee Geotab (Pro)-Bundle (Service Fee Geotab (Pro) - Bundle)",
+    "defaultPrice": 27.95,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (Pro) - Bundle"
+  },
+  {
+    "skuKey": "Service Fee Geotab (ProPlus V2)",
+    "fullPath": "Geotab Service:Service Fee Geotab (ProPlus V2) (Service Fee Geotab (ProPlus))",
+    "defaultPrice": 27.95,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (ProPlus)"
+  },
+  {
+    "skuKey": "Service Fee Geotab (ProPlus)",
+    "fullPath": "Geotab Service:Service Fee Geotab (ProPlus) (Service Fee Geotab (ProPlus))",
+    "defaultPrice": 1.8,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (ProPlus)"
+  },
+  {
+    "skuKey": "Service Fee Geotab (Suspend V2)",
     "fullPath": "Geotab Service:Service Fee Geotab (Suspend V2) (Service Fee Geotab (Suspend))",
     "defaultPrice": 10.0,
-    "category": "Geotab Service"
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (Suspend)"
   },
   {
-    "skuKey": "Service Fee Geotab GO Plan + Premium Support",
-    "fullPath": "Geotab Service:Geotab Service (GO + Support)",
-    "defaultPrice": 1.82,
-    "category": "Geotab Service"
+    "skuKey": "Service Fee Geotab (Suspend)",
+    "fullPath": "Geotab Service:Service Fee Geotab (Suspend) (Service Fee Geotab (Suspend))",
+    "defaultPrice": 10.0,
+    "category": "Geotab Service",
+    "desc": "Service Fee Geotab (Suspend)"
   },
   {
-    "skuKey": "Service Fee Geotab Off-Road (GO",
-    "fullPath": "Geotab Service:Geotab Off-Road (GO) (Service Fee Geotab Off-Road (GO))",
-    "defaultPrice": 15.0,
-    "category": "Geotab Service"
-  },
-  {
-    "skuKey": "Service Fee GoCam+ - 500MB Data",
-    "fullPath": "Smartwitness Service:Service Fee GoCam+",
+    "skuKey": "Service Fee GoCam+",
+    "fullPath": "Smartwitness Service:Service Fee GoCam+ (Service Fee GoCam+ - 500MB Data)",
     "defaultPrice": 25.0,
-    "category": "Smartwitness Service"
+    "category": "Smartwitness Service",
+    "desc": "Service Fee GoCam+ - 500MB Data"
   },
   {
     "skuKey": "Service Fee JJ Keller",
-    "fullPath": "JJ Keller Service:Service Fee JJ Keller",
+    "fullPath": "JJ Keller Service:Service Fee JJ Keller (Service Fee JJ Keller)",
     "defaultPrice": 10.95,
-    "category": "JJ Keller Service"
+    "category": "JJ Keller Service",
+    "desc": "Service Fee JJ Keller"
   },
   {
-    "skuKey": "Service Fee Rosco (Basic",
+    "skuKey": "Service Fee Rosco (Basic)",
     "fullPath": "Rosco Service:Service Fee Rosco (Basic) (Service Fee Rosco (Basic))",
     "defaultPrice": 28.0,
-    "category": "Rosco Service"
+    "category": "Rosco Service",
+    "desc": "Service Fee Rosco (Basic)"
+  },
+  {
+    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "fullPath": "Rosco Service:Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "defaultPrice": 23.0,
+    "category": "Rosco Service",
+    "desc": ""
+  },
+  {
+    "skuKey": "Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
+    "fullPath": "Rosco Service:Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
+    "defaultPrice": 23.0,
+    "category": "Rosco Service",
+    "desc": ""
   },
   {
     "skuKey": "Service Fee Route4Me",
-    "fullPath": "Route4Me Service:Service Fee Route4Me",
+    "fullPath": "Route4Me Service:Service Fee Route4Me (Service Fee Route4Me)",
     "defaultPrice": 60.0,
-    "category": "Route4Me Service"
+    "category": "Route4Me Service",
+    "desc": "Service Fee Route4Me"
   },
   {
-    "skuKey": "Service Fee TopFly Basic (2GB Data Limit",
+    "skuKey": "Service Fee Starlite",
+    "fullPath": "Fleethoster Service:Service Fee Starlite (Starlite Solar Asset Tracking Service Fee)",
+    "defaultPrice": 14.95,
+    "category": "Fleethoster Service",
+    "desc": "Starlite Solar Asset Tracking Service Fee"
+  },
+  {
+    "skuKey": "Service Fee TopFly Basic",
     "fullPath": "TopFly Service:Service Fee TopFly Basic (Service Fee TopFly Basic (2GB Data Limit))",
     "defaultPrice": 16.95,
-    "category": "TopFly Service"
+    "category": "TopFly Service",
+    "desc": "Service Fee TopFly Basic (2GB Data Limit)"
   },
   {
-    "skuKey": "Sourcewell SS Camera Service Fee  (1GB Data Limit",
-    "fullPath": "Geotab Service:SS Service Fee SW (Sourcewell SS Camera Service Fee  (1GB Data Limit))",
-    "defaultPrice": 16.0,
-    "category": "Geotab Service"
+    "skuKey": "Service Fee Xirgo (Basic)",
+    "fullPath": "Xirgo Service:Service Fee Xirgo (Basic) (Service Fee Xirgo (Basic) (2MB Data Limit))",
+    "defaultPrice": 16.95,
+    "category": "Xirgo Service",
+    "desc": "Service Fee Xirgo (Basic) (2MB Data Limit)"
   },
   {
-    "skuKey": "SS Camera Service Fee  (1GB Data Limit",
+    "skuKey": "SS Service Fee",
     "fullPath": "Geotab Service:SS Service Fee (SS Camera Service Fee  (1GB Data Limit))",
     "defaultPrice": 18.0,
-    "category": "Geotab Service"
+    "category": "Geotab Service",
+    "desc": "SS Camera Service Fee  (1GB Data Limit)"
   },
   {
-    "skuKey": "SS Cameras Service Fee  (1GB Data Limit",
-    "fullPath": "Surfsight Service:SS Service Fee (SS Cameras Service Fee  (1GB Data Limit))",
-    "defaultPrice": 18.95,
-    "category": "Surfsight Service"
+    "skuKey": "SS Service Fee (Ohio)",
+    "fullPath": "Geotab Service:SS Service Fee (Ohio) (SS Camera Service Fee  (1GB Data Limit))",
+    "defaultPrice": 20.0,
+    "category": "Geotab Service",
+    "desc": "SS Camera Service Fee  (1GB Data Limit)"
   },
   {
-    "skuKey": "SS Cameras Service Fee BUNDLE (1GB Data Limit",
+    "skuKey": "SS Service Fee BUNDLE",
     "fullPath": "Geotab Service:SS Service Fee BUNDLE (SS Cameras Service Fee BUNDLE (1GB Data Limit))",
     "defaultPrice": 20.0,
-    "category": "Geotab Service"
+    "category": "Geotab Service",
+    "desc": "SS Cameras Service Fee BUNDLE (1GB Data Limit)"
   },
   {
-    "skuKey": "Starlite Solar Asset Tracking Service Fee",
-    "fullPath": "Fleethoster Service:Service Fee Starlite",
-    "defaultPrice": 14.95,
-    "category": "Fleethoster Service"
+    "skuKey": "SS Service Fee SW",
+    "fullPath": "Geotab Service:SS Service Fee SW (Sourcewell SS Camera Service Fee  (1GB Data Limit))",
+    "defaultPrice": 16.0,
+    "category": "Geotab Service",
+    "desc": "Sourcewell SS Camera Service Fee  (1GB Data Limit)"
   },
   {
     "skuKey": "State Fee",
-    "fullPath": "SambaSafety Service:State Fee",
+    "fullPath": "SambaSafety Service:State Fee (State Fee)",
     "defaultPrice": 5.0,
-    "category": "SambaSafety Service"
+    "category": "SambaSafety Service",
+    "desc": "State Fee"
   },
   {
-    "skuKey": "Stellantis Premium Plan",
-    "fullPath": "Geotab Service:Stellantis Premium (OEM)",
+    "skuKey": "Stellantis Premium (OEM)",
+    "fullPath": "Geotab Service:Stellantis Premium (OEM) (Stellantis Premium Plan)",
     "defaultPrice": 24.95,
-    "category": "Geotab Service"
+    "category": "Geotab Service",
+    "desc": "Stellantis Premium Plan"
   },
   {
-    "skuKey": "True Fuel Service Fee",
-    "fullPath": "VNomics:True Fuel",
+    "skuKey": "Tracking Fee",
+    "fullPath": "Phillips Connect Service:Tracking Fee (Phillips Connect Service Fee)",
+    "defaultPrice": 12.5,
+    "category": "Phillips Connect Service",
+    "desc": "Phillips Connect Service Fee"
+  },
+  {
+    "skuKey": "True Fuel",
+    "fullPath": "VNomics:True Fuel (True Fuel Service Fee)",
     "defaultPrice": 18.5,
-    "category": "VNomics"
+    "category": "VNomics",
+    "desc": "True Fuel Service Fee"
   },
   {
-    "skuKey": "Universal OBDII Y-Harness Kit - Sourcewell",
-    "fullPath": "Geotab Equipment:HRN-GS16K22 SW",
-    "defaultPrice": 0.0,
-    "category": "Geotab Equipment"
-  },
-  {
-    "skuKey": "VisionTrack Plan",
-    "fullPath": "VisionTrack Service:VisionTrack Service Plan",
+    "skuKey": "VisionTrack Service Plan",
+    "fullPath": "VisionTrack Service:VisionTrack Service Plan (VisionTrack Plan)",
     "defaultPrice": 18.0,
-    "category": "VisionTrack Service"
+    "category": "VisionTrack Service",
+    "desc": "VisionTrack Plan"
   },
   {
-    "skuKey": "VisionTrack VT3600-Kit-1 Bundled Service",
-    "fullPath": "VisionTrack Service:VT3600-Kit-1 Bundled Service",
+    "skuKey": "VT3600-Kit-1 Bundled Service",
+    "fullPath": "VisionTrack Service:VT3600-Kit-1 Bundled Service (VisionTrack VT3600-Kit-1 Bundled Service)",
     "defaultPrice": 28.95,
-    "category": "VisionTrack Service"
+    "category": "VisionTrack Service",
+    "desc": "VisionTrack VT3600-Kit-1 Bundled Service"
+  },
+  {
+    "skuKey": "Wifi Service",
+    "fullPath": "Rosco Service:Wifi Service (Service Fee (Wifi))",
+    "defaultPrice": 20.0,
+    "category": "Rosco Service",
+    "desc": "Service Fee (Wifi)"
+  },
+  {
+    "skuKey": "Xtract Service Fee",
+    "fullPath": "Xtract Service:Xtract Service Fee (Digital FNOL and incident reconstruction solution)",
+    "defaultPrice": 5.0,
+    "category": "Xtract Service",
+    "desc": "Digital FNOL and incident reconstruction solution"
+  },
+  {
+    "skuKey": "Xtract Service Fee (Baker)",
+    "fullPath": "Xtract Service:Xtract Service Fee (Baker) (Digital FNOL and incident reconstruction solution)",
+    "defaultPrice": 4.0,
+    "category": "Xtract Service",
+    "desc": "Digital FNOL and incident reconstruction solution"
   }
 ]

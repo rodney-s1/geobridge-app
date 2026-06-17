@@ -78,6 +78,7 @@ class SkuUpsert(BaseModel):
     fullPath: str
     defaultPrice: float = 0.0
     category: str = ""
+    desc: str = ""
 
 
 @router.get("/settings/sku-catalog")
@@ -191,30 +192,62 @@ async def delete_override(override_id: str):
 #  IMPORT QB INVOICE CSV  →  populate sku_catalog (and customer overrides)
 # ════════════════════════════════════════════════════════════════════════════════
 
-def _extract_sku(item_str: str) -> str | None:
-    """Extract last (...) group as short SKU key."""
-    if not item_str:
-        return None
-    matches = re.findall(r'\(([^)]+)\)', item_str)
-    return matches[-1] if matches else item_str.strip()
+def _parse_item(item_str: str) -> tuple[str, str, str]:
+    """
+    Parse a QB Item (col P) string into (group, sku_name, desc).
 
+    Format:  'Geotab Service:Service Fee Geotab (HOS V2) (Service Fee Geotab (HOS))'
+      group    = 'Geotab Service'           (text before first ':')
+      sku_name = 'Service Fee Geotab (HOS V2)'  (after ':', strip last top-level parens)
+      desc     = 'Service Fee Geotab (HOS)'     (content of that last top-level parens)
 
-def _strip_sku(item_str: str) -> str:
-    """Remove last (...) group to get the clean QB path."""
-    return re.sub(r'\s*\([^)]*\)\s*$', '', item_str).strip()
+    Uses a right-to-left balanced-paren scan so nested parens inside SKU names
+    (e.g. 'DM Service Fee (Periodic)') are preserved correctly.
+    """
+    item_str = item_str.strip()
+
+    # Split off the group prefix
+    if ':' in item_str:
+        colon    = item_str.index(':')
+        group    = item_str[:colon].strip()
+        rest     = item_str[colon + 1:].strip()
+    else:
+        group = ''
+        rest  = item_str
+
+    desc     = ''
+    sku_name = rest
+
+    # Strip the last top-level (...) to get the clean SKU name
+    if rest.endswith(')'):
+        depth = 0
+        i = len(rest) - 1
+        while i >= 0:
+            if rest[i] == ')':
+                depth += 1
+            elif rest[i] == '(':
+                depth -= 1
+                if depth == 0:
+                    desc     = rest[i + 1:-1].strip()
+                    sku_name = rest[:i].strip()
+                    break
+            i -= 1
+
+    return group, sku_name, desc
 
 
 def _parse_qb_csv(content: str) -> dict:
     """
     Parse QB invoice CSV (doubled-comma format).
-    Col 5=Type, Col 13=Name, Col 15=Item, Col 17=Qty, Col 19=Sales Price
-    Returns {skus: {key: {...}}, customers: {name: {skuKey: price}}}
+    Col 5=Type, Col 13=Name, Col 15=Item (full QB path), Col 17=Qty, Col 19=Sales Price
+
+    Returns {skus: {sku_name: {...}}, customers: {parent_name: {sku_name: price}}}
     """
     reader = csv.reader(io.StringIO(content))
-    rows = list(reader)
+    rows   = list(reader)
 
-    skus_out = {}
-    customers_out = {}
+    skus_out:      dict = {}
+    customers_out: dict = {}
 
     for row in rows:
         if len(row) <= 19:
@@ -235,32 +268,29 @@ def _parse_qb_csv(content: str) -> dict:
         except ValueError:
             continue
 
-        sku_key  = _extract_sku(item_raw)
-        full_path = _strip_sku(item_raw)
+        group, sku_name, desc = _parse_item(item_raw)
 
-        if not sku_key:
+        if not sku_name:
             continue
 
-        # Derive category from QB path (text before first ':')
-        category = full_path.split(':')[0].strip() if ':' in full_path else ''
-
-        if sku_key not in skus_out:
-            skus_out[sku_key] = {
-                'skuKey':       sku_key,
-                'fullPath':     full_path,
-                'defaultPrice': price,
-                'category':     category,
-                'prices':       set(),
+        if sku_name not in skus_out:
+            skus_out[sku_name] = {
+                'skuKey':        sku_name,
+                'fullPath':      item_raw,   # full col P value kept for reference
+                'defaultPrice':  price,
+                'category':      group,
+                'desc':          desc,
+                'prices':        set(),
                 'customerCount': 0,
             }
-        skus_out[sku_key]['prices'].add(price)
-        skus_out[sku_key]['customerCount'] += 1
+        skus_out[sku_name]['prices'].add(price)
+        skus_out[sku_name]['customerCount'] += 1
 
-        # Parent customer name (strip child after ':')
+        # Parent customer name (strip child sub-account after ':')
         parent_name = name_raw.split(':')[0].strip()
         if parent_name not in customers_out:
             customers_out[parent_name] = {}
-        customers_out[parent_name][sku_key] = price
+        customers_out[parent_name][sku_name] = price
 
     # Convert price sets to sorted lists
     for v in skus_out.values():
@@ -290,6 +320,7 @@ async def import_qb_skus(file: UploadFile = File(...)):
             'fullPath':     data['fullPath'],
             'defaultPrice': data['defaultPrice'],
             'category':     data['category'],
+            'desc':         data.get('desc', ''),
         }
         if existing:
             existing.update(entry)

@@ -100,7 +100,7 @@ function SkuCatalogTab({ catalog, onRefresh }) {
   const [editKey, setEditKey] = useState(null)   // skuKey being edited
   const [editForm, setEditForm] = useState({})
   const [adding, setAdding] = useState(false)
-  const [newForm, setNewForm] = useState({ skuKey: '', fullPath: '', defaultPrice: '', category: '' })
+  const [newForm, setNewForm] = useState({ skuKey: '', fullPath: '', defaultPrice: '', category: '', desc: '' })
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
 
@@ -130,7 +130,7 @@ function SkuCatalogTab({ catalog, onRefresh }) {
       setMsg({ type: 'ok', text: 'SKU saved.' })
       setEditKey(null)
       setAdding(false)
-      setNewForm({ skuKey: '', fullPath: '', defaultPrice: '', category: '' })
+      setNewForm({ skuKey: '', fullPath: '', defaultPrice: '', category: '', desc: '' })
       onRefresh()
     } catch (e) {
       setMsg({ type: 'err', text: e.message })
@@ -189,19 +189,27 @@ function SkuCatalogTab({ catalog, onRefresh }) {
                 className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
             </div>
             <div className="col-span-2">
-              <label className="block text-xs text-slate-400 mb-1">Full QB Path</label>
+              <label className="block text-xs text-slate-400 mb-1">Full QB Path (col P)</label>
               <input value={newForm.fullPath} onChange={e => setNewForm(f => ({ ...f, fullPath: e.target.value }))}
+                placeholder="e.g. Geotab Service:Service Fee Geotab (HOS V2) (Service Fee Geotab (HOS))"
                 className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Category</label>
+              <label className="block text-xs text-slate-400 mb-1">Category (QB group)</label>
               <input value={newForm.category} onChange={e => setNewForm(f => ({ ...f, category: e.target.value }))}
+                placeholder="e.g. Geotab Service"
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Description (QB memo)</label>
+              <input value={newForm.desc} onChange={e => setNewForm(f => ({ ...f, desc: e.target.value }))}
+                placeholder="e.g. Service Fee Geotab (HOS)"
                 className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
             </div>
           </div>
           <div className="flex gap-2">
             <button disabled={saving || !newForm.skuKey.trim()}
-              onClick={() => saveSku({ ...newForm, defaultPrice: parseFloat(newForm.defaultPrice) || 0 })}
+              onClick={() => saveSku({ ...newForm, defaultPrice: parseFloat(newForm.defaultPrice) || 0, desc: newForm.desc || '' })}
               className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded-lg font-medium">
               {saving ? 'Saving…' : 'Save'}
             </button>
@@ -222,8 +230,8 @@ function SkuCatalogTab({ catalog, onRefresh }) {
           <table className="w-full text-sm">
             <thead>
               <tr className="text-xs text-slate-500 border-b border-slate-700">
-                <th className="text-left px-4 py-2 font-medium">SKU Key</th>
-                <th className="text-left px-4 py-2 font-medium hidden md:table-cell">QB Full Path</th>
+                <th className="text-left px-4 py-2 font-medium">SKU Name</th>
+                <th className="text-left px-4 py-2 font-medium hidden md:table-cell">Category</th>
                 <th className="text-right px-4 py-2 font-medium">Default Price</th>
                 <th className="px-4 py-2"></th>
               </tr>
@@ -246,15 +254,21 @@ function SkuCatalogTab({ catalog, onRefresh }) {
                             className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
                         </div>
                         <div className="col-span-2">
-                          <label className="block text-xs text-slate-400 mb-1">Full QB Path</label>
+                          <label className="block text-xs text-slate-400 mb-1">Full QB Path (col P)</label>
                           <input value={editForm.fullPath}
                             onChange={e => setEditForm(f => ({ ...f, fullPath: e.target.value }))}
+                            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Description (QB memo)</label>
+                          <input value={editForm.desc || ''}
+                            onChange={e => setEditForm(f => ({ ...f, desc: e.target.value }))}
                             className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
                         </div>
                       </div>
                       <div className="flex gap-2">
                         <button disabled={saving}
-                          onClick={() => saveSku({ ...editForm, defaultPrice: parseFloat(editForm.defaultPrice) || 0 })}
+                          onClick={() => saveSku({ ...editForm, defaultPrice: parseFloat(editForm.defaultPrice) || 0, desc: editForm.desc || '' })}
                           className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded font-medium">
                           {saving ? 'Saving…' : 'Save'}
                         </button>
@@ -265,12 +279,17 @@ function SkuCatalogTab({ catalog, onRefresh }) {
                 ) : (
                   <tr key={sku.skuKey} className="border-b border-slate-700/50 hover:bg-slate-750 transition-colors group">
                     <td className="px-4 py-2.5">
-                      <span className="font-mono text-xs text-slate-200 bg-slate-700 px-1.5 py-0.5 rounded">
-                        {sku.skuKey}
-                      </span>
+                      <div>
+                        <span className="font-mono text-xs text-slate-200 bg-slate-700 px-1.5 py-0.5 rounded cursor-help" title={sku.fullPath}>
+                          {sku.skuKey}
+                        </span>
+                        {sku.desc && (
+                          <div className="text-xs text-slate-500 mt-0.5 pl-0.5">{sku.desc}</div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-2.5 text-slate-400 text-xs hidden md:table-cell max-w-xs truncate" title={sku.fullPath}>
-                      {sku.fullPath}
+                      {sku.category}
                     </td>
                     <td className="px-4 py-2.5 text-right font-mono text-slate-200">
                       {fmtPrice(sku.defaultPrice)}
