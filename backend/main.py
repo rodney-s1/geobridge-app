@@ -13,14 +13,19 @@ app = FastAPI(
 )
 
 # Allow the React frontend to talk to this backend.
-# Electron loads the built frontend as file:// which sends Origin: null —
-# so we allow all origins for this local desktop-only backend.
+# Electron loads the built frontend as file:// which sends Origin: null.
+# Dev mode uses http://localhost:5173 (Vite) as the origin.
+# This is a local desktop-only app — open CORS is safe.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=False,   # must be False when allow_origins=["*"]
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "Accept", "Origin",
+                   "X-Requested-With", "Access-Control-Request-Method",
+                   "Access-Control-Request-Headers"],
+    expose_headers=["*"],
+    max_age=3600,
 )
 
 # Health Check
