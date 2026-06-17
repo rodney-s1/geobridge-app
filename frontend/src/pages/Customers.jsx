@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 
 const API = 'http://127.0.0.1:8001'
 
@@ -97,8 +97,8 @@ function groupCustomers(customers) {
 
 // ─── Copy-to-clipboard helper ────────────────────────────────────────────────
 function useCopySerials() {
-  const [copied, setCopied] = React.useState(false)
-  const copy = React.useCallback((serials) => {
+  const [copied, setCopied] = useState(false)
+  const copy = useCallback((serials) => {
     const text = serials.filter(Boolean).join('\n')
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true)

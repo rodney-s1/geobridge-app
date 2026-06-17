@@ -56,7 +56,7 @@ def _load(path, default):
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
     except FileNotFoundError:
-        print(f"[settings] File not found: {path}")
+        # Silently return default for known optional files
         return default
     except json.JSONDecodeError as e:
         print(f"[settings] JSON decode error in {path}: {e}")
@@ -93,7 +93,13 @@ def _save(path, data):
 # GET are effectively instant and far safer than module-level caching.
 
 def _catalog()       -> list: return _load(SKU_CATALOG_FILE,       [])
-def _cust_mappings() -> list: return _load(CUST_RATE_PLAN_FILE,    [])
+def _cust_mappings() -> list:
+    data = _load(CUST_RATE_PLAN_FILE, None)
+    if data is None:
+        # First run on this machine -- create the file so S3 can pick it up
+        _save(CUST_RATE_PLAN_FILE, [])
+        return []
+    return data
 def _overrides()     -> list: return _load(CUSTOMER_OVERRIDES_FILE,[])
 def _myadmin_cache() -> dict: return _load(MYADMIN_CACHE_FILE,     {})
 
