@@ -148,9 +148,10 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         for s in catalog
     }
 
-    # promoCode (upper) -> skuKey
+    # ratePlanCode (upper) -> skuKey
+    # Accept both field names: new schema uses ratePlanCode, old schema used promoCode
     mapping_index: Dict[str, str] = {
-        (m.get("promoCode") or "").upper(): m.get("skuKey") or ""
+        (m.get("ratePlanCode") or m.get("promoCode") or "").upper(): m.get("skuKey") or ""
         for m in mappings
     }
 

@@ -586,9 +586,13 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh }) {
                       </span>
                     </td>
                     <td className="px-4 py-2.5 overflow-hidden">
-                      <span className="font-mono text-xs bg-slate-700 text-blue-300 px-1.5 py-0.5 rounded block truncate" title={m.skuKey}>
-                        {m.skuKey}
-                      </span>
+                      {m.skuKey ? (
+                        <span className="font-mono text-xs bg-slate-700 text-blue-300 px-1.5 py-0.5 rounded block truncate" title={m.skuKey}>
+                          {m.skuKey}
+                        </span>
+                      ) : (
+                        <span className="text-slate-600 text-xs italic">not mapped</span>
+                      )}
                     </td>
                     <td className="px-4 py-2.5 text-right font-mono text-slate-200">
                       {fmtPrice(m.defaultPrice)}
