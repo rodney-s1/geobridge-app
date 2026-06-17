@@ -58,12 +58,25 @@ def _save(path, data):
 
 
 # ─── In-memory stores ─────────────────────────────────────────────────────────
-# sku_catalog:  list[dict]  — {skuKey, fullPath, defaultPrice, category}
-# sku_mappings: list[dict]  — {ratePlanCode, skuKey, defaultPrice, notes}
-# cust_ovr:     list[dict]  — {id, customerName, skuKey, price}
-sku_catalog:  list = _load(SKU_CATALOG_FILE,        [])
-sku_mappings: list = _load(SKU_MAPPINGS_FILE,       [])
-cust_ovr:     list = _load(CUSTOMER_OVERRIDES_FILE, [])
+# These are loaded from disk on every read operation (GET endpoints) to avoid
+# stale-cache issues when the JSON files are updated externally (e.g. after a
+# git pull or a previous import before the process was restarted).
+#
+# Write operations (POST/DELETE/import) keep them in sync in memory too so that
+# multiple writes in the same request cycle are consistent.
+#
+# For a local desktop app with <1000 items in each file, disk reads on every
+# GET are effectively instant and far safer than module-level caching.
+
+def _catalog()  -> list: return _load(SKU_CATALOG_FILE,        [])
+def _mappings() -> list: return _load(SKU_MAPPINGS_FILE,       [])
+def _overrides()-> list: return _load(CUSTOMER_OVERRIDES_FILE, [])
+
+# Keep module-level references for write operations so imports/upserts
+# don't need to reload from disk mid-operation.
+sku_catalog:  list = _catalog()
+sku_mappings: list = _mappings()
+cust_ovr:     list = _overrides()
 
 print(f"[settings] SKU catalog: {len(sku_catalog)} SKUs, "
       f"{len(sku_mappings)} mappings, {len(cust_ovr)} overrides")
@@ -84,12 +97,15 @@ class SkuUpsert(BaseModel):
 
 @router.get("/settings/sku-catalog")
 async def list_sku_catalog():
-    return sorted(sku_catalog, key=lambda x: x.get("skuKey", "").lower())
+    # Always read from disk so stale in-memory state is never returned
+    data = _catalog()
+    return sorted(data, key=lambda x: x.get("skuKey", "").lower())
 
 
 @router.post("/settings/sku-catalog")
 async def upsert_sku(body: SkuUpsert):
     global sku_catalog
+    sku_catalog = _catalog()   # reload from disk first
     existing = next((s for s in sku_catalog if s["skuKey"] == body.skuKey), None)
     if existing:
         existing.update(body.dict())
@@ -102,6 +118,7 @@ async def upsert_sku(body: SkuUpsert):
 @router.delete("/settings/sku-catalog/{sku_key:path}")
 async def delete_sku(sku_key: str):
     global sku_catalog
+    sku_catalog = _catalog()   # reload from disk first
     before = len(sku_catalog)
     sku_catalog = [s for s in sku_catalog if s["skuKey"] != sku_key]
     _save(SKU_CATALOG_FILE, sku_catalog)
@@ -121,12 +138,14 @@ class MappingUpsert(BaseModel):
 
 @router.get("/settings/sku-mappings")
 async def list_sku_mappings():
-    return sorted(sku_mappings, key=lambda x: x.get("ratePlanCode", "").lower())
+    data = _mappings()
+    return sorted(data, key=lambda x: x.get("ratePlanCode", "").lower())
 
 
 @router.post("/settings/sku-mappings")
 async def upsert_mapping(body: MappingUpsert):
     global sku_mappings
+    sku_mappings = _mappings()  # reload from disk first
     existing = next((m for m in sku_mappings if m["ratePlanCode"].upper() == body.ratePlanCode.upper()), None)
     data = body.dict()
     data["ratePlanCode"] = data["ratePlanCode"].upper()
@@ -141,6 +160,7 @@ async def upsert_mapping(body: MappingUpsert):
 @router.delete("/settings/sku-mappings/{rate_plan_code:path}")
 async def delete_mapping(rate_plan_code: str):
     global sku_mappings
+    sku_mappings = _mappings()  # reload from disk first
     before = len(sku_mappings)
     sku_mappings = [m for m in sku_mappings if m["ratePlanCode"].upper() != rate_plan_code.upper()]
     _save(SKU_MAPPINGS_FILE, sku_mappings)
@@ -163,12 +183,14 @@ def _ovr_id(customer_name: str, sku_key: str) -> str:
 
 @router.get("/settings/customer-overrides")
 async def list_overrides():
-    return sorted(cust_ovr, key=lambda x: x.get("customerName", "").lower())
+    data = _overrides()
+    return sorted(data, key=lambda x: x.get("customerName", "").lower())
 
 
 @router.post("/settings/customer-overrides")
 async def upsert_override(body: OverrideUpsert):
     global cust_ovr
+    cust_ovr = _overrides()    # reload from disk first
     oid = _ovr_id(body.customerName, body.skuKey)
     existing = next((o for o in cust_ovr if o["id"] == oid), None)
     data = {**body.dict(), "id": oid}
@@ -183,6 +205,7 @@ async def upsert_override(body: OverrideUpsert):
 @router.delete("/settings/customer-overrides/{override_id:path}")
 async def delete_override(override_id: str):
     global cust_ovr
+    cust_ovr = _overrides()    # reload from disk first
     before = len(cust_ovr)
     cust_ovr = [o for o in cust_ovr if o["id"] != override_id]
     _save(CUSTOMER_OVERRIDES_FILE, cust_ovr)
@@ -304,6 +327,8 @@ def _parse_qb_csv(content: str) -> dict:
 async def import_qb_skus(file: UploadFile = File(...)):
     """Upload a QB invoice CSV to auto-populate the SKU catalog and customer price overrides."""
     global sku_catalog, cust_ovr
+    sku_catalog = _catalog()    # reload from disk before import
+    cust_ovr    = _overrides()  # reload from disk before import
 
     content = (await file.read()).decode("utf-8-sig", errors="replace")
     parsed  = _parse_qb_csv(content)
@@ -431,6 +456,7 @@ async def import_price_list(file: UploadFile = File(...)):
         customer-specific pricing derived from invoice imports).
     """
     global sku_catalog
+    sku_catalog = _catalog()    # reload from disk before import
 
     content = (await file.read()).decode("utf-8-sig", errors="replace")
     items   = _parse_price_list_csv(content)
@@ -509,7 +535,7 @@ async def get_unmapped_rate_plans():
             if code:
                 seen_codes.add(code)
 
-    mapped_codes = {m["ratePlanCode"].upper() for m in sku_mappings}
+    mapped_codes = {m["ratePlanCode"].upper() for m in _mappings()}
     unmapped = sorted(seen_codes - mapped_codes)
 
     # Count devices per code for context
@@ -546,13 +572,16 @@ async def get_settings_summary():
             if code:
                 seen_codes.add(code)
 
-    mapped_codes = {m["ratePlanCode"].upper() for m in sku_mappings}
+    catalog_now  = _catalog()
+    mappings_now = _mappings()
+    overrides_now= _overrides()
+    mapped_codes = {m["ratePlanCode"].upper() for m in mappings_now}
     unmapped_count = len(seen_codes - mapped_codes)
 
     return {
-        "skuCount":       len(sku_catalog),
-        "mappingCount":   len(sku_mappings),
-        "overrideCount":  len(cust_ovr),
+        "skuCount":       len(catalog_now),
+        "mappingCount":   len(mappings_now),
+        "overrideCount":  len(overrides_now),
         "unmappedCount":  unmapped_count,
         "hasCachedData":  bool(raw),
     }
