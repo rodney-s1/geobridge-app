@@ -46,3 +46,7 @@ app.include_router(auth_router, prefix="/api/geotab", tags=["Geotab Auth"])
 # Customer Routes
 from geotab.customers import router as customers_router
 app.include_router(customers_router, prefix="/api", tags=["Customers"])
+
+# Settings Routes (QB SKU / Rate-Plan mapping)
+from geotab.settings import router as settings_router
+app.include_router(settings_router, prefix="/api", tags=["Settings"])

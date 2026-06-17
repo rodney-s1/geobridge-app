@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import Customers from './Customers'
+import Settings from './Settings'
 
 const API = 'http://localhost:8001'
 
@@ -109,7 +110,7 @@ function Dashboard({ sessionData, onLogout }) {
           {activePage === 'invoices' && <ComingSoon page="Invoices" />}
           {activePage === 'sync' && <ComingSoon page="Sync Status" />}
           {activePage === 'reports' && <ComingSoon page="Reports" />}
-          {activePage === 'settings' && <ComingSoon page="Settings" />}
+          {activePage === 'settings' && <Settings />}
         </div>
 
       </div>

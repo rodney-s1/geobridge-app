@@ -1,0 +1,950 @@
+import { useState, useEffect, useRef, useCallback } from 'react'
+
+const API = 'http://127.0.0.1:8000'
+
+// ─── Tiny helpers ─────────────────────────────────────────────────────────────
+function fmtPrice(v) {
+  if (v === null || v === undefined) return '—'
+  return '$' + Number(v).toFixed(2)
+}
+
+function Badge({ children, color = 'slate' }) {
+  const map = {
+    slate:  'bg-slate-700 text-slate-200',
+    blue:   'bg-blue-900/60 text-blue-300',
+    green:  'bg-emerald-900/60 text-emerald-300',
+    amber:  'bg-amber-900/60 text-amber-300',
+    red:    'bg-red-900/60 text-red-300',
+    purple: 'bg-purple-900/60 text-purple-300',
+  }
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${map[color]}`}>
+      {children}
+    </span>
+  )
+}
+
+function StatCard({ icon, label, value, color = 'blue' }) {
+  const iconMap = {
+    blue:   'text-blue-400',
+    green:  'text-emerald-400',
+    amber:  'text-amber-400',
+    red:    'text-red-400',
+    purple: 'text-purple-400',
+  }
+  return (
+    <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 flex items-center gap-4">
+      <div className={`text-2xl ${iconMap[color]}`}>{icon}</div>
+      <div>
+        <div className="text-2xl font-bold text-white">{value}</div>
+        <div className="text-xs text-slate-400 mt-0.5">{label}</div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Tab button ───────────────────────────────────────────────────────────────
+function TabBtn({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+        active
+          ? 'bg-blue-600 text-white'
+          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+// ─── Confirm-delete button ────────────────────────────────────────────────────
+function DeleteBtn({ onConfirm, small = false }) {
+  const [confirming, setConfirming] = useState(false)
+  const timer = useRef(null)
+
+  function start() {
+    setConfirming(true)
+    timer.current = setTimeout(() => setConfirming(false), 3000)
+  }
+  function confirm() {
+    clearTimeout(timer.current)
+    setConfirming(false)
+    onConfirm()
+  }
+
+  return confirming ? (
+    <button
+      onClick={confirm}
+      className={`${small ? 'text-xs px-2 py-0.5' : 'text-sm px-3 py-1'} bg-red-600 hover:bg-red-500 text-white rounded font-medium transition-colors`}
+    >
+      Confirm
+    </button>
+  ) : (
+    <button
+      onClick={start}
+      className={`${small ? 'text-xs px-1.5 py-0.5' : 'text-sm px-2 py-1'} text-slate-400 hover:text-red-400 transition-colors`}
+      title="Delete"
+    >
+      🗑
+    </button>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TAB 1 — SKU Catalog
+// ═══════════════════════════════════════════════════════════════════════════════
+function SkuCatalogTab({ catalog, onRefresh }) {
+  const [search, setSearch] = useState('')
+  const [editKey, setEditKey] = useState(null)   // skuKey being edited
+  const [editForm, setEditForm] = useState({})
+  const [adding, setAdding] = useState(false)
+  const [newForm, setNewForm] = useState({ skuKey: '', fullPath: '', defaultPrice: '', category: '' })
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState(null)
+
+  const filtered = catalog.filter(s =>
+    !search || s.skuKey.toLowerCase().includes(search.toLowerCase()) ||
+    s.fullPath?.toLowerCase().includes(search.toLowerCase()) ||
+    s.category?.toLowerCase().includes(search.toLowerCase())
+  )
+
+  // Group by category
+  const groups = {}
+  filtered.forEach(s => {
+    const cat = s.category || 'Uncategorized'
+    if (!groups[cat]) groups[cat] = []
+    groups[cat].push(s)
+  })
+
+  async function saveSku(sku) {
+    setSaving(true)
+    try {
+      const r = await fetch(`${API}/api/settings/sku-catalog`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sku),
+      })
+      if (!r.ok) throw new Error(await r.text())
+      setMsg({ type: 'ok', text: 'SKU saved.' })
+      setEditKey(null)
+      setAdding(false)
+      setNewForm({ skuKey: '', fullPath: '', defaultPrice: '', category: '' })
+      onRefresh()
+    } catch (e) {
+      setMsg({ type: 'err', text: e.message })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function deleteSku(skuKey) {
+    try {
+      await fetch(`${API}/api/settings/sku-catalog/${encodeURIComponent(skuKey)}`, { method: 'DELETE' })
+      onRefresh()
+    } catch (e) {
+      setMsg({ type: 'err', text: e.message })
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {msg && (
+        <div className={`px-4 py-2 rounded-lg text-sm ${msg.type === 'ok' ? 'bg-emerald-900/50 text-emerald-300' : 'bg-red-900/50 text-red-300'}`}>
+          {msg.text}
+          <button onClick={() => setMsg(null)} className="ml-3 text-slate-400 hover:text-white">✕</button>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search SKUs…"
+          className="flex-1 min-w-[200px] bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+        />
+        <button
+          onClick={() => { setAdding(true); setEditKey(null) }}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg font-medium transition-colors"
+        >
+          + Add SKU
+        </button>
+      </div>
+
+      {/* Add form */}
+      {adding && (
+        <div className="bg-slate-800 border border-blue-500/40 rounded-xl p-4 space-y-3">
+          <div className="text-sm font-semibold text-blue-300 mb-1">New SKU</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">SKU Key *</label>
+              <input value={newForm.skuKey} onChange={e => setNewForm(f => ({ ...f, skuKey: e.target.value }))}
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Default Price</label>
+              <input type="number" step="0.01" value={newForm.defaultPrice} onChange={e => setNewForm(f => ({ ...f, defaultPrice: e.target.value }))}
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs text-slate-400 mb-1">Full QB Path</label>
+              <input value={newForm.fullPath} onChange={e => setNewForm(f => ({ ...f, fullPath: e.target.value }))}
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Category</label>
+              <input value={newForm.category} onChange={e => setNewForm(f => ({ ...f, category: e.target.value }))}
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button disabled={saving || !newForm.skuKey.trim()}
+              onClick={() => saveSku({ ...newForm, defaultPrice: parseFloat(newForm.defaultPrice) || 0 })}
+              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded-lg font-medium">
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button onClick={() => setAdding(false)} className="px-4 py-1.5 text-slate-400 hover:text-white text-sm">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Grouped table */}
+      {Object.keys(groups).sort().map(cat => (
+        <div key={cat} className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+          <div className="px-4 py-2 bg-slate-750 border-b border-slate-700 flex items-center justify-between">
+            <span className="text-xs font-semibold text-slate-300 uppercase tracking-wider">{cat}</span>
+            <Badge color="slate">{groups[cat].length}</Badge>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-xs text-slate-500 border-b border-slate-700">
+                <th className="text-left px-4 py-2 font-medium">SKU Key</th>
+                <th className="text-left px-4 py-2 font-medium hidden md:table-cell">QB Full Path</th>
+                <th className="text-right px-4 py-2 font-medium">Default Price</th>
+                <th className="px-4 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {groups[cat].map(sku => (
+                editKey === sku.skuKey ? (
+                  <tr key={sku.skuKey} className="border-b border-slate-700/50 bg-slate-750">
+                    <td className="px-4 py-2" colSpan={4}>
+                      <div className="grid grid-cols-2 gap-3 mb-2">
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">SKU Key</label>
+                          <input value={editForm.skuKey} readOnly
+                            className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm text-slate-300 cursor-not-allowed" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Default Price</label>
+                          <input type="number" step="0.01" value={editForm.defaultPrice}
+                            onChange={e => setEditForm(f => ({ ...f, defaultPrice: e.target.value }))}
+                            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="block text-xs text-slate-400 mb-1">Full QB Path</label>
+                          <input value={editForm.fullPath}
+                            onChange={e => setEditForm(f => ({ ...f, fullPath: e.target.value }))}
+                            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button disabled={saving}
+                          onClick={() => saveSku({ ...editForm, defaultPrice: parseFloat(editForm.defaultPrice) || 0 })}
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded font-medium">
+                          {saving ? 'Saving…' : 'Save'}
+                        </button>
+                        <button onClick={() => setEditKey(null)} className="px-3 py-1 text-slate-400 hover:text-white text-sm">Cancel</button>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  <tr key={sku.skuKey} className="border-b border-slate-700/50 hover:bg-slate-750 transition-colors group">
+                    <td className="px-4 py-2.5">
+                      <span className="font-mono text-xs text-slate-200 bg-slate-700 px-1.5 py-0.5 rounded">
+                        {sku.skuKey}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-slate-400 text-xs hidden md:table-cell max-w-xs truncate" title={sku.fullPath}>
+                      {sku.fullPath}
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-mono text-slate-200">
+                      {fmtPrice(sku.defaultPrice)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => { setEditKey(sku.skuKey); setEditForm({ ...sku }) }}
+                          className="text-xs px-2 py-0.5 text-blue-400 hover:text-blue-300"
+                        >
+                          Edit
+                        </button>
+                        <DeleteBtn small onConfirm={() => deleteSku(sku.skuKey)} />
+                      </div>
+                    </td>
+                  </tr>
+                )
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+
+      {filtered.length === 0 && (
+        <div className="text-center py-12 text-slate-500">No SKUs match your search.</div>
+      )}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TAB 2 — Rate Plan Mappings
+// ═══════════════════════════════════════════════════════════════════════════════
+function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh }) {
+  const [editCode, setEditCode] = useState(null)
+  const [editForm, setEditForm] = useState({})
+  const [adding, setAdding] = useState(false)
+  const [addCode, setAddCode] = useState('')
+  const [addSku, setAddSku] = useState('')
+  const [addPrice, setAddPrice] = useState('')
+  const [addNotes, setAddNotes] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState(null)
+  const [search, setSearch] = useState('')
+  const [showUnmapped, setShowUnmapped] = useState(true)
+
+  const skuOptions = catalog.map(s => s.skuKey).sort()
+
+  const filtered = mappings.filter(m =>
+    !search || m.ratePlanCode.toLowerCase().includes(search.toLowerCase()) ||
+    m.skuKey.toLowerCase().includes(search.toLowerCase())
+  )
+
+  // When SKU is selected in add form, prefill price from catalog
+  function onAddSkuChange(key) {
+    setAddSku(key)
+    const found = catalog.find(s => s.skuKey === key)
+    if (found) setAddPrice(String(found.defaultPrice))
+  }
+
+  async function saveMapping(data) {
+    setSaving(true)
+    try {
+      const r = await fetch(`${API}/api/settings/sku-mappings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
+      if (!r.ok) throw new Error(await r.text())
+      setMsg({ type: 'ok', text: 'Mapping saved.' })
+      setEditCode(null)
+      setAdding(false)
+      setAddCode(''); setAddSku(''); setAddPrice(''); setAddNotes('')
+      onRefresh()
+    } catch (e) {
+      setMsg({ type: 'err', text: e.message })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function deleteMapping(code) {
+    await fetch(`${API}/api/settings/sku-mappings/${encodeURIComponent(code)}`, { method: 'DELETE' })
+    onRefresh()
+  }
+
+  // Quick-add from unmapped panel
+  function quickAdd(code) {
+    setAdding(true)
+    setAddCode(code)
+    setShowUnmapped(false)
+  }
+
+  return (
+    <div className="space-y-4">
+      {msg && (
+        <div className={`px-4 py-2 rounded-lg text-sm ${msg.type === 'ok' ? 'bg-emerald-900/50 text-emerald-300' : 'bg-red-900/50 text-red-300'}`}>
+          {msg.text}
+          <button onClick={() => setMsg(null)} className="ml-3 text-slate-400 hover:text-white">✕</button>
+        </div>
+      )}
+
+      {/* Unmapped codes banner */}
+      {unmapped.length > 0 && (
+        <div className="bg-amber-900/20 border border-amber-700/40 rounded-xl overflow-hidden">
+          <button
+            onClick={() => setShowUnmapped(v => !v)}
+            className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-amber-900/10"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-amber-400">⚠</span>
+              <span className="text-sm font-medium text-amber-300">
+                {unmapped.length} Unmapped Rate Plan Code{unmapped.length !== 1 ? 's' : ''}
+              </span>
+              <span className="text-xs text-amber-500">— these codes have no QB SKU assigned</span>
+            </div>
+            <span className="text-slate-500 text-xs">{showUnmapped ? '▲ Hide' : '▼ Show'}</span>
+          </button>
+          {showUnmapped && (
+            <div className="px-4 pb-3">
+              <div className="flex flex-wrap gap-2">
+                {unmapped.map(u => (
+                  <div key={u.ratePlanCode} className="flex items-center gap-1 bg-slate-800 border border-slate-600 rounded-lg px-2 py-1">
+                    <span className="font-mono text-xs text-amber-300">{u.ratePlanCode}</span>
+                    {u.deviceCount > 0 && (
+                      <span className="text-xs text-slate-500">({u.deviceCount})</span>
+                    )}
+                    <button
+                      onClick={() => quickAdd(u.ratePlanCode)}
+                      className="ml-1 text-xs text-blue-400 hover:text-blue-300 font-medium"
+                    >
+                      Map →
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <input
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          placeholder="Search mappings…"
+          className="flex-1 min-w-[200px] bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+        />
+        <button
+          onClick={() => { setAdding(true); setEditCode(null) }}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg font-medium transition-colors"
+        >
+          + Add Mapping
+        </button>
+      </div>
+
+      {/* Add form */}
+      {adding && (
+        <div className="bg-slate-800 border border-blue-500/40 rounded-xl p-4 space-y-3">
+          <div className="text-sm font-semibold text-blue-300 mb-1">New Rate Plan → SKU Mapping</div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Rate Plan Code *</label>
+              <input value={addCode} onChange={e => setAddCode(e.target.value.toUpperCase())}
+                placeholder="e.g. SWELL-NOINS3"
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 font-mono focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">QB SKU *</label>
+              <select value={addSku} onChange={e => onAddSkuChange(e.target.value)}
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+                <option value="">— select SKU —</option>
+                {skuOptions.map(k => <option key={k} value={k}>{k}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Default Price</label>
+              <input type="number" step="0.01" value={addPrice} onChange={e => setAddPrice(e.target.value)}
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Notes</label>
+              <input value={addNotes} onChange={e => setAddNotes(e.target.value)}
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button disabled={saving || !addCode.trim() || !addSku}
+              onClick={() => saveMapping({ ratePlanCode: addCode, skuKey: addSku, defaultPrice: parseFloat(addPrice) || 0, notes: addNotes })}
+              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded-lg font-medium">
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button onClick={() => { setAdding(false); setAddCode('') }} className="px-4 py-1.5 text-slate-400 hover:text-white text-sm">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Mappings table */}
+      <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-slate-500 border-b border-slate-700 bg-slate-750">
+              <th className="text-left px-4 py-3 font-medium">Rate Plan Code</th>
+              <th className="text-left px-4 py-3 font-medium">QB SKU</th>
+              <th className="text-right px-4 py-3 font-medium">Default Price</th>
+              <th className="text-left px-4 py-3 font-medium hidden lg:table-cell">Notes</th>
+              <th className="px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
+                  {mappings.length === 0 ? 'No mappings yet. Use the unmapped panel above to add some.' : 'No results.'}
+                </td>
+              </tr>
+            ) : filtered.map(m => (
+              editCode === m.ratePlanCode ? (
+                <tr key={m.ratePlanCode} className="border-b border-slate-700/50 bg-slate-750">
+                  <td className="px-4 py-2" colSpan={5}>
+                    <div className="grid grid-cols-2 gap-3 mb-2">
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">Rate Plan Code</label>
+                        <input value={editForm.ratePlanCode} readOnly
+                          className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm font-mono text-slate-300 cursor-not-allowed" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">QB SKU</label>
+                        <select value={editForm.skuKey}
+                          onChange={e => {
+                            const key = e.target.value
+                            const found = catalog.find(s => s.skuKey === key)
+                            setEditForm(f => ({ ...f, skuKey: key, defaultPrice: found ? found.defaultPrice : f.defaultPrice }))
+                          }}
+                          className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+                          <option value="">— select SKU —</option>
+                          {skuOptions.map(k => <option key={k} value={k}>{k}</option>)}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">Default Price</label>
+                        <input type="number" step="0.01" value={editForm.defaultPrice}
+                          onChange={e => setEditForm(f => ({ ...f, defaultPrice: e.target.value }))}
+                          className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1">Notes</label>
+                        <input value={editForm.notes || ''}
+                          onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
+                          className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button disabled={saving}
+                        onClick={() => saveMapping({ ...editForm, defaultPrice: parseFloat(editForm.defaultPrice) || 0 })}
+                        className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded font-medium">
+                        {saving ? 'Saving…' : 'Save'}
+                      </button>
+                      <button onClick={() => setEditCode(null)} className="px-3 py-1 text-slate-400 hover:text-white text-sm">Cancel</button>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                <tr key={m.ratePlanCode} className="border-b border-slate-700/50 hover:bg-slate-750 transition-colors group">
+                  <td className="px-4 py-2.5">
+                    <span className="font-mono text-xs bg-slate-700 text-amber-300 px-1.5 py-0.5 rounded">
+                      {m.ratePlanCode}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <span className="font-mono text-xs bg-slate-700 text-blue-300 px-1.5 py-0.5 rounded">
+                      {m.skuKey}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-mono text-slate-200">
+                    {fmtPrice(m.defaultPrice)}
+                  </td>
+                  <td className="px-4 py-2.5 text-slate-400 text-xs hidden lg:table-cell">{m.notes || '—'}</td>
+                  <td className="px-4 py-2.5 text-right">
+                    <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button onClick={() => { setEditCode(m.ratePlanCode); setEditForm({ ...m }) }}
+                        className="text-xs px-2 py-0.5 text-blue-400 hover:text-blue-300">Edit</button>
+                      <DeleteBtn small onConfirm={() => deleteMapping(m.ratePlanCode)} />
+                    </div>
+                  </td>
+                </tr>
+              )
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TAB 3 — Customer Price Overrides
+// ═══════════════════════════════════════════════════════════════════════════════
+function CustomerOverridesTab({ overrides, catalog, onRefresh }) {
+  const [search, setSearch] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [addCust, setAddCust] = useState('')
+  const [addSku, setAddSku] = useState('')
+  const [addPrice, setAddPrice] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState(null)
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 50
+
+  const filtered = overrides.filter(o =>
+    !search ||
+    o.customerName.toLowerCase().includes(search.toLowerCase()) ||
+    o.skuKey.toLowerCase().includes(search.toLowerCase())
+  )
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
+  function onSkuChange(key) {
+    setAddSku(key)
+    const found = catalog.find(s => s.skuKey === key)
+    if (found) setAddPrice(String(found.defaultPrice))
+  }
+
+  async function saveOverride() {
+    setSaving(true)
+    try {
+      const r = await fetch(`${API}/api/settings/customer-overrides`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerName: addCust, skuKey: addSku, price: parseFloat(addPrice) || 0 }),
+      })
+      if (!r.ok) throw new Error(await r.text())
+      setMsg({ type: 'ok', text: 'Override saved.' })
+      setAdding(false); setAddCust(''); setAddSku(''); setAddPrice('')
+      onRefresh()
+    } catch (e) {
+      setMsg({ type: 'err', text: e.message })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function deleteOverride(id) {
+    await fetch(`${API}/api/settings/customer-overrides/${encodeURIComponent(id)}`, { method: 'DELETE' })
+    onRefresh()
+  }
+
+  return (
+    <div className="space-y-4">
+      {msg && (
+        <div className={`px-4 py-2 rounded-lg text-sm ${msg.type === 'ok' ? 'bg-emerald-900/50 text-emerald-300' : 'bg-red-900/50 text-red-300'}`}>
+          {msg.text}
+          <button onClick={() => setMsg(null)} className="ml-3 text-slate-400 hover:text-white">✕</button>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <input
+          value={search}
+          onChange={e => { setSearch(e.target.value); setPage(1) }}
+          placeholder="Search by customer or SKU…"
+          className="flex-1 min-w-[200px] bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
+        />
+        <button
+          onClick={() => setAdding(v => !v)}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg font-medium transition-colors"
+        >
+          + Add Override
+        </button>
+      </div>
+
+      {/* Add form */}
+      {adding && (
+        <div className="bg-slate-800 border border-blue-500/40 rounded-xl p-4 space-y-3">
+          <div className="text-sm font-semibold text-blue-300 mb-1">New Per-Customer Price Override</div>
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-1">
+              <label className="block text-xs text-slate-400 mb-1">Customer Name *</label>
+              <input value={addCust} onChange={e => setAddCust(e.target.value)}
+                placeholder="Exact QB name"
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">SKU *</label>
+              <select value={addSku} onChange={e => onSkuChange(e.target.value)}
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+                <option value="">— select —</option>
+                {catalog.map(s => <option key={s.skuKey} value={s.skuKey}>{s.skuKey}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Price *</label>
+              <input type="number" step="0.01" value={addPrice} onChange={e => setAddPrice(e.target.value)}
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button disabled={saving || !addCust.trim() || !addSku || !addPrice}
+              onClick={saveOverride}
+              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded-lg font-medium">
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button onClick={() => setAdding(false)} className="px-4 py-1.5 text-slate-400 hover:text-white text-sm">Cancel</button>
+          </div>
+        </div>
+      )}
+
+      {/* Table */}
+      <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+        <div className="px-4 py-2 border-b border-slate-700 flex items-center justify-between">
+          <span className="text-xs text-slate-400">
+            {filtered.length.toLocaleString()} override{filtered.length !== 1 ? 's' : ''}
+            {search ? ' (filtered)' : ''}
+          </span>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1 text-xs text-slate-400">
+              <button disabled={page <= 1} onClick={() => setPage(p => p - 1)}
+                className="px-2 py-0.5 rounded disabled:opacity-30 hover:bg-slate-700">‹</button>
+              <span>Page {page} / {totalPages}</span>
+              <button disabled={page >= totalPages} onClick={() => setPage(p => p + 1)}
+                className="px-2 py-0.5 rounded disabled:opacity-30 hover:bg-slate-700">›</button>
+            </div>
+          )}
+        </div>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs text-slate-500 border-b border-slate-700">
+              <th className="text-left px-4 py-2 font-medium">Customer Name</th>
+              <th className="text-left px-4 py-2 font-medium">SKU</th>
+              <th className="text-right px-4 py-2 font-medium">Price</th>
+              <th className="text-right px-4 py-2 font-medium hidden sm:table-cell">Default</th>
+              <th className="px-4 py-2"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {paged.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-slate-500">No overrides found.</td>
+              </tr>
+            ) : paged.map(o => {
+              const catalogEntry = catalog.find(s => s.skuKey === o.skuKey)
+              const isCustom = catalogEntry && o.price !== catalogEntry.defaultPrice
+              return (
+                <tr key={o.id} className="border-b border-slate-700/50 hover:bg-slate-750 transition-colors group">
+                  <td className="px-4 py-2.5 text-slate-200 text-sm">{o.customerName}</td>
+                  <td className="px-4 py-2.5">
+                    <span className="font-mono text-xs bg-slate-700 text-blue-300 px-1.5 py-0.5 rounded">
+                      {o.skuKey}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-mono">
+                    <span className={isCustom ? 'text-amber-300 font-semibold' : 'text-slate-200'}>
+                      {fmtPrice(o.price)}
+                    </span>
+                    {isCustom && <span className="ml-1 text-xs text-amber-500">custom</span>}
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-mono text-slate-500 text-xs hidden sm:table-cell">
+                    {catalogEntry ? fmtPrice(catalogEntry.defaultPrice) : '—'}
+                  </td>
+                  <td className="px-4 py-2.5 text-right">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <DeleteBtn small onConfirm={() => deleteOverride(o.id)} />
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TAB 4 — Import CSV
+// ═══════════════════════════════════════════════════════════════════════════════
+function ImportCsvTab({ onRefresh }) {
+  const [file, setFile] = useState(null)
+  const [uploading, setUploading] = useState(false)
+  const [result, setResult] = useState(null)
+  const [error, setError] = useState(null)
+  const fileRef = useRef()
+
+  async function handleUpload() {
+    if (!file) return
+    setUploading(true)
+    setResult(null)
+    setError(null)
+    const fd = new FormData()
+    fd.append('file', file)
+    try {
+      const r = await fetch(`${API}/api/settings/import-qb-skus`, { method: 'POST', body: fd })
+      const data = await r.json()
+      if (!r.ok) throw new Error(data.detail || JSON.stringify(data))
+      setResult(data)
+      setFile(null)
+      if (fileRef.current) fileRef.current.value = ''
+      onRefresh()
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 space-y-4">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-200 mb-1">Import QB Invoice Export CSV</h3>
+          <p className="text-xs text-slate-400">
+            Upload a QuickBooks monthly invoice export to automatically populate the SKU catalog and
+            per-customer price overrides. The parser reads the doubled-comma CSV format and extracts
+            SKU keys from the Item column (last parenthesised group).
+          </p>
+        </div>
+
+        <div className="bg-slate-700/50 rounded-lg p-4 text-xs text-slate-400 space-y-1">
+          <div className="font-medium text-slate-300 mb-2">Expected Column Layout</div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 font-mono">
+            <span className="text-blue-400">Col N (13)</span><span>Customer Name</span>
+            <span className="text-blue-400">Col P (15)</span><span>Item / SKU path</span>
+            <span className="text-blue-400">Col R (17)</span><span>Qty</span>
+            <span className="text-blue-400">Col T (19)</span><span>Sales Price</span>
+          </div>
+          <div className="mt-2 text-slate-500">Note: doubled-comma format — every other column is blank.</div>
+        </div>
+
+        <div
+          className="border-2 border-dashed border-slate-600 rounded-xl p-6 text-center cursor-pointer hover:border-blue-500 transition-colors"
+          onClick={() => fileRef.current?.click()}
+          onDragOver={e => e.preventDefault()}
+          onDrop={e => { e.preventDefault(); setFile(e.dataTransfer.files[0]) }}
+        >
+          {file ? (
+            <div>
+              <div className="text-blue-400 text-2xl mb-2">📄</div>
+              <div className="text-sm text-slate-200 font-medium">{file.name}</div>
+              <div className="text-xs text-slate-400 mt-1">{(file.size / 1024).toFixed(1)} KB</div>
+            </div>
+          ) : (
+            <div>
+              <div className="text-slate-500 text-3xl mb-2">📂</div>
+              <div className="text-sm text-slate-400">Drop a CSV file here or click to browse</div>
+              <div className="text-xs text-slate-500 mt-1">QuickBooks monthly invoice export (.csv)</div>
+            </div>
+          )}
+          <input ref={fileRef} type="file" accept=".csv,text/csv,text/plain" className="hidden"
+            onChange={e => setFile(e.target.files[0])} />
+        </div>
+
+        <button
+          disabled={!file || uploading}
+          onClick={handleUpload}
+          className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm font-medium rounded-xl transition-colors"
+        >
+          {uploading ? 'Importing…' : 'Import CSV'}
+        </button>
+
+        {error && (
+          <div className="bg-red-900/40 border border-red-700/40 rounded-lg px-4 py-3 text-sm text-red-300">
+            {error}
+          </div>
+        )}
+
+        {result && (
+          <div className="bg-emerald-900/30 border border-emerald-700/40 rounded-lg px-4 py-3 space-y-1">
+            <div className="text-sm font-medium text-emerald-300">Import successful!</div>
+            <div className="grid grid-cols-2 gap-1 text-xs text-slate-300 mt-2">
+              <span className="text-slate-400">SKUs added:</span><span>{result.skusAdded}</span>
+              <span className="text-slate-400">SKUs updated:</span><span>{result.skusUpdated}</span>
+              <span className="text-slate-400">Price overrides added:</span><span>{result.ovrAdded}</span>
+              <span className="text-slate-400">Price overrides updated:</span><span>{result.ovrUpdated}</span>
+              <span className="text-slate-400">Total SKUs in catalog:</span><span className="font-semibold text-white">{result.totalSkus}</span>
+              <span className="text-slate-400">Customers processed:</span><span className="font-semibold text-white">{result.totalCustomers}</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+//  ROOT COMPONENT
+// ═══════════════════════════════════════════════════════════════════════════════
+export default function Settings() {
+  const [activeTab, setActiveTab] = useState('catalog')
+  const [catalog,   setCatalog]   = useState([])
+  const [mappings,  setMappings]  = useState([])
+  const [overrides, setOverrides] = useState([])
+  const [unmapped,  setUnmapped]  = useState([])
+  const [summary,   setSummary]   = useState(null)
+  const [loading,   setLoading]   = useState(true)
+
+  const fetchAll = useCallback(async () => {
+    try {
+      const [catR, mapR, ovrR, unmR, sumR] = await Promise.all([
+        fetch(`${API}/api/settings/sku-catalog`),
+        fetch(`${API}/api/settings/sku-mappings`),
+        fetch(`${API}/api/settings/customer-overrides`),
+        fetch(`${API}/api/settings/unmapped-rate-plans`),
+        fetch(`${API}/api/settings/summary`),
+      ])
+      if (catR.ok) setCatalog(await catR.json())
+      if (mapR.ok) setMappings(await mapR.json())
+      if (ovrR.ok) setOverrides(await ovrR.json())
+      if (unmR.ok) { const d = await unmR.json(); setUnmapped(d.unmapped || []) }
+      if (sumR.ok) setSummary(await sumR.json())
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => { fetchAll() }, [fetchAll])
+
+  return (
+    <div className="space-y-6">
+      {/* Page header */}
+      <div>
+        <h2 className="text-xl font-bold text-white">Settings</h2>
+        <p className="text-sm text-slate-400 mt-0.5">
+          Manage QuickBooks SKU catalog, rate plan mappings, and per-customer price overrides.
+        </p>
+      </div>
+
+      {/* Summary stat cards */}
+      {summary && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <StatCard icon="📦" label="SKUs in Catalog" value={summary.skuCount} color="blue" />
+          <StatCard icon="🔗" label="Rate Plan Mappings" value={summary.mappingCount} color="green" />
+          <StatCard icon="💲" label="Customer Overrides" value={summary.overrideCount.toLocaleString()} color="purple" />
+          <StatCard icon="⚠" label="Unmapped Codes" value={summary.unmappedCount} color={summary.unmappedCount > 0 ? 'amber' : 'green'} />
+        </div>
+      )}
+
+      {/* Tab navigation */}
+      <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-xl p-1 w-fit">
+        <TabBtn active={activeTab === 'catalog'}   onClick={() => setActiveTab('catalog')}>SKU Catalog</TabBtn>
+        <TabBtn active={activeTab === 'mappings'}  onClick={() => setActiveTab('mappings')}>
+          Rate Plan Mappings
+          {unmapped.length > 0 && (
+            <span className="ml-1.5 inline-flex items-center justify-center min-w-[1.1rem] h-[1.1rem] px-1 text-xs bg-amber-500 text-white rounded-full font-bold">
+              {unmapped.length}
+            </span>
+          )}
+        </TabBtn>
+        <TabBtn active={activeTab === 'overrides'} onClick={() => setActiveTab('overrides')}>Customer Prices</TabBtn>
+        <TabBtn active={activeTab === 'import'}    onClick={() => setActiveTab('import')}>Import CSV</TabBtn>
+      </div>
+
+      {/* Tab content */}
+      {loading ? (
+        <div className="flex items-center gap-3 text-slate-400 py-12">
+          <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+          </svg>
+          Loading settings…
+        </div>
+      ) : (
+        <>
+          {activeTab === 'catalog'   && <SkuCatalogTab      catalog={catalog}   onRefresh={fetchAll} />}
+          {activeTab === 'mappings'  && <RatePlanMappingsTab mappings={mappings} catalog={catalog} unmapped={unmapped} onRefresh={fetchAll} />}
+          {activeTab === 'overrides' && <CustomerOverridesTab overrides={overrides} catalog={catalog} onRefresh={fetchAll} />}
+          {activeTab === 'import'    && <ImportCsvTab        onRefresh={fetchAll} />}
+        </>
+      )}
+    </div>
+  )
+}
