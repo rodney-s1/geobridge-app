@@ -977,7 +977,10 @@ export default function Settings() {
   const [summary,   setSummary]   = useState(null)
   const [loading,   setLoading]   = useState(true)
 
+  const [fetchError, setFetchError] = useState(null)
+
   const fetchAll = useCallback(async () => {
+    setFetchError(null)
     try {
       const [catR, mapR, ovrR, unmR, sumR] = await Promise.all([
         fetch(`${API}/api/settings/sku-catalog`),
@@ -986,11 +989,18 @@ export default function Settings() {
         fetch(`${API}/api/settings/unmapped-rate-plans`),
         fetch(`${API}/api/settings/summary`),
       ])
+      const errors = []
       if (catR.ok) setCatalog(await catR.json())
+      else errors.push(`catalog HTTP ${catR.status}`)
       if (mapR.ok) setMappings(await mapR.json())
+      else errors.push(`mappings HTTP ${mapR.status}`)
       if (ovrR.ok) setOverrides(await ovrR.json())
+      else errors.push(`overrides HTTP ${ovrR.status}`)
       if (unmR.ok) { const d = await unmR.json(); setUnmapped(d.unmapped || []) }
       if (sumR.ok) setSummary(await sumR.json())
+      if (errors.length) setFetchError(`Fetch errors — ${errors.join(', ')}`)
+    } catch (e) {
+      setFetchError(`Network error: ${e.message}`)
     } finally {
       setLoading(false)
     }
@@ -1007,6 +1017,21 @@ export default function Settings() {
           Manage QuickBooks SKU catalog, rate plan mappings, and per-customer price overrides.
         </p>
       </div>
+
+      {/* Fetch error banner */}
+      {fetchError && (
+        <div className="flex items-start gap-3 bg-red-900/40 border border-red-700 rounded-xl px-4 py-3 text-sm text-red-300">
+          <span className="text-red-400 mt-0.5">⚠</span>
+          <div className="flex-1">
+            <span className="font-semibold text-red-200">Failed to load settings data: </span>
+            {fetchError}
+            <div className="mt-1 text-red-400 text-xs">
+              Open <a href="http://127.0.0.1:8001/api/settings/debug" target="_blank" rel="noreferrer" className="underline hover:text-red-200">http://127.0.0.1:8001/api/settings/debug</a> in your browser to diagnose the file paths being used.
+            </div>
+          </div>
+          <button onClick={() => setFetchError(null)} className="text-red-500 hover:text-red-300 ml-2 text-lg leading-none">×</button>
+        </div>
+      )}
 
       {/* Summary stat cards */}
       {summary && (

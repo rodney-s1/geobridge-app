@@ -46,15 +46,27 @@ def _load(path, default):
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
+    except FileNotFoundError:
+        print(f"[settings] File not found: {path}")
+        return default
+    except json.JSONDecodeError as e:
+        print(f"[settings] JSON decode error in {path}: {e}")
+        return default
+    except Exception as e:
+        print(f"[settings] Unexpected error loading {path}: {e}")
         return default
 
 
 def _save(path, data):
     tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
-    os.replace(tmp, path)
+    try:
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, path)
+        print(f"[settings] Saved {len(data)} items to {path}")
+    except Exception as e:
+        print(f"[settings] ERROR saving {path}: {e}")
+        raise
 
 
 # ─── In-memory stores ─────────────────────────────────────────────────────────
@@ -584,4 +596,47 @@ async def get_settings_summary():
         "overrideCount":  len(overrides_now),
         "unmappedCount":  unmapped_count,
         "hasCachedData":  bool(raw),
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+#  DEBUG  (open in browser to diagnose file-path / content issues)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/settings/debug")
+async def debug_settings():
+    """Diagnostic endpoint — open http://127.0.0.1:8001/api/settings/debug in browser."""
+    def file_info(path):
+        exists = os.path.exists(path)
+        size   = os.path.getsize(path) if exists else 0
+        # Try to load and count items
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                content = f.read()
+            data = json.loads(content)
+            count = len(data)
+            first = str(data[0])[:120] if data else "(empty list)"
+            err   = None
+        except FileNotFoundError:
+            count = 0; first = None; err = "FileNotFoundError"; content = ""
+        except json.JSONDecodeError as e:
+            count = 0; first = None; err = f"JSONDecodeError: {e}"
+        except Exception as e:
+            count = 0; first = None; err = str(e)
+        return {
+            "path":    path,
+            "exists":  exists,
+            "bytes":   size,
+            "count":   count,
+            "first":   first,
+            "error":   err,
+            "preview": (content[:200] if exists else ""),
+        }
+
+    return {
+        "here":      _HERE,
+        "cwd":       os.getcwd(),
+        "catalog":   file_info(SKU_CATALOG_FILE),
+        "mappings":  file_info(SKU_MAPPINGS_FILE),
+        "overrides": file_info(CUSTOMER_OVERRIDES_FILE),
     }
