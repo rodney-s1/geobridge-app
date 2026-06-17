@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 
-const API = 'http://localhost:8001'
+const API = 'http://127.0.0.1:8001'
 
 // ─── Billing type badge colours ───────────────────────────────────────────────
 const BILLING_COLORS = {

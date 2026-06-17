@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 
-const API = 'http://localhost:8001'
+const API = 'http://127.0.0.1:8001'
 
 // ─── Tiny helpers ─────────────────────────────────────────────────────────────
 function fmt$(v) {

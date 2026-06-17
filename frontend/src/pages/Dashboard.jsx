@@ -4,7 +4,7 @@ import CustomerDetail from './CustomerDetail'
 import Settings from './Settings'
 import Reconciliation from './Reconciliation'
 
-const API = 'http://localhost:8001'
+const API = 'http://127.0.0.1:8001'
 
 function Dashboard({ sessionData, onLogout }) {
   const [activePage,       setActivePage]       = useState('home')
