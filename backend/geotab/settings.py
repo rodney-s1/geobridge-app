@@ -40,6 +40,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 SKU_CATALOG_FILE        = os.path.join(_HERE, "sku_catalog.json")
 SKU_MAPPINGS_FILE       = os.path.join(_HERE, "sku_mappings.json")
 CUSTOMER_OVERRIDES_FILE = os.path.join(_HERE, "sku_customer_overrides.json")
+MYADMIN_CACHE_FILE      = os.path.join(_HERE, "myadmin_cache.json")
 
 
 def _load(path, default):
@@ -83,6 +84,7 @@ def _save(path, data):
 def _catalog()  -> list: return _load(SKU_CATALOG_FILE,        [])
 def _mappings() -> list: return _load(SKU_MAPPINGS_FILE,       [])
 def _overrides()-> list: return _load(CUSTOMER_OVERRIDES_FILE, [])
+def _myadmin_cache() -> dict: return _load(MYADMIN_CACHE_FILE, {})
 
 # Keep module-level references for write operations so imports/upserts
 # don't need to reload from disk mid-operation.
@@ -530,45 +532,31 @@ async def import_price_list(file: UploadFile = File(...)):
 async def get_unmapped_rate_plans():
     """
     Compare rate plan codes seen in the MyAdmin sync cache against sku_mappings.
-    Returns codes that have no mapping yet.
+    Reads myadmin_cache.json directly — no import of customers module needed.
     """
-    # Import here to avoid circular import
-    try:
-        from . import customers as cust_mod
-        raw = cust_mod._sync_cache.get("raw_customers") or []
-    except Exception as e:
-        import traceback
-        print(f"[settings] unmapped-rate-plans import error: {e}\n{traceback.format_exc()}")
-        return {"unmapped": [], "total": 0, "hasCachedData": False, "_importError": str(e)}
-
+    cache = _myadmin_cache()
+    raw   = cache.get("raw_customers") or []
     if not raw:
         return {"unmapped": [], "total": 0, "hasCachedData": False}
 
-    # Collect unique rate plan codes from all devices
     seen_codes: set = set()
+    code_counts: dict = {}
     for c in raw:
         for d in (c.get("devices") or []):
             code = (d.get("promoCode") or "").strip().upper()
             if code:
                 seen_codes.add(code)
+                code_counts[code] = code_counts.get(code, 0) + 1
 
     mapped_codes = {m["ratePlanCode"].upper() for m in _mappings()}
-    unmapped = sorted(seen_codes - mapped_codes)
-
-    # Count devices per code for context
-    code_counts: dict = {}
-    for c in raw:
-        for d in (c.get("devices") or []):
-            code = (d.get("promoCode") or "").strip().upper()
-            if code in seen_codes:
-                code_counts[code] = code_counts.get(code, 0) + 1
+    unmapped     = sorted(seen_codes - mapped_codes)
 
     return {
         "unmapped": [
             {"ratePlanCode": code, "deviceCount": code_counts.get(code, 0)}
             for code in unmapped
         ],
-        "total": len(unmapped),
+        "total":        len(unmapped),
         "hasCachedData": True,
     }
 
@@ -579,26 +567,16 @@ async def get_unmapped_rate_plans():
 
 @router.get("/settings/summary")
 async def get_settings_summary():
-    try:
-        from . import customers as cust_mod
-        _raw_check = cust_mod._sync_cache  # verify accessible
-    except Exception as e:
-        import traceback
-        print(f"[settings] summary import error: {e}\n{traceback.format_exc()}")
-        # Return counts from disk even if customers module fails to import
-        catalog_now   = _catalog()
-        mappings_now  = _mappings()
-        overrides_now = _overrides()
-        return {
-            "skuCount":      len(catalog_now),
-            "mappingCount":  len(mappings_now),
-            "overrideCount": len(overrides_now),
-            "unmappedCount": 0,
-            "hasCachedData": False,
-            "_importError":  str(e),
-        }
+    """
+    Summary counts for the Settings page header cards.
+    Reads myadmin_cache.json directly — no import of customers module needed.
+    """
+    cache        = _myadmin_cache()
+    raw          = cache.get("raw_customers") or []
+    catalog_now  = _catalog()
+    mappings_now = _mappings()
+    overrides_now= _overrides()
 
-    raw = cust_mod._sync_cache.get("raw_customers") or []
     seen_codes: set = set()
     for c in raw:
         for d in (c.get("devices") or []):
@@ -606,18 +584,15 @@ async def get_settings_summary():
             if code:
                 seen_codes.add(code)
 
-    catalog_now  = _catalog()
-    mappings_now = _mappings()
-    overrides_now= _overrides()
-    mapped_codes = {m["ratePlanCode"].upper() for m in mappings_now}
+    mapped_codes   = {m["ratePlanCode"].upper() for m in mappings_now}
     unmapped_count = len(seen_codes - mapped_codes)
 
     return {
-        "skuCount":       len(catalog_now),
-        "mappingCount":   len(mappings_now),
-        "overrideCount":  len(overrides_now),
-        "unmappedCount":  unmapped_count,
-        "hasCachedData":  bool(raw),
+        "skuCount":      len(catalog_now),
+        "mappingCount":  len(mappings_now),
+        "overrideCount": len(overrides_now),
+        "unmappedCount": unmapped_count,
+        "hasCachedData": bool(raw),
     }
 
 
