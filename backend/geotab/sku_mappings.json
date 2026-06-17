@@ -1,35 +1,200 @@
 [
-  {"id": "APEXR",              "promoCode": "APEXR",              "skuKey": "", "label": "APEXR"},
-  {"id": "BUNDLE",             "promoCode": "BUNDLE",             "skuKey": "", "label": "BUNDLE"},
-  {"id": "BUNDLE-GO",          "promoCode": "BUNDLE-GO",          "skuKey": "", "label": "BUNDLE-GO"},
-  {"id": "BUNDLE-GOGFP",       "promoCode": "BUNDLE-GOGFP",       "skuKey": "", "label": "BUNDLE-GOGFP"},
-  {"id": "BUNDLE-GOGFP-INS",   "promoCode": "BUNDLE-GOGFP-INS",   "skuKey": "", "label": "BUNDLE-GOGFP-INS"},
-  {"id": "BUNDLE-RS21-R1",     "promoCode": "BUNDLE-RS21-R1",     "skuKey": "", "label": "BUNDLE-RS21-R1"},
-  {"id": "BUNDLE-RS56-R1",     "promoCode": "BUNDLE-RS56-R1",     "skuKey": "", "label": "BUNDLE-RS56-R1"},
-  {"id": "BUNDLE-RS66-R1",     "promoCode": "BUNDLE-RS66-R1",     "skuKey": "", "label": "BUNDLE-RS66-R1"},
-  {"id": "BUNDLE-RS78-R1",     "promoCode": "BUNDLE-RS78-R1",     "skuKey": "", "label": "BUNDLE-RS78-R1"},
-  {"id": "CELU-TP-200",        "promoCode": "CELU-TP-200",        "skuKey": "", "label": "CELU-TP-200"},
-  {"id": "CELU-TP-250",        "promoCode": "CELU-TP-250",        "skuKey": "", "label": "CELU-TP-250"},
-  {"id": "GFP-AUX-BUNDLE",     "promoCode": "GFP-AUX-BUNDLE",     "skuKey": "", "label": "GFP-AUX-BUNDLE"},
-  {"id": "GFP-BUNDLE",         "promoCode": "GFP-BUNDLE",         "skuKey": "", "label": "GFP-BUNDLE"},
-  {"id": "GOA-BUNDLE",         "promoCode": "GOA-BUNDLE",         "skuKey": "", "label": "GOA-BUNDLE"},
-  {"id": "HANOVER",            "promoCode": "HANOVER",            "skuKey": "", "label": "HANOVER"},
-  {"id": "JJKELLER",           "promoCode": "JJKELLER",           "skuKey": "", "label": "JJKELLER"},
-  {"id": "NEXTLINK",           "promoCode": "NEXTLINK",           "skuKey": "", "label": "NEXTLINK"},
-  {"id": "NJPA",               "promoCode": "NJPA",               "skuKey": "", "label": "NJPA"},
-  {"id": "OFFROAD",            "promoCode": "OFFROAD",            "skuKey": "", "label": "OFFROAD"},
-  {"id": "OHIO-BUNDLE",        "promoCode": "OHIO-BUNDLE",        "skuKey": "", "label": "OHIO-BUNDLE"},
-  {"id": "SAI-BUNDLE",         "promoCode": "SAI-BUNDLE",         "skuKey": "", "label": "SAI-BUNDLE"},
-  {"id": "SMARTAI-TEST",       "promoCode": "SMARTAI-TEST",       "skuKey": "", "label": "SMARTAI-TEST"},
-  {"id": "SURF-BND-PROMO",     "promoCode": "SURF-BND-PROMO",     "skuKey": "", "label": "SURF-BND-PROMO"},
-  {"id": "SURF-BUNDLE",        "promoCode": "SURF-BUNDLE",        "skuKey": "", "label": "SURF-BUNDLE"},
-  {"id": "SWELL",              "promoCode": "SWELL",              "skuKey": "", "label": "SWELL"},
-  {"id": "SWELL-NOINSTALL",    "promoCode": "SWELL-NOINSTALL",    "skuKey": "", "label": "SWELL-NOINSTALL"},
-  {"id": "SWELL-NOINSTALL2",   "promoCode": "SWELL-NOINSTALL2",   "skuKey": "", "label": "SWELL-NOINSTALL2"},
-  {"id": "SWELL-NOINS3",       "promoCode": "SWELL-NOINS3",       "skuKey": "", "label": "SWELL-NOINS3"},
-  {"id": "SWELL-CC",           "promoCode": "SWELL-CC",           "skuKey": "", "label": "SWELL-CC"},
-  {"id": "SWELL2",             "promoCode": "SWELL2",             "skuKey": "", "label": "SWELL2"},
-  {"id": "SWELL3",             "promoCode": "SWELL3",             "skuKey": "", "label": "SWELL3"},
-  {"id": "SWELL3-CC",          "promoCode": "SWELL3-CC",          "skuKey": "", "label": "SWELL3-CC"},
-  {"id": "TMO-LLW",            "promoCode": "TMO-LLW",            "skuKey": "", "label": "TMO-LLW"}
+  {
+    "id": "APEXR",
+    "promoCode": "APEXR",
+    "skuKey": "Geotab Service (GO Plan)",
+    "label": "APEXR"
+  },
+  {
+    "id": "BUNDLE",
+    "promoCode": "BUNDLE",
+    "skuKey": "Geotab Service (GO BUNDLE)",
+    "label": "BUNDLE"
+  },
+  {
+    "id": "BUNDLE-GO",
+    "promoCode": "BUNDLE-GO",
+    "skuKey": "Geotab Service (GO BUNDLE)",
+    "label": "BUNDLE-GO"
+  },
+  {
+    "id": "BUNDLE-GOGFP",
+    "promoCode": "BUNDLE-GOGFP",
+    "skuKey": "Geotab Service (GO Focus Plus)",
+    "label": "BUNDLE-GOGFP"
+  },
+  {
+    "id": "BUNDLE-GOGFP-INS",
+    "promoCode": "BUNDLE-GOGFP-INS",
+    "skuKey": "Bundle Service (GO Focus-SBWI)",
+    "label": "BUNDLE-GOGFP-INS"
+  },
+  {
+    "id": "BUNDLE-RS21-R1",
+    "promoCode": "BUNDLE-RS21-R1",
+    "skuKey": "Geotab Service (GO BUNDLE)",
+    "label": "BUNDLE-RS21-R1"
+  },
+  {
+    "id": "BUNDLE-RS56-R1",
+    "promoCode": "BUNDLE-RS56-R1",
+    "skuKey": "Geotab Service (GO BUNDLE)",
+    "label": "BUNDLE-RS56-R1"
+  },
+  {
+    "id": "BUNDLE-RS66-R1",
+    "promoCode": "BUNDLE-RS66-R1",
+    "skuKey": "Geotab Service (GO BUNDLE)",
+    "label": "BUNDLE-RS66-R1"
+  },
+  {
+    "id": "BUNDLE-RS78-R1",
+    "promoCode": "BUNDLE-RS78-R1",
+    "skuKey": "Geotab Service (GO BUNDLE)",
+    "label": "BUNDLE-RS78-R1"
+  },
+  {
+    "id": "CELU-TP-200",
+    "promoCode": "CELU-TP-200",
+    "skuKey": "Service Fee Geotab (Base)",
+    "label": "CELU-TP-200"
+  },
+  {
+    "id": "CELU-TP-250",
+    "promoCode": "CELU-TP-250",
+    "skuKey": "Service Fee Geotab (Pro)",
+    "label": "CELU-TP-250"
+  },
+  {
+    "id": "GFP-AUX-BUNDLE",
+    "promoCode": "GFP-AUX-BUNDLE",
+    "skuKey": "Service (GFPlus + Aux) Bundle",
+    "label": "GFP-AUX-BUNDLE"
+  },
+  {
+    "id": "GFP-BUNDLE",
+    "promoCode": "GFP-BUNDLE",
+    "skuKey": "Geotab Service (GO Focus Plus)",
+    "label": "GFP-BUNDLE"
+  },
+  {
+    "id": "GOA-BUNDLE",
+    "promoCode": "GOA-BUNDLE",
+    "skuKey": "GO Anywhere Plan (Bundle)",
+    "label": "GOA-BUNDLE"
+  },
+  {
+    "id": "HANOVER",
+    "promoCode": "HANOVER",
+    "skuKey": "Geotab Service Fee (HANOVER)",
+    "label": "HANOVER"
+  },
+  {
+    "id": "JJKELLER",
+    "promoCode": "JJKELLER",
+    "skuKey": "Service Fee JJ Keller",
+    "label": "JJKELLER"
+  },
+  {
+    "id": "NEXTLINK",
+    "promoCode": "NEXTLINK",
+    "skuKey": "Service Fee (GO) - Nextlink",
+    "label": "NEXTLINK"
+  },
+  {
+    "id": "NJPA",
+    "promoCode": "NJPA",
+    "skuKey": "Geotab Service (ProPlus NJPA)",
+    "label": "NJPA"
+  },
+  {
+    "id": "OFFROAD",
+    "promoCode": "OFFROAD",
+    "skuKey": "Geotab Off-Road (Pro)",
+    "label": "OFFROAD"
+  },
+  {
+    "id": "OHIO-BUNDLE",
+    "promoCode": "OHIO-BUNDLE",
+    "skuKey": "Geotab Service (GO Plan)",
+    "label": "OHIO-BUNDLE"
+  },
+  {
+    "id": "SAI-BUNDLE",
+    "promoCode": "SAI-BUNDLE",
+    "skuKey": "Sensata Service",
+    "label": "SAI-BUNDLE"
+  },
+  {
+    "id": "SMARTAI-TEST",
+    "promoCode": "SMARTAI-TEST",
+    "skuKey": "Sensata Service",
+    "label": "SMARTAI-TEST"
+  },
+  {
+    "id": "SURF-BND-PROMO",
+    "promoCode": "SURF-BND-PROMO",
+    "skuKey": "SS Service Fee BUNDLE",
+    "label": "SURF-BND-PROMO"
+  },
+  {
+    "id": "SURF-BUNDLE",
+    "promoCode": "SURF-BUNDLE",
+    "skuKey": "SS Service Fee BUNDLE",
+    "label": "SURF-BUNDLE"
+  },
+  {
+    "id": "SWELL",
+    "promoCode": "SWELL",
+    "skuKey": "Geotab Service (GO SW-SI)",
+    "label": "SWELL"
+  },
+  {
+    "id": "SWELL-NOINSTALL",
+    "promoCode": "SWELL-NOINSTALL",
+    "skuKey": "Geotab Service (GO SW-SI)",
+    "label": "SWELL-NOINSTALL"
+  },
+  {
+    "id": "SWELL-NOINSTALL2",
+    "promoCode": "SWELL-NOINSTALL2",
+    "skuKey": "Geotab Service (GO SW-SI2)",
+    "label": "SWELL-NOINSTALL2"
+  },
+  {
+    "id": "SWELL-NOINS3",
+    "promoCode": "SWELL-NOINS3",
+    "skuKey": "Geotab Service (GO SW-SI3)",
+    "label": "SWELL-NOINS3"
+  },
+  {
+    "id": "SWELL-CC",
+    "promoCode": "SWELL-CC",
+    "skuKey": "Geotab Service (GO SWELL-CC)",
+    "label": "SWELL-CC"
+  },
+  {
+    "id": "SWELL2",
+    "promoCode": "SWELL2",
+    "skuKey": "Geotab Service (Proplus SW-SI2)",
+    "label": "SWELL2"
+  },
+  {
+    "id": "SWELL3",
+    "promoCode": "SWELL3",
+    "skuKey": "Geotab Service (GO SWELL3)",
+    "label": "SWELL3"
+  },
+  {
+    "id": "SWELL3-CC",
+    "promoCode": "SWELL3-CC",
+    "skuKey": "Geotab Service (GO SWELL3-CC)",
+    "label": "SWELL3-CC"
+  },
+  {
+    "id": "TMO-LLW",
+    "promoCode": "TMO-LLW",
+    "skuKey": "Geotab Service (GO Plan)",
+    "label": "TMO-LLW"
+  }
 ]
