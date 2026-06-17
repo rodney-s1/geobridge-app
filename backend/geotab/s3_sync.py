@@ -34,6 +34,7 @@ DATA_FILES: dict[str, Path] = {
     "sku_mappings.json":                  _HERE / "sku_mappings.json",
     "sku_customer_overrides.json":        _HERE / "sku_customer_overrides.json",
     "customer_rate_plan_mappings.json":   _HERE / "customer_rate_plan_mappings.json",
+    "qb_invoice_quantities.json":         _HERE / "qb_invoice_quantities.json",
     "geotab_cache.json":                  _HERE / "geotab_cache.json",
 }
 

@@ -14,29 +14,38 @@ function fmtDelta(v) {
   if (v === null || v === undefined) return '—'
   const n = Number(v)
   if (isNaN(n)) return '—'
-  const sign = n > 0 ? '+' : ''
-  return sign + '$' + n.toFixed(2)
+  return (n > 0 ? '+' : '') + '$' + n.toFixed(2)
 }
 
-// ─── Status chip ──────────────────────────────────────────────────────────────
-const STATUS_META = {
-  ok:         { label: 'OK',          cls: 'bg-emerald-900/50 text-emerald-300 border-emerald-700/40' },
-  over:       { label: 'Over-billed', cls: 'bg-blue-900/50   text-blue-300   border-blue-700/40'   },
-  under:      { label: 'Under-billed',cls: 'bg-red-900/50    text-red-300    border-red-700/40'    },
-  unmapped:   { label: 'Unmapped',    cls: 'bg-amber-900/50  text-amber-300  border-amber-700/40'  },
-  no_price:   { label: 'No Price',    cls: 'bg-slate-700/80  text-slate-300  border-slate-600/40'  },
-  not_in_qb:  { label: 'Not in QB',  cls: 'bg-purple-900/50 text-purple-300 border-purple-700/40' },
-  discrepancy:{ label: 'Discrepancy', cls: 'bg-red-900/50    text-red-300    border-red-700/40'    },
+// ─── Quantity status metadata ──────────────────────────────────────────────────
+const QTY_META = {
+  match:        { label: 'Match',          cls: 'bg-emerald-900/50 text-emerald-300 border-emerald-700/40' },
+  under_billed: { label: 'Under-billed',   cls: 'bg-red-900/50    text-red-300    border-red-700/40'    },
+  over_billed:  { label: 'Over-billed',    cls: 'bg-blue-900/50   text-blue-300   border-blue-700/40'   },
+  no_qb_data:   { label: 'No QB Data',     cls: 'bg-amber-900/50  text-amber-300  border-amber-700/40'  },
 }
 
-function StatusChip({ status, size = 'sm' }) {
-  const meta = STATUS_META[status] || { label: status, cls: 'bg-slate-700 text-slate-300 border-slate-600' }
-  const pad = size === 'xs' ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-xs'
-  return (
-    <span className={`inline-flex items-center rounded border font-medium ${pad} ${meta.cls}`}>
-      {meta.label}
-    </span>
-  )
+// ─── Price status metadata (kept for price tab) ────────────────────────────────
+const PRICE_META = {
+  ok:         { label: 'OK',           cls: 'bg-emerald-900/50 text-emerald-300 border-emerald-700/40' },
+  over:       { label: 'Over-billed',  cls: 'bg-blue-900/50   text-blue-300   border-blue-700/40'   },
+  under:      { label: 'Under-billed', cls: 'bg-red-900/50    text-red-300    border-red-700/40'    },
+  unmapped:   { label: 'Unmapped',     cls: 'bg-amber-900/50  text-amber-300  border-amber-700/40'  },
+  no_price:   { label: 'No Price',     cls: 'bg-slate-700/80  text-slate-300  border-slate-600/40'  },
+  not_in_qb:  { label: 'Not in QB',   cls: 'bg-purple-900/50 text-purple-300 border-purple-700/40' },
+  discrepancy:{ label: 'Discrepancy',  cls: 'bg-red-900/50    text-red-300    border-red-700/40'    },
+}
+
+function QtyChip({ status, size = 'sm' }) {
+  const meta = QTY_META[status] || { label: status, cls: 'bg-slate-700 text-slate-300 border-slate-600' }
+  const pad  = size === 'xs' ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-xs'
+  return <span className={`inline-flex items-center rounded border font-medium ${pad} ${meta.cls}`}>{meta.label}</span>
+}
+
+function PriceChip({ status, size = 'sm' }) {
+  const meta = PRICE_META[status] || { label: status, cls: 'bg-slate-700 text-slate-300 border-slate-600' }
+  const pad  = size === 'xs' ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-xs'
+  return <span className={`inline-flex items-center rounded border font-medium ${pad} ${meta.cls}`}>{meta.label}</span>
 }
 
 // ─── Summary stat card ────────────────────────────────────────────────────────
@@ -64,47 +73,127 @@ function SummaryCard({ label, value, sub, color = 'blue', onClick, active }) {
   )
 }
 
-// ─── Device row inside expanded customer ─────────────────────────────────────
-function DeviceRow({ device }) {
-  const { serialNumber, ratePlanCode, skuKey, skuName,
-          expectedPrice, actualPrice, delta, priceSource, status } = device
+// ─── Qty breakdown table (SKU-level, shown inside expanded customer row) ───────
+function QtyBreakdownTable({ rows }) {
+  if (!rows || rows.length === 0) return (
+    <div className="px-6 py-4 text-xs text-slate-500 italic">No SKU quantity data available.</div>
+  )
   return (
-    <tr className="border-t border-slate-700/40 hover:bg-slate-700/20">
-      <td className="px-4 py-2 text-xs font-mono text-slate-300">{serialNumber || '—'}</td>
-      <td className="px-4 py-2 text-xs font-mono">
-        {ratePlanCode
-          ? <span className="bg-slate-700 text-slate-200 px-1.5 py-0.5 rounded">{ratePlanCode}</span>
-          : <span className="text-slate-600">—</span>}
-      </td>
-      <td className="px-4 py-2 text-xs text-slate-400">{skuKey || '—'}</td>
-      <td className="px-4 py-2 text-xs text-slate-400 truncate max-w-[160px]">{skuName || '—'}</td>
-      <td className="px-4 py-2 text-xs font-mono text-slate-300">{fmt$(expectedPrice)}</td>
-      <td className="px-4 py-2 text-xs font-mono text-slate-300">{fmt$(actualPrice)}</td>
-      <td className="px-4 py-2 text-xs font-mono">
-        {delta !== null && delta !== undefined
-          ? <span className={delta > 0.005 ? 'text-blue-400' : delta < -0.005 ? 'text-red-400' : 'text-emerald-400'}>
-              {fmtDelta(delta)}
-            </span>
-          : <span className="text-slate-600">—</span>}
-      </td>
-      <td className="px-4 py-2">
-        <StatusChip status={status} size="xs" />
-      </td>
-    </tr>
+    <table className="w-full table-fixed text-xs">
+      <colgroup>
+        <col style={{ width: '35%' }} />
+        <col style={{ width: '15%' }} />
+        <col style={{ width: '15%' }} />
+        <col style={{ width: '15%' }} />
+        <col style={{ width: '20%' }} />
+      </colgroup>
+      <thead>
+        <tr className="border-b border-slate-700/40">
+          <th className="px-4 py-2 text-left text-xs text-slate-500 font-medium">SKU Key</th>
+          <th className="px-4 py-2 text-right text-xs text-slate-500 font-medium">MyAdmin</th>
+          <th className="px-4 py-2 text-right text-xs text-slate-500 font-medium">QB Invoice</th>
+          <th className="px-4 py-2 text-right text-xs text-slate-500 font-medium">Difference</th>
+          <th className="px-4 py-2 text-left text-xs text-slate-500 font-medium">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((r, i) => {
+          const diff = r.qtyDelta
+          return (
+            <tr key={`${r.skuKey}-${i}`} className="border-t border-slate-700/30 hover:bg-slate-700/20">
+              <td className="px-4 py-2 font-mono text-slate-300 truncate" title={r.skuKey}>{r.skuKey || '—'}</td>
+              <td className="px-4 py-2 text-right font-mono text-slate-200">{r.myAdminCount}</td>
+              <td className="px-4 py-2 text-right font-mono text-slate-200">{r.qbQty ?? '—'}</td>
+              <td className="px-4 py-2 text-right font-mono">
+                {diff === null || diff === undefined
+                  ? <span className="text-slate-600">—</span>
+                  : <span className={diff > 0 ? 'text-red-400' : diff < 0 ? 'text-blue-400' : 'text-emerald-400'}>
+                      {diff > 0 ? `+${diff}` : diff}
+                    </span>
+                }
+              </td>
+              <td className="px-4 py-2"><QtyChip status={r.qtyStatus} size="xs" /></td>
+            </tr>
+          )
+        })}
+      </tbody>
+    </table>
   )
 }
 
-// ─── Customer row (collapsible) ───────────────────────────────────────────────
+// ─── Price breakdown table (device-level, shown in price tab) ─────────────────
+function PriceBreakdownTable({ devices }) {
+  if (!devices || devices.length === 0) return (
+    <div className="px-6 py-4 text-xs text-slate-500 italic">No device data available.</div>
+  )
+  return (
+    <table className="w-full table-fixed text-xs">
+      <colgroup>
+        <col style={{ width: '14%' }} />
+        <col style={{ width: '14%' }} />
+        <col style={{ width: '18%' }} />
+        <col style={{ width: '9%' }} />
+        <col style={{ width: '9%' }} />
+        <col style={{ width: '9%' }} />
+        <col style={{ width: '10%' }} />
+        <col style={{ width: '17%' }} />
+      </colgroup>
+      <thead>
+        <tr className="border-b border-slate-700/40">
+          {['Serial','Rate Plan','SKU Key','Expected','Actual','Delta','Source','Status'].map(h => (
+            <th key={h} className="px-4 py-2 text-left text-xs text-slate-500 font-medium">{h}</th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {devices.map((d, i) => (
+          <tr key={`${d.serialNumber}-${i}`} className="border-t border-slate-700/30 hover:bg-slate-700/20">
+            <td className="px-4 py-2 font-mono text-slate-300">{d.serialNumber || '—'}</td>
+            <td className="px-4 py-2 font-mono">
+              {d.ratePlanCode
+                ? <span className="bg-slate-700 text-slate-200 px-1.5 py-0.5 rounded">{d.ratePlanCode}</span>
+                : <span className="text-slate-600">—</span>}
+            </td>
+            <td className="px-4 py-2 text-slate-400 truncate">{d.skuKey || '—'}</td>
+            <td className="px-4 py-2 font-mono text-slate-300">{fmt$(d.expectedPrice)}</td>
+            <td className="px-4 py-2 font-mono text-slate-300">{fmt$(d.actualPrice)}</td>
+            <td className="px-4 py-2 font-mono">
+              {d.delta !== null && d.delta !== undefined
+                ? <span className={d.delta > 0.005 ? 'text-blue-400' : d.delta < -0.005 ? 'text-red-400' : 'text-emerald-400'}>
+                    {fmtDelta(d.delta)}
+                  </span>
+                : <span className="text-slate-600">—</span>}
+            </td>
+            <td className="px-4 py-2 text-slate-500 capitalize text-[10px]">{d.priceSource || '—'}</td>
+            <td className="px-4 py-2"><PriceChip status={d.status} size="xs" /></td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  )
+}
+
+// ─── Customer row ─────────────────────────────────────────────────────────────
 function CustomerRow({ customer }) {
+  const [tab, setTab] = useState('qty')   // 'qty' | 'price'
   const [expanded, setExpanded] = useState(false)
+
   const {
     customerName, deviceCount,
+    myAdminTotal, qbTotal, qtyDelta, hasQbData,
+    qtyMatch, qtyUnderBilled, qtyOverBilled, qtyMissing,
     ok, over, under, unmapped, noPrice,
     expectedMonthly, actualMonthly, delta,
-    status, devices,
+    status, devices, skuQtyBreakdown,
   } = customer
 
-  const hasIssues = status !== 'ok'
+  // Quantity status for the row badge
+  const qtyMismatch = hasQbData && qtyDelta !== 0 && qtyDelta !== null
+  const qtyRowStatus = !hasQbData
+    ? 'no_qb_data'
+    : qtyDelta === 0
+      ? 'match'
+      : qtyDelta > 0 ? 'under_billed' : 'over_billed'
 
   return (
     <>
@@ -115,8 +204,7 @@ function CustomerRow({ customer }) {
       >
         {/* Expand chevron */}
         <td className="px-3 py-3 w-8">
-          <span className={`text-slate-500 text-xs transition-transform inline-block
-            ${expanded ? 'rotate-90' : ''}`}>▶</span>
+          <span className={`text-slate-500 text-xs transition-transform inline-block ${expanded ? 'rotate-90' : ''}`}>▶</span>
         </td>
 
         {/* Customer name */}
@@ -124,69 +212,100 @@ function CustomerRow({ customer }) {
           <span className="text-sm font-medium text-slate-200">{customerName}</span>
         </td>
 
-        {/* Device count */}
-        <td className="px-4 py-3 text-sm text-slate-400 text-right">{deviceCount}</td>
+        {/* MyAdmin device count */}
+        <td className="px-4 py-3 text-right">
+          <span className="text-sm font-mono font-bold text-slate-200">{myAdminTotal}</span>
+        </td>
 
-        {/* Issue breakdown */}
+        {/* QB invoice count */}
+        <td className="px-4 py-3 text-right">
+          {hasQbData
+            ? <span className="text-sm font-mono font-bold text-slate-200">{qbTotal}</span>
+            : <span className="text-xs text-amber-500 italic">no QB data</span>
+          }
+        </td>
+
+        {/* Difference */}
+        <td className="px-4 py-3 text-right">
+          {hasQbData && qtyDelta !== null
+            ? <span className={`text-sm font-mono font-bold ${
+                qtyDelta > 0 ? 'text-red-400' : qtyDelta < 0 ? 'text-blue-400' : 'text-emerald-400'
+              }`}>
+                {qtyDelta > 0 ? `+${qtyDelta}` : qtyDelta}
+              </span>
+            : <span className="text-slate-600 text-sm">—</span>
+          }
+        </td>
+
+        {/* SKU breakdown badges */}
         <td className="px-4 py-3">
           <div className="flex items-center gap-1.5 flex-wrap">
-            {over > 0    && <span className="text-xs bg-blue-900/50 text-blue-300 border border-blue-700/40 rounded px-1.5 py-0.5">{over} over</span>}
-            {under > 0   && <span className="text-xs bg-red-900/50 text-red-300 border border-red-700/40 rounded px-1.5 py-0.5">{under} under</span>}
-            {unmapped > 0 && <span className="text-xs bg-amber-900/50 text-amber-300 border border-amber-700/40 rounded px-1.5 py-0.5">{unmapped} unmapped</span>}
-            {noPrice > 0 && <span className="text-xs bg-slate-700 text-slate-300 border border-slate-600 rounded px-1.5 py-0.5">{noPrice} no price</span>}
-            {!hasIssues  && <span className="text-xs text-emerald-500">All OK</span>}
+            {qtyUnderBilled > 0 && (
+              <span className="text-xs bg-red-900/50 text-red-300 border border-red-700/40 rounded px-1.5 py-0.5">
+                {qtyUnderBilled} under
+              </span>
+            )}
+            {qtyOverBilled > 0 && (
+              <span className="text-xs bg-blue-900/50 text-blue-300 border border-blue-700/40 rounded px-1.5 py-0.5">
+                {qtyOverBilled} over
+              </span>
+            )}
+            {unmapped > 0 && (
+              <span className="text-xs bg-amber-900/50 text-amber-300 border border-amber-700/40 rounded px-1.5 py-0.5">
+                {unmapped} unmapped
+              </span>
+            )}
+            {hasQbData && qtyMismatch === false && unmapped === 0 && (
+              <span className="text-xs text-emerald-500">✓ Match</span>
+            )}
+            {!hasQbData && (
+              <span className="text-xs text-slate-600 italic">import QB to compare</span>
+            )}
           </div>
         </td>
 
-        {/* Expected / Actual / Delta */}
-        <td className="px-4 py-3 text-sm font-mono text-slate-300 text-right">{fmt$(expectedMonthly)}</td>
-        <td className="px-4 py-3 text-sm font-mono text-slate-300 text-right">{fmt$(actualMonthly)}</td>
-        <td className="px-4 py-3 text-sm font-mono text-right">
-          {delta !== null && delta !== undefined
-            ? <span className={delta > 0.005 ? 'text-blue-400' : delta < -0.005 ? 'text-red-400' : 'text-emerald-400'}>
-                {fmtDelta(delta)}
-              </span>
-            : <span className="text-slate-600">—</span>}
-        </td>
-
-        {/* Status */}
+        {/* Qty status */}
         <td className="px-4 py-3">
-          <StatusChip status={status} />
+          <QtyChip status={qtyRowStatus} />
         </td>
       </tr>
 
-      {/* Expanded device table */}
+      {/* Expanded detail */}
       {expanded && (
         <tr>
-          <td colSpan={8} className="p-0">
+          <td colSpan={7} className="p-0">
             <div className="bg-slate-900/60 border-t border-b border-slate-700/40">
-              <table className="w-full table-fixed text-xs">
-                <colgroup>
-                  <col style={{ width: '14%' }} />
-                  <col style={{ width: '14%' }} />
-                  <col style={{ width: '18%' }} />
-                  <col style={{ width: '18%' }} />
-                  <col style={{ width: '9%' }} />
-                  <col style={{ width: '9%' }} />
-                  <col style={{ width: '9%' }} />
-                  <col style={{ width: '9%' }} />
-                </colgroup>
-                <thead>
-                  <tr className="border-b border-slate-700/40">
-                    <th className="px-4 py-2 text-left text-xs text-slate-500 font-medium">Serial</th>
-                    <th className="px-4 py-2 text-left text-xs text-slate-500 font-medium">Rate Plan</th>
-                    <th className="px-4 py-2 text-left text-xs text-slate-500 font-medium">SKU Key</th>
-                    <th className="px-4 py-2 text-left text-xs text-slate-500 font-medium">SKU Name</th>
-                    <th className="px-4 py-2 text-left text-xs text-slate-500 font-medium">Expected</th>
-                    <th className="px-4 py-2 text-left text-xs text-slate-500 font-medium">Actual</th>
-                    <th className="px-4 py-2 text-left text-xs text-slate-500 font-medium">Delta</th>
-                    <th className="px-4 py-2 text-left text-xs text-slate-500 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {devices.map((d, i) => <DeviceRow key={`${d.serialNumber}-${i}`} device={d} />)}
-                </tbody>
-              </table>
+
+              {/* Sub-tabs */}
+              <div className="flex items-center gap-1 px-4 pt-3 pb-0 border-b border-slate-700/40">
+                <button
+                  onClick={e => { e.stopPropagation(); setTab('qty') }}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-t-lg transition-colors ${
+                    tab === 'qty'
+                      ? 'bg-slate-700 text-slate-200 border border-b-0 border-slate-600'
+                      : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  📊 Quantity ({myAdminTotal} MyAdmin{hasQbData ? ` · ${qbTotal} QB` : ''})
+                </button>
+                <button
+                  onClick={e => { e.stopPropagation(); setTab('price') }}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-t-lg transition-colors ${
+                    tab === 'price'
+                      ? 'bg-slate-700 text-slate-200 border border-b-0 border-slate-600'
+                      : 'text-slate-500 hover:text-slate-300'
+                  }`}
+                >
+                  💲 Price Detail ({devices?.length ?? 0} devices)
+                </button>
+              </div>
+
+              {tab === 'qty' && (
+                <QtyBreakdownTable rows={skuQtyBreakdown} />
+              )}
+              {tab === 'price' && (
+                <PriceBreakdownTable devices={devices} />
+              )}
             </div>
           </td>
         </tr>
@@ -213,16 +332,14 @@ export default function Reconciliation() {
   const [data,         setData]        = useState(null)
   const [loading,      setLoading]     = useState(false)
   const [error,        setError]       = useState(null)
-  const [statusFilter, setStatusFilter]= useState('')   // '' | 'ok' | 'discrepancy' | 'unmapped' | 'no_price'
   const [search,       setSearch]      = useState('')
-  const [expandAll,    setExpandAll]   = useState(false)
+  const [qtyFilter,    setQtyFilter]   = useState('')  // '' | 'under_billed' | 'over_billed' | 'no_qb_data' | 'match'
 
-  const fetchData = useCallback(async (filter = statusFilter) => {
+  const fetchData = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const params = filter ? `?status_filter=${encodeURIComponent(filter)}` : ''
-      const r = await fetch(`${API}/api/reconciliation${params}`)
+      const r = await fetch(`${API}/api/reconciliation`)
       if (!r.ok) {
         const body = await r.json().catch(() => ({}))
         throw new Error(body.detail || `HTTP ${r.status}`)
@@ -233,28 +350,27 @@ export default function Reconciliation() {
     } finally {
       setLoading(false)
     }
-  }, [statusFilter])
+  }, [])
 
-  // Load on mount
-  useEffect(() => { fetchData('') }, [])  // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { fetchData() }, [])  // eslint-disable-line
 
-  function handleFilterClick(f) {
-    const next = statusFilter === f ? '' : f
-    setStatusFilter(next)
-    fetchData(next)
-  }
-
-  const summary = data?.summary
+  const summary   = data?.summary
   const customers = data?.customers || []
 
-  // Client-side search filter
-  const visible = search.trim()
-    ? customers.filter(c =>
-        (c.customerName || '').toLowerCase().includes(search.toLowerCase())
-      )
-    : customers
+  // Client-side filtering
+  const visible = customers.filter(c => {
+    const nameMatch = !search.trim() || (c.customerName || '').toLowerCase().includes(search.toLowerCase())
+    if (!nameMatch) return false
+    if (!qtyFilter) return true
+    const qtyRowStatus = !c.hasQbData
+      ? 'no_qb_data'
+      : c.qtyDelta === 0 ? 'match'
+        : c.qtyDelta > 0 ? 'under_billed' : 'over_billed'
+    return qtyRowStatus === qtyFilter
+  })
 
-  // ── Render ──────────────────────────────────────────────────────────────────
+  const hasQbData = summary?.hasQbData
+
   return (
     <div className="space-y-6">
 
@@ -263,12 +379,16 @@ export default function Reconciliation() {
         <div>
           <h2 className="text-xl font-bold text-white">Reconciliation</h2>
           <p className="text-sm text-slate-400 mt-0.5">
-            Compare MyAdmin device rate plans against QB invoiced prices. Surface under-billing,
-            over-billing, unmapped codes, and customers not yet in QB.
+            Compare MyAdmin device counts against QB invoice quantities per customer and SKU.
+            {!hasQbData && data && (
+              <span className="ml-2 text-amber-400">
+                ⚠ No QB invoice data imported yet — go to Settings → Import CSV to upload a QB invoice export.
+              </span>
+            )}
           </p>
         </div>
         <button
-          onClick={() => fetchData(statusFilter)}
+          onClick={fetchData}
           disabled={loading}
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50
             text-white text-sm font-medium rounded-xl transition-colors"
@@ -294,84 +414,66 @@ export default function Reconciliation() {
         </div>
       )}
 
-      {/* Summary cards — clickable to filter */}
+      {/* ── Quantity summary bar ── */}
       {summary && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <SummaryCard
-            label="Customers"
-            value={summary.totalCustomers.toLocaleString()}
-            sub={`${summary.totalDevices.toLocaleString()} devices`}
-            color="blue"
-          />
-          <SummaryCard
-            label="All OK"
-            value={summary.ok.toLocaleString()}
-            sub="price matches catalog"
-            color="green"
-            active={statusFilter === 'ok'}
-            onClick={() => handleFilterClick('ok')}
-          />
-          <SummaryCard
-            label="Discrepancies"
-            value={(summary.over + summary.under).toLocaleString()}
-            sub={`${summary.over} over · ${summary.under} under`}
-            color="red"
-            active={statusFilter === 'discrepancy'}
-            onClick={() => handleFilterClick('discrepancy')}
-          />
-          <SummaryCard
-            label="Unmapped"
-            value={summary.unmapped.toLocaleString()}
-            sub="rate plan has no SKU"
-            color="amber"
-            active={statusFilter === 'unmapped'}
-            onClick={() => handleFilterClick('unmapped')}
-          />
-          <SummaryCard
-            label="No Price"
-            value={summary.noPrice.toLocaleString()}
-            sub="SKU exists, price missing"
-            color="slate"
-            active={statusFilter === 'no_price'}
-            onClick={() => handleFilterClick('no_price')}
-          />
-          <SummaryCard
-            label="Not in QB"
-            value={summary.notInQb.toLocaleString()}
-            sub="no QB invoice found"
-            color="purple"
-          />
-        </div>
-      )}
-
-      {/* Monthly totals bar */}
-      {summary && (
-        <div className="bg-slate-800 border border-slate-700 rounded-xl px-6 py-4 flex flex-wrap gap-8 items-center">
-          <div>
-            <div className="text-xs text-slate-500 mb-0.5">Expected Monthly</div>
-            <div className="text-lg font-bold text-slate-200">{fmt$(summary.monthlyExpected)}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500 mb-0.5">Actual Invoiced</div>
-            <div className="text-lg font-bold text-slate-200">{fmt$(summary.monthlyActual)}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-500 mb-0.5">Monthly Delta</div>
-            <div className={`text-lg font-bold
-              ${summary.monthlyDelta > 0.01 ? 'text-blue-400'
-              : summary.monthlyDelta < -0.01 ? 'text-red-400'
-              : 'text-emerald-400'}`}>
-              {fmtDelta(summary.monthlyDelta)}
-            </div>
-          </div>
-          <div className="ml-auto text-xs text-slate-500">
-            Based on {summary.totalDevices.toLocaleString()} active devices
-            {statusFilter && <span className="ml-1 text-amber-400">· filtered: {statusFilter}</span>}
+        <div className="bg-slate-800 border border-slate-700 rounded-xl px-6 py-4">
+          <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Device Count Reconciliation</div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+            <SummaryCard
+              label="MyAdmin Devices"
+              value={(summary.myAdminTotal ?? summary.totalDevices).toLocaleString()}
+              sub="active contracts"
+              color="blue"
+            />
+            <SummaryCard
+              label="QB Invoice Qty"
+              value={hasQbData ? summary.qbTotal.toLocaleString() : '—'}
+              sub={hasQbData ? 'from invoice export' : 'import QB CSV first'}
+              color={hasQbData ? 'blue' : 'slate'}
+            />
+            <SummaryCard
+              label="Net Difference"
+              value={hasQbData ? (summary.qtyDelta > 0 ? `+${summary.qtyDelta}` : summary.qtyDelta).toString() : '—'}
+              sub={hasQbData ? (summary.qtyDelta === 0 ? 'counts match!' : summary.qtyDelta > 0 ? 'MyAdmin > QB' : 'QB > MyAdmin') : ''}
+              color={!hasQbData ? 'slate' : summary.qtyDelta === 0 ? 'green' : 'red'}
+            />
+            <SummaryCard
+              label="SKU Matches"
+              value={summary.qtyMatch.toLocaleString()}
+              sub="count agrees"
+              color="green"
+              active={qtyFilter === 'match'}
+              onClick={() => setQtyFilter(f => f === 'match' ? '' : 'match')}
+            />
+            <SummaryCard
+              label="Under-billed SKUs"
+              value={summary.qtyUnderBilled.toLocaleString()}
+              sub="MyAdmin > QB qty"
+              color="red"
+              active={qtyFilter === 'under_billed'}
+              onClick={() => setQtyFilter(f => f === 'under_billed' ? '' : 'under_billed')}
+            />
+            <SummaryCard
+              label="Over-billed SKUs"
+              value={summary.qtyOverBilled.toLocaleString()}
+              sub="QB qty > MyAdmin"
+              color="blue"
+              active={qtyFilter === 'over_billed'}
+              onClick={() => setQtyFilter(f => f === 'over_billed' ? '' : 'over_billed')}
+            />
+            <SummaryCard
+              label="No QB Data"
+              value={summary.qtyMissing.toLocaleString()}
+              sub="not in QB invoice"
+              color="amber"
+              active={qtyFilter === 'no_qb_data'}
+              onClick={() => setQtyFilter(f => f === 'no_qb_data' ? '' : 'no_qb_data')}
+            />
           </div>
         </div>
       )}
 
-      {/* Search + controls */}
+      {/* ── Search + filter controls ── */}
       {data && (
         <div className="flex items-center gap-3">
           <div className="relative flex-1 max-w-sm">
@@ -384,13 +486,13 @@ export default function Reconciliation() {
                 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500"
             />
           </div>
-          {statusFilter && (
+          {qtyFilter && (
             <button
-              onClick={() => { setStatusFilter(''); fetchData('') }}
+              onClick={() => setQtyFilter('')}
               className="text-xs text-amber-400 hover:text-amber-300 border border-amber-700/40
                 bg-amber-900/20 px-3 py-2 rounded-xl transition-colors"
             >
-              ✕ Clear filter: {statusFilter}
+              ✕ Clear filter: {qtyFilter.replace('_', ' ')}
             </button>
           )}
           <span className="text-xs text-slate-500 ml-auto">
@@ -399,7 +501,7 @@ export default function Reconciliation() {
         </div>
       )}
 
-      {/* Main table */}
+      {/* ── Loading / empty states ── */}
       {loading && !data && (
         <div className="flex items-center gap-3 text-slate-400 py-16 justify-center">
           <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
@@ -409,52 +511,42 @@ export default function Reconciliation() {
           Running reconciliation…
         </div>
       )}
-
       {!loading && !error && !data && (
-        <EmptyState
-          icon="⚖️"
-          title="No data yet"
-          body='Click "Run Reconciliation" above to compare MyAdmin devices against QB pricing.'
-        />
+        <EmptyState icon="⚖️" title="No data yet"
+          body='Click "Run Reconciliation" to compare MyAdmin devices against QB quantities.' />
       )}
-
       {!loading && !error && data && visible.length === 0 && (
-        <EmptyState
-          icon="✅"
+        <EmptyState icon="✅"
           title={search ? 'No customers match your search' : 'No customers in this filter'}
-          body={search ? 'Try a different name.' : 'Try a different filter or clear the current one.'}
-        />
+          body={search ? 'Try a different name.' : 'Clear the filter to see all customers.'} />
       )}
 
+      {/* ── Main table ── */}
       {!loading && visible.length > 0 && (
         <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
           <table className="w-full table-fixed text-sm">
             <colgroup>
               <col style={{ width: '32px' }} />
-              <col style={{ width: '30%' }} />
-              <col style={{ width: '7%' }} />
-              <col style={{ width: '22%' }} />
+              <col style={{ width: '28%' }} />
               <col style={{ width: '10%' }} />
               <col style={{ width: '10%' }} />
               <col style={{ width: '10%' }} />
-              <col style={{ width: '11%' }} />
+              <col style={{ width: '27%' }} />
+              <col style={{ width: '13%' }} />
             </colgroup>
             <thead className="bg-slate-900/60">
               <tr>
                 <th className="px-3 py-3"></th>
                 <th className="px-4 py-3 text-left text-xs text-slate-400 font-semibold uppercase tracking-wide">Customer</th>
-                <th className="px-4 py-3 text-right text-xs text-slate-400 font-semibold uppercase tracking-wide">Devices</th>
+                <th className="px-4 py-3 text-right text-xs text-slate-400 font-semibold uppercase tracking-wide">MyAdmin</th>
+                <th className="px-4 py-3 text-right text-xs text-slate-400 font-semibold uppercase tracking-wide">QB Invoice</th>
+                <th className="px-4 py-3 text-right text-xs text-slate-400 font-semibold uppercase tracking-wide">Diff</th>
                 <th className="px-4 py-3 text-left text-xs text-slate-400 font-semibold uppercase tracking-wide">Issues</th>
-                <th className="px-4 py-3 text-right text-xs text-slate-400 font-semibold uppercase tracking-wide">Expected</th>
-                <th className="px-4 py-3 text-right text-xs text-slate-400 font-semibold uppercase tracking-wide">Actual</th>
-                <th className="px-4 py-3 text-right text-xs text-slate-400 font-semibold uppercase tracking-wide">Delta</th>
                 <th className="px-4 py-3 text-left text-xs text-slate-400 font-semibold uppercase tracking-wide">Status</th>
               </tr>
             </thead>
             <tbody>
-              {visible.map(c => (
-                <CustomerRow key={c.customerId} customer={c} />
-              ))}
+              {visible.map(c => <CustomerRow key={c.customerId} customer={c} />)}
             </tbody>
           </table>
         </div>
@@ -462,16 +554,12 @@ export default function Reconciliation() {
 
       {/* Legend */}
       <div className="flex flex-wrap gap-3 text-xs text-slate-500 pt-1">
-        <span className="font-medium text-slate-400">Legend:</span>
-        {Object.entries(STATUS_META)
-          .filter(([k]) => !['discrepancy'].includes(k))
-          .map(([k, v]) => (
-            <span key={k} className={`inline-flex items-center gap-1 border rounded px-2 py-0.5 ${v.cls}`}>
-              {v.label}
-            </span>
-          ))}
+        <span className="font-medium text-slate-400">Quantity legend:</span>
+        {Object.entries(QTY_META).map(([k, v]) => (
+          <span key={k} className={`inline-flex items-center gap-1 border rounded px-2 py-0.5 ${v.cls}`}>{v.label}</span>
+        ))}
         <span className="text-slate-600 ml-2">
-          Expected = catalog/override price · Actual = QB invoiced price · Delta = Actual − Expected
+          Difference = MyAdmin count − QB invoice qty · positive = under-billed · negative = over-billed
         </span>
       </div>
 

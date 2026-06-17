@@ -48,6 +48,7 @@ SKU_CATALOG_FILE        = os.path.join(_HERE, "sku_catalog.json")
 SKU_MAPPINGS_FILE       = os.path.join(_HERE, "sku_mappings.json")
 CUST_RATE_PLAN_FILE     = os.path.join(_HERE, "customer_rate_plan_mappings.json")
 CUSTOMER_OVERRIDES_FILE = os.path.join(_HERE, "sku_customer_overrides.json")
+QB_QUANTITIES_FILE      = os.path.join(_HERE, "qb_invoice_quantities.json")
 MYADMIN_CACHE_FILE      = os.path.join(_HERE, "myadmin_cache.json")
 
 
@@ -405,13 +406,18 @@ def _parse_qb_csv(content: str) -> dict:
     Parse QB invoice CSV (doubled-comma format).
     Col 5=Type, Col 13=Name, Col 15=Item (full QB path), Col 17=Qty, Col 19=Sales Price
 
-    Returns {skus: {sku_name: {...}}, customers: {parent_name: {sku_name: price}}}
+    Returns {
+      skus:       {sku_name: {...}},
+      customers:  {parent_name: {sku_name: price}},
+      quantities: {parent_name: {sku_name: total_qty}}   <-- NEW: summed Qty per customer+SKU
+    }
     """
     reader = csv.reader(io.StringIO(content))
     rows   = list(reader)
 
-    skus_out:      dict = {}
-    customers_out: dict = {}
+    skus_out:       dict = {}
+    customers_out:  dict = {}
+    quantities_out: dict = {}   # parent_name -> {sku_name -> summed qty}
 
     for row in rows:
         if len(row) <= 19:
@@ -421,6 +427,7 @@ def _parse_qb_csv(content: str) -> dict:
         item_raw  = row[15].strip()
         name_raw  = row[13].strip()
         price_raw = row[19].strip()
+        qty_raw   = row[17].strip() if len(row) > 17 else ''
 
         if not item_raw or not name_raw:
             continue
@@ -432,6 +439,12 @@ def _parse_qb_csv(content: str) -> dict:
         except ValueError:
             continue
 
+        # Parse quantity -- QB exports fractional qty sometimes, round to nearest int
+        try:
+            qty = max(1, round(float(qty_raw))) if qty_raw else 1
+        except ValueError:
+            qty = 1
+
         group, sku_name, desc = _parse_item(item_raw)
 
         if not sku_name:
@@ -440,7 +453,7 @@ def _parse_qb_csv(content: str) -> dict:
         if sku_name not in skus_out:
             skus_out[sku_name] = {
                 'skuKey':        sku_name,
-                'fullPath':      item_raw,   # full col P value kept for reference
+                'fullPath':      item_raw,
                 'defaultPrice':  price,
                 'category':      group,
                 'desc':          desc,
@@ -456,11 +469,18 @@ def _parse_qb_csv(content: str) -> dict:
             customers_out[parent_name] = {}
         customers_out[parent_name][sku_name] = price
 
+        # Accumulate quantities
+        if parent_name not in quantities_out:
+            quantities_out[parent_name] = {}
+        quantities_out[parent_name][sku_name] = (
+            quantities_out[parent_name].get(sku_name, 0) + qty
+        )
+
     # Convert price sets to sorted lists
     for v in skus_out.values():
         v['prices'] = sorted(v['prices'])
 
-    return {'skus': skus_out, 'customers': customers_out}
+    return {'skus': skus_out, 'customers': customers_out, 'quantities': quantities_out}
 
 
 @router.post("/settings/import-qb-skus")
@@ -517,15 +537,37 @@ async def import_qb_skus(file: UploadFile = File(...)):
 
     _save(CUSTOMER_OVERRIDES_FILE, cust_ovr)
 
+    # -- Save QB invoice quantities (customerName|skuKey -> qty) --------------
+    # Flatten to a list of records for easy querying
+    qty_records = []
+    for cust_name, skus in parsed['quantities'].items():
+        for sku_key, qty in skus.items():
+            qty_records.append({
+                'id':           f"{cust_name}|{sku_key}",
+                'customerName': cust_name,
+                'skuKey':       sku_key,
+                'qbQty':        qty,
+            })
+    _save(QB_QUANTITIES_FILE, qty_records)
+
+    total_qb_devices = sum(r['qbQty'] for r in qty_records)
+
     return {
-        "success":      True,
-        "skusAdded":    skus_added,
-        "skusUpdated":  skus_updated,
-        "ovrAdded":     ovr_added,
-        "ovrUpdated":   ovr_updated,
-        "totalSkus":    len(sku_catalog),
-        "totalCustomers": len(parsed['customers']),
+        "success":         True,
+        "skusAdded":       skus_added,
+        "skusUpdated":     skus_updated,
+        "ovrAdded":        ovr_added,
+        "ovrUpdated":      ovr_updated,
+        "totalSkus":       len(sku_catalog),
+        "totalCustomers":  len(parsed['customers']),
+        "totalQbDevices":  total_qb_devices,
     }
+
+
+@router.get("/settings/qb-quantities")
+async def get_qb_quantities():
+    """Return QB invoice quantities: [{customerName, skuKey, qbQty}]"""
+    return _load(QB_QUANTITIES_FILE, [])
 
 
 # ================================================================================

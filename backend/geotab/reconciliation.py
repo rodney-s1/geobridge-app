@@ -46,7 +46,8 @@ def _get_stores():
     mappings     = _load(os.path.join(_HERE, "sku_mappings.json"),                   [])
     cust_maps    = _load(os.path.join(_HERE, "customer_rate_plan_mappings.json"),     [])
     overrides    = _load(os.path.join(_HERE, "sku_customer_overrides.json"),          [])
-    return catalog, mappings, cust_maps, overrides
+    qb_qtys      = _load(os.path.join(_HERE, "qb_invoice_quantities.json"),           [])
+    return catalog, mappings, cust_maps, overrides, qb_qtys
 
 
 def _normalize(s: str) -> str:
@@ -136,7 +137,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     device_db_records = _sync_cache.get("device_db_records") or []
 
     # -- Build indexes ---------------------------------------------------------
-    catalog, mappings, cust_maps, overrides = _get_stores()
+    catalog, mappings, cust_maps, overrides, qb_qtys = _get_stores()
 
     # skuKey -> defaultPrice
     catalog_index: Dict[str, float] = {
@@ -150,14 +151,12 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     }
 
     # Tier 1: (norm_customerName, ratePlanCode_upper) -> skuKey
-    # Customer-specific rate plan mappings take priority over global mappings.
     cust_mapping_index: Dict[tuple, str] = {
         (_normalize(m["customerName"]), (m.get("ratePlanCode") or "").upper()): m.get("skuKey") or ""
         for m in cust_maps
     }
 
     # Tier 2: ratePlanCode (upper) -> skuKey  (global default)
-    # Accept both field names: new schema uses ratePlanCode, old schema used promoCode
     mapping_index: Dict[str, str] = {
         (m.get("ratePlanCode") or m.get("promoCode") or "").upper(): m.get("skuKey") or ""
         for m in mappings
@@ -167,6 +166,12 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     ovr_index: Dict[tuple, float] = {
         (_normalize(o["customerName"]), o["skuKey"]): float(o.get("price") or 0)
         for o in overrides
+    }
+
+    # QB invoice quantities: (norm_customerName, skuKey) -> qbQty
+    qb_qty_index: Dict[tuple, int] = {
+        (_normalize(q["customerName"]), q["skuKey"]): int(q.get("qbQty") or 0)
+        for q in qb_qtys
     }
 
     # -- Group contracts by company --------------------------------------------
@@ -216,6 +221,9 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     total_ok = total_over = total_under = total_unmapped = 0
     total_no_price = total_not_in_qb = 0
     total_expected = total_actual = 0.0
+    total_myadmin_devices = 0
+    total_qb_devices = 0
+    total_qty_match = total_qty_over = total_qty_under = total_qty_missing = 0
 
     for cid, cdata in company_map.items():
         cname   = cdata["customerName"]
@@ -354,6 +362,53 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         else:
             cust_status = "ok"
 
+        # -- Quantity reconciliation per SKU for this customer -----------------
+        # Count MyAdmin devices per skuKey (mapped devices only)
+        myadmin_by_sku: Dict[str, int] = {}
+        for row in device_rows:
+            sk = row.get("skuKey") or ""
+            if sk:
+                myadmin_by_sku[sk] = myadmin_by_sku.get(sk, 0) + 1
+
+        norm_cname = _normalize(cname)
+        qty_rows = []
+        cust_qty_match = cust_qty_over = cust_qty_under = cust_qty_missing = 0
+
+        # All SKUs seen either in MyAdmin mapping or in QB invoice for this customer
+        all_skus = set(myadmin_by_sku.keys()) | {
+            sk for (nc, sk) in qb_qty_index.keys() if nc == norm_cname
+        }
+
+        for sku_key in sorted(all_skus):
+            myadmin_count = myadmin_by_sku.get(sku_key, 0)
+            qb_qty        = qb_qty_index.get((norm_cname, sku_key), None)
+            qty_delta     = (myadmin_count - qb_qty) if qb_qty is not None else None
+
+            if qb_qty is None:
+                qty_status = "no_qb_data"
+                cust_qty_missing += 1
+            elif qty_delta == 0:
+                qty_status = "match"
+                cust_qty_match += 1
+            elif myadmin_count > qb_qty:
+                qty_status = "under_billed"   # MyAdmin has MORE devices than QB billed
+                cust_qty_under += 1
+            else:
+                qty_status = "over_billed"    # QB billed MORE than MyAdmin devices
+                cust_qty_over += 1
+
+            qty_rows.append({
+                "skuKey":        sku_key,
+                "myAdminCount":  myadmin_count,
+                "qbQty":         qb_qty,
+                "qtyDelta":      qty_delta,
+                "qtyStatus":     qty_status,
+            })
+
+        cust_myadmin_total = len(devices)
+        cust_qb_total      = sum(r["qbQty"] for r in qty_rows if r["qbQty"] is not None)
+        has_qb_data        = any(r["qbQty"] is not None for r in qty_rows)
+
         # -- Apply status filter -----------------------------------------------
         if status_filter and cust_status != status_filter:
             continue
@@ -365,6 +420,12 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         total_no_price  += cust_no_price
         total_expected  += cust_expected
         total_actual    += cust_actual
+        total_myadmin_devices += cust_myadmin_total
+        total_qb_devices      += cust_qb_total
+        total_qty_match       += cust_qty_match
+        total_qty_over        += cust_qty_over
+        total_qty_under       += cust_qty_under
+        total_qty_missing     += cust_qty_missing
 
         result_customers.append({
             "customerId":       cid,
@@ -380,6 +441,16 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             "delta":            round(cust_actual - cust_expected, 2),
             "status":           cust_status,
             "devices":          device_rows,
+            # Quantity reconciliation fields
+            "myAdminTotal":     cust_myadmin_total,
+            "qbTotal":          cust_qb_total if has_qb_data else None,
+            "qtyDelta":         (cust_myadmin_total - cust_qb_total) if has_qb_data else None,
+            "qtyMatch":         cust_qty_match,
+            "qtyUnderBilled":   cust_qty_under,
+            "qtyOverBilled":    cust_qty_over,
+            "qtyMissing":       cust_qty_missing,
+            "hasQbData":        has_qb_data,
+            "skuQtyBreakdown":  qty_rows,
         })
 
     # Sort: discrepancy first, then unmapped, then no_price, then ok; alpha within
@@ -404,6 +475,15 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             "monthlyExpected": round(total_expected, 2),
             "monthlyActual":   round(total_actual, 2),
             "monthlyDelta":    monthly_delta,
+            # Quantity reconciliation totals
+            "myAdminTotal":    total_myadmin_devices,
+            "qbTotal":         total_qb_devices,
+            "qtyDelta":        total_myadmin_devices - total_qb_devices,
+            "qtyMatch":        total_qty_match,
+            "qtyUnderBilled":  total_qty_under,
+            "qtyOverBilled":   total_qty_over,
+            "qtyMissing":      total_qty_missing,
+            "hasQbData":       total_qb_devices > 0,
         },
         "customers": result_customers,
     }
