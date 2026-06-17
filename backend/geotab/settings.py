@@ -23,6 +23,8 @@ Endpoints:
   GET  /api/settings/unmapped-rate-plans       rate plan codes seen in MyAdmin with no mapping
 """
 
+from __future__ import annotations  # allow list[dict], X | Y hints on Python 3.9
+
 from fastapi import APIRouter, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from typing import Optional

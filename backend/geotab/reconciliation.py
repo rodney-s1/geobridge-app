@@ -22,6 +22,8 @@ Key logic:
        not_in_qb   — customer has no QB data / no invoiced price
 """
 
+from __future__ import annotations  # allow list[dict], X | Y hints on Python 3.9
+
 from fastapi import APIRouter, HTTPException
 import json
 import os

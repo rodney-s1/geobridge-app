@@ -1,3 +1,5 @@
+from __future__ import annotations  # allow list[dict], X | Y hints on Python 3.9
+
 from fastapi import APIRouter, HTTPException, UploadFile, File, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
