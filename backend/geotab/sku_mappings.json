@@ -14,19 +14,37 @@
   {
     "id": "BUNDLE-GO",
     "promoCode": "BUNDLE-GO",
-    "skuKey": "Geotab Service (GO BUNDLE)",
+    "skuKey": "GO Core Bundle Plan",
     "label": "BUNDLE-GO"
+  },
+  {
+    "id": "BUNDLE-GO-INS",
+    "promoCode": "BUNDLE-GO-INS",
+    "skuKey": "GO Core Bundle Plan w/INS",
+    "label": "BUNDLE-GO-INS"
+  },
+  {
+    "id": "BUNDLE-GOGF",
+    "promoCode": "BUNDLE-GOGF",
+    "skuKey": "Bundle Service (GO Focus-SB)",
+    "label": "BUNDLE-GOGF"
+  },
+  {
+    "id": "BUNDLE-GOGF-INS",
+    "promoCode": "BUNDLE-GOGF-INS",
+    "skuKey": "Bundle Service (GO Focus-SBWI)",
+    "label": "BUNDLE-GOGF-INS"
   },
   {
     "id": "BUNDLE-GOGFP",
     "promoCode": "BUNDLE-GOGFP",
-    "skuKey": "Geotab Service (GO Focus Plus)",
+    "skuKey": "Bundle Service Fee (GFP-SB)",
     "label": "BUNDLE-GOGFP"
   },
   {
     "id": "BUNDLE-GOGFP-INS",
     "promoCode": "BUNDLE-GOGFP-INS",
-    "skuKey": "Bundle Service (GO Focus-SBWI)",
+    "skuKey": "Bundle Service Fee (GFP-SBWI)",
     "label": "BUNDLE-GOGFP-INS"
   },
   {
