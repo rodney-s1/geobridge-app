@@ -66,8 +66,15 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  startPythonBackend()
-  setTimeout(createWindow, 2000)
+  if (!isDev) {
+    // In production (packaged app), Electron owns the backend process.
+    // In dev mode, concurrently already started it — don't spawn a second one.
+    startPythonBackend()
+  }
+  // In dev the backend is already running; give it a moment then open the window.
+  // In prod we need ~2s for Python to start up before the window loads.
+  const delay = isDev ? 500 : 2000
+  setTimeout(createWindow, delay)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
