@@ -243,7 +243,7 @@ function SkuCatalogTab({ catalog, onRefresh }) {
             </thead>
             <tbody>
               {Object.keys(groups).sort().map(cat => (
-                <>
+                <React.Fragment key={cat}>
                   {/* Category subheading row */}
                   <tr key={`hdr-${cat}`} className="border-t border-slate-700 bg-slate-900/60">
                     <td colSpan={4} className="px-4 py-1.5">
@@ -325,7 +325,7 @@ function SkuCatalogTab({ catalog, onRefresh }) {
                       </tr>
                     )
                   ))}
-                </>
+                </React.Fragment>
               ))}
             </tbody>
           </table>
