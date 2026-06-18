@@ -1,212 +1,188 @@
 [
   {
-    "id": "APEXR",
-    "promoCode": "APEXR",
+    "ratePlanCode": "APEXR",
     "skuKey": "Service Fee Geotab (Pro)",
-    "label": "APEXR"
+    "defaultPrice": 21.95,
+    "notes": ""
   },
   {
-    "id": "BUNDLE",
-    "promoCode": "BUNDLE",
-    "skuKey": "Geotab Service (GO BUNDLE)",
-    "label": "BUNDLE"
+    "ratePlanCode": "BUNDLE",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "BUNDLE-GO",
-    "promoCode": "BUNDLE-GO",
-    "skuKey": "GO Core Bundle Plan",
-    "label": "BUNDLE-GO"
+    "ratePlanCode": "BUNDLE-GO",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "BUNDLE-GO-INS",
-    "promoCode": "BUNDLE-GO-INS",
-    "skuKey": "GO Core Bundle Plan w/INS",
-    "label": "BUNDLE-GO-INS"
+    "ratePlanCode": "BUNDLE-GOGFP",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "BUNDLE-GOGF",
-    "promoCode": "BUNDLE-GOGF",
-    "skuKey": "Bundle Service (GO Focus-SB)",
-    "label": "BUNDLE-GOGF"
+    "ratePlanCode": "BUNDLE-GOGFP-INS",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "BUNDLE-GOGF-INS",
-    "promoCode": "BUNDLE-GOGF-INS",
-    "skuKey": "Bundle Service (GO Focus-SBWI)",
-    "label": "BUNDLE-GOGF-INS"
+    "ratePlanCode": "BUNDLE-RS21-R1",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "BUNDLE-GOGFP",
-    "promoCode": "BUNDLE-GOGFP",
-    "skuKey": "Bundle Service Fee (GFP-SB)",
-    "label": "BUNDLE-GOGFP"
+    "ratePlanCode": "BUNDLE-RS56-R1",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "BUNDLE-GOGFP-INS",
-    "promoCode": "BUNDLE-GOGFP-INS",
-    "skuKey": "Bundle Service Fee (GFP-SBWI)",
-    "label": "BUNDLE-GOGFP-INS"
+    "ratePlanCode": "BUNDLE-RS66-R1",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "BUNDLE-RS21-R1",
-    "promoCode": "BUNDLE-RS21-R1",
-    "skuKey": "(GO BUNDLE) Service - USA Civil",
-    "label": "BUNDLE-RS21-R1"
+    "ratePlanCode": "BUNDLE-RS78-R1",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "BUNDLE-RS56-R1",
-    "promoCode": "BUNDLE-RS56-R1",
-    "skuKey": "(GO BUNDLE) Service - Wayne Bro",
-    "label": "BUNDLE-RS56-R1"
+    "ratePlanCode": "CELU-TP-200",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "BUNDLE-RS66-R1",
-    "promoCode": "BUNDLE-RS66-R1",
-    "skuKey": "(GO BUNDLE) Service - VA Green",
-    "label": "BUNDLE-RS66-R1"
-  },
-  {
-    "id": "BUNDLE-RS78-R1",
-    "promoCode": "BUNDLE-RS78-R1",
-    "skuKey": "Geotab Service (GO BUNDLE)",
-    "label": "BUNDLE-RS78-R1"
-  },
-  {
-    "id": "CELU-TP-200",
-    "promoCode": "CELU-TP-200",
+    "ratePlanCode": "CELU-TP-250",
     "skuKey": "DM Service Fee",
-    "label": "CELU-TP-200"
+    "defaultPrice": 11.0,
+    "notes": ""
   },
   {
-    "id": "CELU-TP-250",
-    "promoCode": "CELU-TP-250",
-    "skuKey": "DM Service Fee",
-    "label": "CELU-TP-250"
+    "ratePlanCode": "GFP-AUX-BUNDLE",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "GFP-AUX-BUNDLE",
-    "promoCode": "GFP-AUX-BUNDLE",
-    "skuKey": "Service (GFPlus + Aux) Bundle",
-    "label": "GFP-AUX-BUNDLE"
+    "ratePlanCode": "GFP-BUNDLE",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "GFP-BUNDLE",
-    "promoCode": "GFP-BUNDLE",
-    "skuKey": "Service (GO Focus Plus) Bundle",
-    "label": "GFP-BUNDLE"
+    "ratePlanCode": "GOA-BUNDLE",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "GOA-BUNDLE",
-    "promoCode": "GOA-BUNDLE",
-    "skuKey": "GO Anywhere Plan (Bundle)",
-    "label": "GOA-BUNDLE"
+    "ratePlanCode": "HANOVER",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "HANOVER",
-    "promoCode": "HANOVER",
-    "skuKey": "Geotab Service Fee (HANOVER)",
-    "label": "HANOVER"
+    "ratePlanCode": "JJKELLER",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "JJKELLER",
-    "promoCode": "JJKELLER",
-    "skuKey": "Service Fee JJ Keller",
-    "label": "JJKELLER"
+    "ratePlanCode": "NEXTLINK",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "NEXTLINK",
-    "promoCode": "NEXTLINK",
-    "skuKey": "Service Fee (GO) - Nextlink",
-    "label": "NEXTLINK"
+    "ratePlanCode": "NJPA",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "NJPA",
-    "promoCode": "NJPA",
-    "skuKey": "Geotab Service (ProPlus NJPA)",
-    "label": "NJPA"
+    "ratePlanCode": "OFFROAD",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "OFFROAD",
-    "promoCode": "OFFROAD",
-    "skuKey": "Geotab Off-Road (Pro)",
-    "label": "OFFROAD"
+    "ratePlanCode": "OHIO-BUNDLE",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "OHIO-BUNDLE",
-    "promoCode": "OHIO-BUNDLE",
-    "skuKey": "Geotab Service (GO Plan)",
-    "label": "OHIO-BUNDLE"
+    "ratePlanCode": "SAI-BUNDLE",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "SAI-BUNDLE",
-    "promoCode": "SAI-BUNDLE",
-    "skuKey": "Sensata Service",
-    "label": "SAI-BUNDLE"
+    "ratePlanCode": "SMARTAI-TEST",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "SMARTAI-TEST",
-    "promoCode": "SMARTAI-TEST",
-    "skuKey": "Service (GO Focus Plus) Bundle",
-    "label": "SMARTAI-TEST"
+    "ratePlanCode": "SURF-BND-PROMO",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "SURF-BND-PROMO",
-    "promoCode": "SURF-BND-PROMO",
-    "skuKey": "SS Service Fee BUNDLE",
-    "label": "SURF-BND-PROMO"
+    "ratePlanCode": "SURF-BUNDLE",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "SURF-BUNDLE",
-    "promoCode": "SURF-BUNDLE",
-    "skuKey": "SS Service Fee BUNDLE",
-    "label": "SURF-BUNDLE"
+    "ratePlanCode": "SWELL",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "SWELL",
-    "promoCode": "SWELL",
-    "skuKey": "Geotab Service (Proplus SWELL)",
-    "label": "SWELL"
+    "ratePlanCode": "SWELL-NOINSTALL",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "SWELL-NOINSTALL",
-    "promoCode": "SWELL-NOINSTALL",
-    "skuKey": "Geotab Service (GO SW-SI)",
-    "label": "SWELL-NOINSTALL"
+    "ratePlanCode": "SWELL-NOINSTALL2",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "SWELL-NOINSTALL2",
-    "promoCode": "SWELL-NOINSTALL2",
-    "skuKey": "Geotab Service (GO SW-SI2)",
-    "label": "SWELL-NOINSTALL2"
+    "ratePlanCode": "SWELL-NOINS3",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "SWELL-NOINS3",
-    "promoCode": "SWELL-NOINS3",
-    "skuKey": "Geotab Service (GO SW-SI3)",
-    "label": "SWELL-NOINS3"
-  },
-  {
-    "id": "SWELL-CC",
-    "promoCode": "SWELL-CC",
+    "ratePlanCode": "SWELL-CC",
     "skuKey": "Geotab Service (GO SWELL-CC)",
-    "label": "SWELL-CC"
+    "defaultPrice": 16.0,
+    "notes": ""
   },
   {
-    "id": "SWELL2",
-    "promoCode": "SWELL2",
-    "skuKey": "Geotab Service (Proplus SW-SI2)",
-    "label": "SWELL2"
+    "ratePlanCode": "SWELL2",
+    "skuKey": "",
+    "defaultPrice": 0.0,
+    "notes": ""
   },
   {
-    "id": "SWELL3",
-    "promoCode": "SWELL3",
+    "ratePlanCode": "SWELL3",
     "skuKey": "Geotab Service (GO SWELL3)",
-    "label": "SWELL3"
-  },
-  {
-    "id": "SWELL3-CC",
-    "promoCode": "SWELL3-CC",
-    "skuKey": "Geotab Service (GO SWELL3-CC)",
-    "label": "SWELL3-CC"
+    "defaultPrice": 19.25,
+    "notes": ""
   }
 ]
