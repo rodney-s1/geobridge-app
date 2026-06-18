@@ -6,8 +6,16 @@ against the QB SKU catalog and per-customer price overrides to surface
 billing discrepancies.
 
 Key logic:
-  1. Load all cached MyAdmin contracts (promoCode per device).
-  2. For each device, look up promoCode -> skuKey via sku_mappings.
+  1. Load all cached MyAdmin contracts.  Each contract has two relevant fields:
+       promoCode          -- optional promo/reseller code (e.g. "SWELL", "BUNDLE-GO")
+                            Most devices do NOT have one.
+       activeDevicePlan   -- the actual billing tier every device has
+                            (e.g. "ProPlus Mode", "Base Mode: Live", "GO9 Focus Plus")
+  2. For each device, resolve a skuKey via a 4-tier lookup:
+       Tier 1: customer-specific mapping on promoCode  (highest priority)
+       Tier 2: customer-specific mapping on billingPlan name
+       Tier 3: global mapping on promoCode
+       Tier 4: global mapping on billingPlan name
   3. Look up the expected price:
        - customer-specific override (from sku_customer_overrides) if it exists
        - else catalog default price
@@ -17,9 +25,13 @@ Key logic:
        ok         -- expected == actual
        over        -- actual > expected  (customer billed more than catalog)
        under       -- actual < expected  (customer billed less than catalog)
-       unmapped    -- promoCode has no SKU mapping
+       unmapped    -- no SKU mapping found for promoCode or billingPlan
        no_price    -- SKU exists but no price anywhere
        not_in_qb   -- customer has no QB data / no invoiced price
+
+NOTE: sku_mappings.json must contain entries for BOTH promo codes (e.g.
+"SWELL") AND billing plan names (e.g. "PROPLUS MODE") to get full coverage.
+Billing plan names should be stored uppercase in ratePlanCode.
 """
 
 from fastapi import APIRouter, HTTPException
@@ -201,7 +213,12 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         dev_id = str(device.get("id") or "")
         serial = device.get("serialNumber") or dev_id
 
-        rate_plan = (c.get("promoCode") or "").upper()
+        # promoCode is an optional reseller/promo override (e.g. "SWELL", "BUNDLE-GO").
+        # Most devices don't have one.  activeDevicePlan.name is the actual billing
+        # tier every device has (e.g. "ProPlus Mode", "Base Mode: Live").
+        promo_code  = (c.get("promoCode") or "").upper().strip()
+        adp         = c.get("activeDevicePlan") or {}
+        billing_plan = (adp.get("name") or "").strip()
 
         if cid not in company_map:
             company_map[cid] = {"customerId": cid, "customerName": cname, "devices": []}
@@ -209,8 +226,9 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             company_map[cid]["customerName"] = cname
 
         company_map[cid]["devices"].append({
-            "serialNumber": serial,
-            "ratePlanCode": rate_plan,
+            "serialNumber":  serial,
+            "promoCode":     promo_code,
+            "billingPlan":   billing_plan,
         })
 
     # -- Per-device reconciliation ---------------------------------------------
@@ -234,30 +252,60 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         device_rows = []
 
         for dev in devices:
-            rate_plan  = dev["ratePlanCode"]
-            norm_cname = _normalize(cname)
+            promo_code   = dev["promoCode"]       # e.g. "SWELL", "" (most devices)
+            billing_plan = dev["billingPlan"]     # e.g. "ProPlus Mode", "Base Mode: Live"
+            norm_cname   = _normalize(cname)
 
-            # --- 3-tier SKU lookup -------------------------------------------
-            # Tier 1: customer-specific rate plan mapping (highest priority)
-            sku_key = cust_mapping_index.get((norm_cname, rate_plan), None)
-            mapping_tier = "customer"
-            # Tier 2: global rate plan mapping
+            # --- 4-tier SKU lookup -------------------------------------------
+            # Tier 1: customer-specific mapping on promoCode (highest priority)
+            sku_key      = None
+            lookup_code  = ""   # what we actually matched on (for display)
+            mapping_tier = "none"
+
+            if promo_code:
+                sku_key = cust_mapping_index.get((norm_cname, promo_code), None)
+                if sku_key is not None:
+                    mapping_tier = "customer"
+                    lookup_code  = promo_code
+
+            # Tier 2: customer-specific mapping on billingPlan name
+            if sku_key is None and billing_plan:
+                bp_upper = billing_plan.upper()
+                sku_key  = cust_mapping_index.get((norm_cname, bp_upper), None)
+                if sku_key is not None:
+                    mapping_tier = "customer"
+                    lookup_code  = billing_plan
+
+            # Tier 3: global mapping on promoCode
+            if sku_key is None and promo_code:
+                sku_key = mapping_index.get(promo_code, None)
+                if sku_key is not None:
+                    mapping_tier = "global"
+                    lookup_code  = promo_code
+
+            # Tier 4: global mapping on billingPlan name
+            if sku_key is None and billing_plan:
+                bp_upper = billing_plan.upper()
+                sku_key  = mapping_index.get(bp_upper, None)
+                if sku_key is not None:
+                    mapping_tier = "global"
+                    lookup_code  = billing_plan
+
             if sku_key is None:
-                sku_key = mapping_index.get(rate_plan, None)
-                mapping_tier = "global"
-            # Tier 3: unmapped
-            if sku_key is None:
-                sku_key = ""
+                sku_key      = ""
                 mapping_tier = "none"
             # -----------------------------------------------------------------
 
-            if not rate_plan or mapping_tier == "none":
-                # No mapping at all
+            # Display label: prefer promoCode if it exists, else billingPlan
+            display_plan = promo_code or billing_plan or "(none)"
+
+            if mapping_tier == "none":
+                # No mapping found on either promoCode or billingPlan
                 device_rows.append({
-                    "serialNumber": dev["serialNumber"],
-                    "ratePlanCode": rate_plan or "(none)",
-                    "skuKey":       "",
-                    "skuName":      "",
+                    "serialNumber":  dev["serialNumber"],
+                    "ratePlanCode":  display_plan,
+                    "skuKey":        "",
+                    "skuName":       "",
                     "expectedPrice": None,
                     "actualPrice":   None,
                     "delta":         None,
@@ -268,12 +316,12 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 continue
 
             if not sku_key:
-                # Mapping exists (customer or global) but SKU not assigned yet
+                # Mapping key matched but skuKey is blank
                 device_rows.append({
-                    "serialNumber": dev["serialNumber"],
-                    "ratePlanCode": rate_plan,
-                    "skuKey":       "",
-                    "skuName":      "",
+                    "serialNumber":  dev["serialNumber"],
+                    "ratePlanCode":  display_plan,
+                    "skuKey":        "",
+                    "skuName":       "",
                     "expectedPrice": None,
                     "actualPrice":   None,
                     "delta":         None,
@@ -282,6 +330,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 })
                 cust_unmapped += 1
                 continue
+
+            rate_plan = lookup_code  # used by the rest of the loop for display
 
             # Resolve expected price
             expected, price_source = _resolve_price(cname, sku_key, ovr_index, catalog_index)
@@ -492,6 +542,56 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             "hasQbData":       total_qb_devices > 0,
         },
         "customers": result_customers,
+    }
+
+
+# ===============================================================================
+#  GET /api/reconciliation/billing-plans
+#  Returns all unique activeDevicePlan names from the MyAdmin cache with
+#  device counts and whether they are currently mapped in sku_mappings.
+# ===============================================================================
+
+@router.get("/reconciliation/billing-plans")
+async def get_billing_plans():
+    """
+    Returns all unique billing plan names (activeDevicePlan.name) seen across
+    all cached MyAdmin contracts, with device counts and mapping status.
+    Use this to identify which plan names need entries in Rate Plan Mappings.
+    """
+    from geotab.customers import _sync_cache
+
+    contracts = _sync_cache.get("contracts") or []
+    _, mappings, _, _, _ = _get_stores()
+
+    # Build mapping index (upper) -> skuKey
+    mapping_index = {
+        (m.get("ratePlanCode") or m.get("promoCode") or "").upper(): m.get("skuKey") or ""
+        for m in mappings
+    }
+
+    plan_counts: dict = {}
+    for c in contracts:
+        if c.get("isTerminated"):
+            continue
+        adp  = c.get("activeDevicePlan") or {}
+        name = (adp.get("name") or "").strip()
+        if name:
+            plan_counts[name] = plan_counts.get(name, 0) + 1
+
+    result = []
+    for name, count in sorted(plan_counts.items(), key=lambda x: -x[1]):
+        sku_key = mapping_index.get(name.upper(), None)
+        result.append({
+            "billingPlan":  name,
+            "deviceCount":  count,
+            "mapped":       sku_key is not None and sku_key != "",
+            "skuKey":       sku_key or "",
+        })
+
+    return {
+        "totalPlans":    len(result),
+        "unmappedPlans": sum(1 for r in result if not r["mapped"]),
+        "plans":         result,
     }
 
 

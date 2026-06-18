@@ -486,11 +486,16 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh }) {
       {adding && (
         <div className="bg-slate-800 border border-blue-500/40 rounded-xl p-4 space-y-3">
           <div className="text-sm font-semibold text-blue-300 mb-1">New Rate Plan → SKU Mapping</div>
+          <div className="text-xs text-slate-500 mb-2">
+            Enter either a <span className="text-amber-300">promo code</span> (e.g. <code className="font-mono bg-slate-700/60 px-1 rounded">SWELL-NOINS3</code>) or a
+            <span className="text-amber-300"> billing plan name</span> from MyAdmin exactly as it appears
+            (e.g. <code className="font-mono bg-slate-700/60 px-1 rounded">PROPLUS MODE</code>, <code className="font-mono bg-slate-700/60 px-1 rounded">BASE MODE: LIVE</code>). Most customers use a billing plan name.
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs text-slate-400 mb-1">Rate Plan Code *</label>
+              <label className="block text-xs text-slate-400 mb-1">Rate Plan Code or Billing Plan Name *</label>
               <input value={addCode} onChange={e => setAddCode(e.target.value.toUpperCase())}
-                placeholder="e.g. SWELL-NOINS3"
+                placeholder="e.g. PROPLUS MODE or SWELL-NOINS3"
                 className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 font-mono focus:outline-none focus:border-blue-500" />
             </div>
             <div>
