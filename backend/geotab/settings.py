@@ -486,7 +486,7 @@ def _parse_qb_csv(content: str) -> dict:
 @router.post("/settings/import-qb-skus")
 async def import_qb_skus(file: UploadFile = File(...)):
     """Upload a QB invoice CSV to auto-populate the SKU catalog and customer price overrides."""
-    global sku_catalog, cust_ovr
+    global sku_catalog, cust_ovr, sku_mappings
     sku_catalog = _catalog()    # reload from disk before import
     cust_ovr    = _overrides()  # reload from disk before import
 
@@ -516,6 +516,12 @@ async def import_qb_skus(file: UploadFile = File(...)):
             skus_added += 1
 
     _save(SKU_CATALOG_FILE, sku_catalog)
+
+    # Sync updated prices back into rate plan mappings
+    sku_mappings = _mappings()   # reload from disk
+    mappings_synced = _sync_mappings_from_catalog(sku_catalog, sku_mappings)
+    if mappings_synced:
+        _save(SKU_MAPPINGS_FILE, sku_mappings)
 
     # -- Upsert customer price overrides --------------------------------------
     for cust_name, skus in parsed['customers'].items():
@@ -561,6 +567,7 @@ async def import_qb_skus(file: UploadFile = File(...)):
         "totalSkus":       len(sku_catalog),
         "totalCustomers":  len(parsed['customers']),
         "totalQbDevices":  total_qb_devices,
+        "mappingsSynced":  mappings_synced,
     }
 
 
@@ -573,6 +580,36 @@ async def get_qb_quantities():
 # ================================================================================
 #  IMPORT ITEM PRICE LIST CSV  ->  fill $0 gaps + add new SKUs, never override
 # ================================================================================
+
+def _sync_mappings_from_catalog(catalog: list, mappings: list) -> int:
+    """
+    After a catalog import, push the updated defaultPrice and cost from the
+    catalog back into sku_mappings entries that share the same skuKey.
+
+    Only updates a mapping's defaultPrice when the catalog entry has a real
+    (> 0) price — never zeros out a previously set price.
+
+    Returns the number of mapping entries that were updated.
+    """
+    catalog_index = {s['skuKey']: s for s in catalog}
+    updated = 0
+    for m in mappings:
+        cat = catalog_index.get(m.get('skuKey', ''))
+        if not cat:
+            continue
+        changed = False
+        if (cat.get('defaultPrice') or 0.0) > 0:
+            if m.get('defaultPrice', 0.0) != cat['defaultPrice']:
+                m['defaultPrice'] = cat['defaultPrice']
+                changed = True
+        if (cat.get('cost') or 0.0) > 0:
+            if m.get('cost', 0.0) != cat['cost']:
+                m['cost'] = cat['cost']
+                changed = True
+        if changed:
+            updated += 1
+    return updated
+
 
 def _parse_price(s: str) -> Optional[float]:
     s = s.strip().replace(',', '')
@@ -682,13 +719,21 @@ async def import_price_list(file: UploadFile = File(...)):
     sku_catalog.sort(key=lambda x: x.get('skuKey', '').lower())
     _save(SKU_CATALOG_FILE, sku_catalog)
 
+    # Sync updated prices + costs back into rate plan mappings
+    global sku_mappings
+    sku_mappings = _mappings()   # reload from disk
+    mappings_synced = _sync_mappings_from_catalog(sku_catalog, sku_mappings)
+    if mappings_synced:
+        _save(SKU_MAPPINGS_FILE, sku_mappings)
+
     return {
-        "success":    True,
-        "added":      added,
-        "updated":    updated,
-        "skipped":    skipped,
-        "totalItems": len(items),
-        "totalSkus":  len(sku_catalog),
+        "success":        True,
+        "added":          added,
+        "updated":        updated,
+        "skipped":        skipped,
+        "totalItems":     len(items),
+        "totalSkus":      len(sku_catalog),
+        "mappingsSynced": mappings_synced,
     }
 
 

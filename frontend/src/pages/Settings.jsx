@@ -100,7 +100,7 @@ function SkuCatalogTab({ catalog, onRefresh }) {
   const [editKey, setEditKey] = useState(null)   // skuKey being edited
   const [editForm, setEditForm] = useState({})
   const [adding, setAdding] = useState(false)
-  const [newForm, setNewForm] = useState({ skuKey: '', fullPath: '', defaultPrice: '', category: '', desc: '' })
+  const [newForm, setNewForm] = useState({ skuKey: '', fullPath: '', defaultPrice: '', cost: '', category: '', desc: '' })
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
 
@@ -130,7 +130,7 @@ function SkuCatalogTab({ catalog, onRefresh }) {
       setMsg({ type: 'ok', text: 'SKU saved.' })
       setEditKey(null)
       setAdding(false)
-      setNewForm({ skuKey: '', fullPath: '', defaultPrice: '', category: '', desc: '' })
+      setNewForm({ skuKey: '', fullPath: '', defaultPrice: '', cost: '', category: '', desc: '' })
       onRefresh()
     } catch (e) {
       setMsg({ type: 'err', text: e.message })
@@ -183,10 +183,17 @@ function SkuCatalogTab({ catalog, onRefresh }) {
               <input value={newForm.skuKey} onChange={e => setNewForm(f => ({ ...f, skuKey: e.target.value }))}
                 className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
             </div>
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Default Price</label>
-              <input type="number" step="0.01" value={newForm.defaultPrice} onChange={e => setNewForm(f => ({ ...f, defaultPrice: e.target.value }))}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Our Cost</label>
+                <input type="number" step="0.01" value={newForm.cost} onChange={e => setNewForm(f => ({ ...f, cost: e.target.value }))}
+                  className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-400 mb-1">Default Price</label>
+                <input type="number" step="0.01" value={newForm.defaultPrice} onChange={e => setNewForm(f => ({ ...f, defaultPrice: e.target.value }))}
+                  className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+              </div>
             </div>
             <div className="col-span-2">
               <label className="block text-xs text-slate-400 mb-1">Full QB Path (col P)</label>
@@ -209,7 +216,7 @@ function SkuCatalogTab({ catalog, onRefresh }) {
           </div>
           <div className="flex gap-2">
             <button disabled={saving || !newForm.skuKey.trim()}
-              onClick={() => saveSku({ ...newForm, defaultPrice: parseFloat(newForm.defaultPrice) || 0, desc: newForm.desc || '' })}
+              onClick={() => saveSku({ ...newForm, defaultPrice: parseFloat(newForm.defaultPrice) || 0, cost: parseFloat(newForm.cost) || 0, desc: newForm.desc || '' })}
               className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded-lg font-medium">
               {saving ? 'Saving…' : 'Save'}
             </button>
@@ -228,15 +235,17 @@ function SkuCatalogTab({ catalog, onRefresh }) {
           <table className="w-full table-fixed text-sm">
             {/* Fixed column proportions shared across ALL category groups */}
             <colgroup>
-              <col style={{ width: '44%' }} />
-              <col style={{ width: '26%' }} className="hidden md:table-column" />
-              <col style={{ width: '16%' }} />
-              <col style={{ width: '14%' }} />
+              <col style={{ width: '38%' }} />
+              <col style={{ width: '20%' }} className="hidden md:table-column" />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '18%' }} />
             </colgroup>
             <thead>
               <tr className="text-xs text-slate-500 border-b border-slate-700 bg-slate-900/40">
                 <th className="text-left px-4 py-2.5 font-medium">SKU Name</th>
                 <th className="text-left px-4 py-2.5 font-medium hidden md:table-cell">Category</th>
+                <th className="text-right px-4 py-2.5 font-medium">Our Cost</th>
                 <th className="text-right px-4 py-2.5 font-medium">Default Price</th>
                 <th className="px-4 py-2.5"></th>
               </tr>
@@ -246,7 +255,7 @@ function SkuCatalogTab({ catalog, onRefresh }) {
                 <React.Fragment key={cat}>
                   {/* Category subheading row */}
                   <tr key={`hdr-${cat}`} className="border-t border-slate-700 bg-slate-900/60">
-                    <td colSpan={4} className="px-4 py-1.5">
+                    <td colSpan={5} className="px-4 py-1.5">
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{cat}</span>
                         <span className="text-xs text-slate-600">{groups[cat].length}</span>
@@ -257,18 +266,26 @@ function SkuCatalogTab({ catalog, onRefresh }) {
                   {groups[cat].map(sku => (
                     editKey === sku.skuKey ? (
                       <tr key={sku.skuKey} className="border-b border-slate-700/50 bg-slate-750">
-                        <td className="px-4 py-3" colSpan={4}>
+                        <td className="px-4 py-3" colSpan={5}>
                           <div className="grid grid-cols-2 gap-3 mb-2">
                             <div>
                               <label className="block text-xs text-slate-400 mb-1">SKU Name</label>
                               <input value={editForm.skuKey} readOnly
                                 className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm text-slate-300 cursor-not-allowed" />
                             </div>
-                            <div>
-                              <label className="block text-xs text-slate-400 mb-1">Default Price</label>
-                              <input type="number" step="0.01" value={editForm.defaultPrice}
-                                onChange={e => setEditForm(f => ({ ...f, defaultPrice: e.target.value }))}
-                                className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <label className="block text-xs text-slate-400 mb-1">Our Cost</label>
+                                <input type="number" step="0.01" value={editForm.cost ?? ''}
+                                  onChange={e => setEditForm(f => ({ ...f, cost: e.target.value }))}
+                                  className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-slate-400 mb-1">Default Price</label>
+                                <input type="number" step="0.01" value={editForm.defaultPrice}
+                                  onChange={e => setEditForm(f => ({ ...f, defaultPrice: e.target.value }))}
+                                  className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                              </div>
                             </div>
                             <div className="col-span-2">
                               <label className="block text-xs text-slate-400 mb-1">Full QB Path (col P)</label>
@@ -285,7 +302,7 @@ function SkuCatalogTab({ catalog, onRefresh }) {
                           </div>
                           <div className="flex gap-2">
                             <button disabled={saving}
-                              onClick={() => saveSku({ ...editForm, defaultPrice: parseFloat(editForm.defaultPrice) || 0, desc: editForm.desc || '' })}
+                              onClick={() => saveSku({ ...editForm, defaultPrice: parseFloat(editForm.defaultPrice) || 0, cost: parseFloat(editForm.cost) || 0, desc: editForm.desc || '' })}
                               className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded font-medium">
                               {saving ? 'Saving…' : 'Save'}
                             </button>
@@ -294,7 +311,7 @@ function SkuCatalogTab({ catalog, onRefresh }) {
                         </td>
                       </tr>
                     ) : (
-                      <tr key={sku.skuKey} className="border-b border-slate-700/30 hover:bg-slate-750/60 transition-colors group">
+                      <tr key={sku.skuKey} className="border-b border-slate-700/30 hover:bg-slate-750/60 transition-colors group" title={sku.fullPath || ''}>
                         <td className="px-4 py-2.5 overflow-hidden">
                           <div>
                             <span className="font-mono text-xs text-slate-200 bg-slate-700/80 px-1.5 py-0.5 rounded cursor-help" title={sku.fullPath}>
@@ -307,6 +324,9 @@ function SkuCatalogTab({ catalog, onRefresh }) {
                         </td>
                         <td className="px-4 py-2.5 text-slate-400 text-xs hidden md:table-cell truncate" title={sku.category}>
                           {sku.category}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-mono text-slate-400 whitespace-nowrap text-xs">
+                          {(sku.cost > 0) ? fmtPrice(sku.cost) : <span className="text-slate-600">—</span>}
                         </td>
                         <td className="px-4 py-2.5 text-right font-mono text-slate-200 whitespace-nowrap">
                           {fmtPrice(sku.defaultPrice)}
@@ -595,7 +615,12 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh }) {
                       )}
                     </td>
                     <td className="px-4 py-2.5 text-right font-mono text-slate-200">
-                      {fmtPrice(m.defaultPrice)}
+                      <div className="flex flex-col items-end gap-0.5">
+                        <span>{fmtPrice(m.defaultPrice)}</span>
+                        {(m.cost > 0) && (
+                          <span className="text-xs text-slate-500" title="Our cost">cost {fmtPrice(m.cost)}</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-2.5 text-slate-400 text-xs hidden lg:table-cell truncate" title={m.notes}>{m.notes || '—'}</td>
                     <td className="px-4 py-2.5 text-right">
@@ -933,12 +958,13 @@ function ImportCsvTab({ onRefresh }) {
         endpoint="/api/settings/import-qb-skus"
         acceptHint="QuickBooks monthly invoice export (.csv)"
         resultFields={[
-          { key: 'skusAdded',    label: 'SKUs added' },
-          { key: 'skusUpdated',  label: 'SKUs updated' },
-          { key: 'ovrAdded',     label: 'Customer prices added' },
-          { key: 'ovrUpdated',   label: 'Customer prices updated' },
-          { key: 'totalSkus',    label: 'Total SKUs in catalog', bold: true },
-          { key: 'totalCustomers', label: 'Customers processed', bold: true },
+          { key: 'skusAdded',       label: 'SKUs added' },
+          { key: 'skusUpdated',     label: 'SKUs updated' },
+          { key: 'ovrAdded',        label: 'Customer prices added' },
+          { key: 'ovrUpdated',      label: 'Customer prices updated' },
+          { key: 'mappingsSynced',  label: 'Rate plan prices synced' },
+          { key: 'totalSkus',       label: 'Total SKUs in catalog', bold: true },
+          { key: 'totalCustomers',  label: 'Customers processed', bold: true },
         ]}
         onRefresh={onRefresh}
       />
@@ -957,11 +983,12 @@ function ImportCsvTab({ onRefresh }) {
         endpoint="/api/settings/import-price-list"
         acceptHint="QuickBooks Item Price List export (.csv)"
         resultFields={[
-          { key: 'added',       label: 'New SKUs added' },
-          { key: 'updated',     label: 'Prices filled ($0 → real price)' },
-          { key: 'skipped',     label: 'Skipped (price already set)' },
-          { key: 'totalItems',  label: 'Items in file' },
-          { key: 'totalSkus',   label: 'Total SKUs in catalog', bold: true },
+          { key: 'added',           label: 'New SKUs added' },
+          { key: 'updated',         label: 'Prices filled ($0 → real price)' },
+          { key: 'skipped',         label: 'Skipped (price already set)' },
+          { key: 'mappingsSynced',  label: 'Rate plan prices synced' },
+          { key: 'totalItems',      label: 'Items in file' },
+          { key: 'totalSkus',       label: 'Total SKUs in catalog', bold: true },
         ]}
         onRefresh={onRefresh}
       />
