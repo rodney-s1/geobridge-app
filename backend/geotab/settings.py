@@ -704,17 +704,20 @@ async def import_price_list(file: UploadFile = File(...)):
             sku_catalog.append(new_entry)
             catalog_index[item['skuKey']] = new_entry
             added += 1
-        elif (existing.get('defaultPrice') or 0.0) == 0.0 and item['defaultPrice'] > 0:
-            # Existing SKU with $0 price -- fill the gap
-            existing['defaultPrice'] = item['defaultPrice']
+        else:
+            # Always update cost from the price list -- it's a separate field from price
             if item.get('cost'):
                 existing['cost'] = item['cost']
-            if not existing.get('desc') and item.get('desc'):
-                existing['desc'] = item['desc']
-            updated += 1
-        else:
-            # Existing SKU with a real price already -- do not touch
-            skipped += 1
+
+            if (existing.get('defaultPrice') or 0.0) == 0.0 and item['defaultPrice'] > 0:
+                # Existing SKU with $0 price -- fill the gap
+                existing['defaultPrice'] = item['defaultPrice']
+                if not existing.get('desc') and item.get('desc'):
+                    existing['desc'] = item['desc']
+                updated += 1
+            else:
+                # Existing SKU with a real price already -- do not override price
+                skipped += 1
 
     sku_catalog.sort(key=lambda x: x.get('skuKey', '').lower())
     _save(SKU_CATALOG_FILE, sku_catalog)
