@@ -99,10 +99,20 @@ function QtyBreakdownTable({ rows }) {
       <tbody>
         {rows.map((r, i) => {
           const diff = r.qtyDelta
+          // If MyAdmin=0 but there are unmapped devices, the discrepancy is likely
+          // caused by those devices having no rate plan — annotate rather than alarm
+          const unmappedExplains = r.myAdminCount === 0 && (r.unmappedCount > 0)
           return (
             <tr key={`${r.skuKey}-${i}`} className="border-t border-slate-700/30 hover:bg-slate-700/20">
               <td className="px-4 py-2 font-mono text-slate-300 truncate" title={r.skuKey}>{r.skuKey || '—'}</td>
-              <td className="px-4 py-2 text-right font-mono text-slate-200">{r.myAdminCount}</td>
+              <td className="px-4 py-2 text-right font-mono text-slate-200">
+                {r.myAdminCount}
+                {unmappedExplains && (
+                  <div className="text-amber-400/70 text-xs font-sans normal-case">
+                    {r.unmappedCount} unmapped
+                  </div>
+                )}
+              </td>
               <td className="px-4 py-2 text-right font-mono text-slate-200">{r.qbQty ?? '—'}</td>
               <td className="px-4 py-2 text-right font-mono">
                 {diff === null || diff === undefined
@@ -112,7 +122,14 @@ function QtyBreakdownTable({ rows }) {
                     </span>
                 }
               </td>
-              <td className="px-4 py-2"><QtyChip status={r.qtyStatus} size="xs" /></td>
+              <td className="px-4 py-2">
+                {unmappedExplains
+                  ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-amber-900/40 text-amber-300 border border-amber-700/40">
+                      No rate plan
+                    </span>
+                  : <QtyChip status={r.qtyStatus} size="xs" />
+                }
+              </td>
             </tr>
           )
         })}
@@ -126,8 +143,20 @@ function PriceBreakdownTable({ devices }) {
   if (!devices || devices.length === 0) return (
     <div className="px-6 py-4 text-xs text-slate-500 italic">No device data available.</div>
   )
+  const noneCount = devices.filter(d => !d.ratePlanCode || d.ratePlanCode === '(none)').length
   return (
-    <table className="w-full table-fixed text-xs">
+    <div>
+      {noneCount > 0 && (
+        <div className="mx-4 mt-3 mb-1 px-3 py-2 rounded-lg bg-amber-900/25 border border-amber-700/40 text-xs text-amber-300 flex items-start gap-2">
+          <span className="mt-0.5">⚠</span>
+          <span>
+            <strong>{noneCount} device{noneCount > 1 ? 's' : ''}</strong> {noneCount > 1 ? 'have' : 'has'} no rate plan assigned in MyAdmin (<code className="font-mono bg-slate-700/60 px-1 rounded">(none)</code>).
+            These devices cannot be mapped to a QB SKU until a rate plan is set in MyAdmin.
+            This is the likely cause of any "Over-billed" rows in the Quantity tab.
+          </span>
+        </div>
+      )}
+      <table className="w-full table-fixed text-xs">
       <colgroup>
         <col style={{ width: '14%' }} />
         <col style={{ width: '14%' }} />
@@ -170,10 +199,9 @@ function PriceBreakdownTable({ devices }) {
         ))}
       </tbody>
     </table>
+    </div>
   )
 }
-
-// ─── Customer row ─────────────────────────────────────────────────────────────
 function CustomerRow({ customer }) {
   const [tab, setTab] = useState('qty')   // 'qty' | 'price'
   const [expanded, setExpanded] = useState(false)

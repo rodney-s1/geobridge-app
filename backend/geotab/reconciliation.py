@@ -379,6 +379,11 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             sk for (nc, sk) in qb_qty_index.keys() if nc == norm_cname
         }
 
+        # Count unmapped devices for this customer (no rate plan OR no mapping)
+        cust_unmapped_count = sum(
+            1 for row in device_rows if row.get("status") == "unmapped"
+        )
+
         for sku_key in sorted(all_skus):
             myadmin_count = myadmin_by_sku.get(sku_key, 0)
             qb_qty        = qb_qty_index.get((norm_cname, sku_key), None)
@@ -398,11 +403,12 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 cust_qty_over += 1
 
             qty_rows.append({
-                "skuKey":        sku_key,
-                "myAdminCount":  myadmin_count,
-                "qbQty":         qb_qty,
-                "qtyDelta":      qty_delta,
-                "qtyStatus":     qty_status,
+                "skuKey":         sku_key,
+                "myAdminCount":   myadmin_count,
+                "qbQty":          qb_qty,
+                "qtyDelta":       qty_delta,
+                "qtyStatus":      qty_status,
+                "unmappedCount":  cust_unmapped_count,  # how many devices for this customer are unmapped
             })
 
         cust_myadmin_total = len(devices)
