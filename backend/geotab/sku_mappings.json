@@ -2,7 +2,7 @@
   {
     "id": "APEXR",
     "promoCode": "APEXR",
-    "skuKey": "Geotab Service (GO Plan)",
+    "skuKey": "Service Fee Geotab (Pro)",
     "label": "APEXR"
   },
   {
@@ -50,19 +50,19 @@
   {
     "id": "BUNDLE-RS21-R1",
     "promoCode": "BUNDLE-RS21-R1",
-    "skuKey": "Geotab Service (GO BUNDLE)",
+    "skuKey": "(GO BUNDLE) Service - USA Civil",
     "label": "BUNDLE-RS21-R1"
   },
   {
     "id": "BUNDLE-RS56-R1",
     "promoCode": "BUNDLE-RS56-R1",
-    "skuKey": "Geotab Service (GO BUNDLE)",
+    "skuKey": "(GO BUNDLE) Service - Wayne Bro",
     "label": "BUNDLE-RS56-R1"
   },
   {
     "id": "BUNDLE-RS66-R1",
     "promoCode": "BUNDLE-RS66-R1",
-    "skuKey": "Geotab Service (GO BUNDLE)",
+    "skuKey": "(GO BUNDLE) Service - VA Green",
     "label": "BUNDLE-RS66-R1"
   },
   {
@@ -74,13 +74,13 @@
   {
     "id": "CELU-TP-200",
     "promoCode": "CELU-TP-200",
-    "skuKey": "Service Fee Geotab (Base)",
+    "skuKey": "DM Service Fee",
     "label": "CELU-TP-200"
   },
   {
     "id": "CELU-TP-250",
     "promoCode": "CELU-TP-250",
-    "skuKey": "Service Fee Geotab (Pro)",
+    "skuKey": "DM Service Fee",
     "label": "CELU-TP-250"
   },
   {
@@ -92,7 +92,7 @@
   {
     "id": "GFP-BUNDLE",
     "promoCode": "GFP-BUNDLE",
-    "skuKey": "Geotab Service (GO Focus Plus)",
+    "skuKey": "Service (GO Focus Plus) Bundle",
     "label": "GFP-BUNDLE"
   },
   {
@@ -146,7 +146,7 @@
   {
     "id": "SMARTAI-TEST",
     "promoCode": "SMARTAI-TEST",
-    "skuKey": "Sensata Service",
+    "skuKey": "Service (GO Focus Plus) Bundle",
     "label": "SMARTAI-TEST"
   },
   {
@@ -164,19 +164,19 @@
   {
     "id": "SWELL",
     "promoCode": "SWELL",
-    "skuKey": "Geotab Service (GO SW-SI)",
+    "skuKey": "Geotab Service (Proplus SWELL)",
     "label": "SWELL"
   },
   {
     "id": "SWELL-NOINSTALL",
     "promoCode": "SWELL-NOINSTALL",
-    "skuKey": "Geotab Service (GO SW-SI)",
+    "skuKey": "Geotab Service (Proplus SW-SI)",
     "label": "SWELL-NOINSTALL"
   },
   {
     "id": "SWELL-NOINSTALL2",
     "promoCode": "SWELL-NOINSTALL2",
-    "skuKey": "Geotab Service (GO SW-SI2)",
+    "skuKey": "Geotab Service (Proplus SW-SI2)",
     "label": "SWELL-NOINSTALL2"
   },
   {
@@ -208,11 +208,5 @@
     "promoCode": "SWELL3-CC",
     "skuKey": "Geotab Service (GO SWELL3-CC)",
     "label": "SWELL3-CC"
-  },
-  {
-    "id": "TMO-LLW",
-    "promoCode": "TMO-LLW",
-    "skuKey": "Geotab Service (GO Plan)",
-    "label": "TMO-LLW"
   }
 ]
