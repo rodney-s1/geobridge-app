@@ -170,13 +170,13 @@
   {
     "id": "SWELL-NOINSTALL",
     "promoCode": "SWELL-NOINSTALL",
-    "skuKey": "Geotab Service (Proplus SW-SI)",
+    "skuKey": "Geotab Service (GO SW-SI)",
     "label": "SWELL-NOINSTALL"
   },
   {
     "id": "SWELL-NOINSTALL2",
     "promoCode": "SWELL-NOINSTALL2",
-    "skuKey": "Geotab Service (Proplus SW-SI2)",
+    "skuKey": "Geotab Service (GO SW-SI2)",
     "label": "SWELL-NOINSTALL2"
   },
   {
