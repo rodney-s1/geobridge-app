@@ -52,8 +52,8 @@ qb_items:           List[dict]      = []
 name_to_company_id: Dict[str, str]  = {}   # normalize(name) -> companyId, built on sync
 
 # --- MyAdmin sync cache -------------------------------------------------------
-CACHE_TTL_HOURS = 12
-DEVICE_DB_REFRESH_MINUTES = 30   # Background Step-1 refresh interval
+CACHE_TTL_HOURS = 4              # Contracts auto-expire after 4 h; background task refreshes silently
+DEVICE_DB_REFRESH_MINUTES = 30   # Background Step-1 (device DBs only) refresh interval
 _sync_cache: Dict = _load_json(SYNC_CACHE_FILE, {})
 
 # --- Sync lock -- prevents concurrent fetches when multiple requests arrive ---
@@ -87,65 +87,83 @@ def _set_progress(**kwargs):
 
 
 # --- Background auto-refresh --------------------------------------------------
-# Runs Step 1 (GetCurrentDeviceDatabases) silently every DEVICE_DB_REFRESH_MINUTES.
-# Contracts (Step 2, the slow 2–5 min fetch) stay on the 12 h manual-sync cache.
-# This keeps the device-database map fresh so newly activated devices appear
-# without requiring a full manual sync.
+# Every DEVICE_DB_REFRESH_MINUTES: silently refresh Step 1 (device DBs).
+# Every CACHE_TTL_HOURS: silently refresh Step 1 + Step 2 (full sync).
+# Both skip if no session is active or a manual sync is already running.
 
 _bg_refresh_task: asyncio.Task | None = None
 
 
 async def _background_device_db_refresh() -> None:
-    """Infinite loop: wait DEVICE_DB_REFRESH_MINUTES, then refresh Step 1 silently."""
-    interval = DEVICE_DB_REFRESH_MINUTES * 60
-    await asyncio.sleep(interval)   # first refresh after one full interval
+    """Infinite loop: refresh device DBs every 30 min; full sync every 4 h."""
+    step1_interval     = DEVICE_DB_REFRESH_MINUTES * 60
+    full_sync_interval = CACHE_TTL_HOURS * 3600
+    last_full_sync     = time.time()   # treat startup as a full sync baseline
+
+    await asyncio.sleep(step1_interval)   # first run after one step-1 interval
+
     while True:
         try:
-            # Only run if we are logged in (session_store populated) and not
-            # already in the middle of a manual full sync.
             if session_store.get("session_id") and not _sync_progress.get("active"):
-                print(f"[bg-refresh] Running silent Step-1 refresh "
-                      f"(every {DEVICE_DB_REFRESH_MINUTES} min)...")
-                next_id = 0
-                page_num = 0
-                all_device_dbs = []
-                while True:
-                    page_num += 1
-                    result = await myadmin_call(
-                        "GetCurrentDeviceDatabases",
-                        {
-                            "apiKey":     session_store["user_id"],
-                            "sessionId":  session_store["session_id"],
-                            "forAccount": MYADMIN_ACCOUNT,
-                            "nextId":     next_id,
-                        },
-                        timeout=120.0,
-                    )
-                    batch = result.get("result") or []
-                    if not batch:
-                        break
-                    all_device_dbs.extend(batch)
-                    if len(batch) < 1000:
-                        break
-                    next_id = batch[-1].get("Id") or batch[-1].get("id") or 0
+                now           = time.time()
+                do_full_sync  = (now - last_full_sync) >= full_sync_interval
 
-                if all_device_dbs:
-                    _sync_cache["device_db_records"] = all_device_dbs
-                    _sync_cache["device_db_refreshed_at"] = time.time()
-                    # Persist only if contracts are already cached (avoid partial saves)
-                    if _sync_cache.get("contracts"):
-                        _save_json(SYNC_CACHE_FILE, _sync_cache)
-                    print(f"[bg-refresh] Step-1 complete: "
-                          f"{len(all_device_dbs):,} device-db records updated.")
+                if do_full_sync:
+                    # ── Full background sync (Step 1 + Step 2) ──────────────
+                    print(f"[bg-refresh] Running silent full sync "
+                          f"(TTL {CACHE_TTL_HOURS}h reached)...")
+                    try:
+                        await _fetch_myadmin_customers(force_refresh=True)
+                        last_full_sync = time.time()
+                        print("[bg-refresh] Silent full sync complete.")
+                    except Exception as exc:
+                        print(f"[bg-refresh] Silent full sync failed (non-fatal): {exc}")
+
+                else:
+                    # ── Step-1 only (device DBs) ────────────────────────────
+                    print(f"[bg-refresh] Running silent Step-1 refresh "
+                          f"(every {DEVICE_DB_REFRESH_MINUTES} min)...")
+                    next_id = 0
+                    page_num = 0
+                    all_device_dbs = []
+                    while True:
+                        page_num += 1
+                        result = await myadmin_call(
+                            "GetCurrentDeviceDatabases",
+                            {
+                                "apiKey":     session_store["user_id"],
+                                "sessionId":  session_store["session_id"],
+                                "forAccount": MYADMIN_ACCOUNT,
+                                "nextId":     next_id,
+                            },
+                            timeout=120.0,
+                        )
+                        batch = result.get("result") or []
+                        if not batch:
+                            break
+                        all_device_dbs.extend(batch)
+                        if len(batch) < 1000:
+                            break
+                        next_id = batch[-1].get("Id") or batch[-1].get("id") or 0
+
+                    if all_device_dbs:
+                        _sync_cache["device_db_records"]      = all_device_dbs
+                        _sync_cache["device_db_refreshed_at"] = time.time()
+                        if _sync_cache.get("contracts"):
+                            _save_json(SYNC_CACHE_FILE, _sync_cache)
+                        print(f"[bg-refresh] Step-1 complete: "
+                              f"{len(all_device_dbs):,} device-db records updated.")
             else:
                 print("[bg-refresh] Skipping -- no session or manual sync in progress.")
+
         except Exception as exc:
-            print(f"[bg-refresh] Step-1 refresh failed (non-fatal): {exc}")
-        await asyncio.sleep(interval)
+            print(f"[bg-refresh] Unexpected error (non-fatal): {exc}")
+
+        await asyncio.sleep(step1_interval)
 
 
 def start_background_refresh() -> None:
-    """Schedule the background device-DB refresh loop.
+    """Schedule the background refresh loop.
     Call once from the FastAPI lifespan / startup hook.
     """
     global _bg_refresh_task
@@ -153,8 +171,8 @@ def start_background_refresh() -> None:
         _bg_refresh_task = asyncio.get_event_loop().create_task(
             _background_device_db_refresh()
         )
-        print(f"[bg-refresh] Background device-DB refresh scheduled "
-              f"(every {DEVICE_DB_REFRESH_MINUTES} min).")
+        print(f"[bg-refresh] Scheduled: Step-1 every {DEVICE_DB_REFRESH_MINUTES} min, "
+              f"full sync every {CACHE_TTL_HOURS}h.")
 
 
 # --- Billing type map ---------------------------------------------------------
