@@ -390,6 +390,7 @@ export default function Reconciliation() {
   const [error,        setError]       = useState(null)
   const [search,       setSearch]      = useState('')
   const [qtyFilter,    setQtyFilter]   = useState('')  // '' | 'under_billed' | 'over_billed' | 'no_qb_data' | 'match'
+  const [sortBy,       setSortBy]      = useState('alpha') // 'alpha' | 'status' | 'under_first' | 'over_first' | 'no_qb_first' | 'match_first'
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -413,17 +414,32 @@ export default function Reconciliation() {
   const summary   = data?.summary
   const customers = data?.customers || []
 
-  // Client-side filtering
-  const visible = customers.filter(c => {
-    const nameMatch = !search.trim() || (c.customerName || '').toLowerCase().includes(search.toLowerCase())
-    if (!nameMatch) return false
-    if (!qtyFilter) return true
-    const qtyRowStatus = !c.hasQbData
-      ? 'no_qb_data'
-      : c.qtyDelta === 0 ? 'match'
-        : c.qtyDelta > 0 ? 'under_billed' : 'over_billed'
-    return qtyRowStatus === qtyFilter
-  })
+  // Client-side filtering + sorting
+  const getQtyStatus = c => !c.hasQbData ? 'no_qb_data'
+    : c.qtyDelta === 0 ? 'match'
+    : c.qtyDelta > 0   ? 'under_billed' : 'over_billed'
+
+  const STATUS_ORDER = { under_billed: 0, over_billed: 1, no_qb_data: 2, match: 3 }
+
+  const visible = customers
+    .filter(c => {
+      const nameMatch = !search.trim() || (c.customerName || '').toLowerCase().includes(search.toLowerCase())
+      if (!nameMatch) return false
+      if (!qtyFilter) return true
+      return getQtyStatus(c) === qtyFilter
+    })
+    .sort((a, b) => {
+      const alpha = (a.customerName || '').localeCompare(b.customerName || '')
+      switch (sortBy) {
+        case 'alpha':        return alpha
+        case 'status':       return STATUS_ORDER[getQtyStatus(a)] - STATUS_ORDER[getQtyStatus(b)] || alpha
+        case 'under_first':  return (getQtyStatus(a) === 'under_billed' ? 0 : 1) - (getQtyStatus(b) === 'under_billed' ? 0 : 1) || alpha
+        case 'over_first':   return (getQtyStatus(a) === 'over_billed'  ? 0 : 1) - (getQtyStatus(b) === 'over_billed'  ? 0 : 1) || alpha
+        case 'no_qb_first':  return (getQtyStatus(a) === 'no_qb_data'   ? 0 : 1) - (getQtyStatus(b) === 'no_qb_data'   ? 0 : 1) || alpha
+        case 'match_first':  return (getQtyStatus(a) === 'match'         ? 0 : 1) - (getQtyStatus(b) === 'match'         ? 0 : 1) || alpha
+        default:             return alpha
+      }
+    })
 
   const hasQbData = summary?.hasQbData
 
@@ -529,9 +545,10 @@ export default function Reconciliation() {
         </div>
       )}
 
-      {/* ── Search + filter controls ── */}
+      {/* ── Search + filter + sort controls ── */}
       {data && (
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Search */}
           <div className="relative flex-1 max-w-sm">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">🔍</span>
             <input
@@ -542,15 +559,36 @@ export default function Reconciliation() {
                 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500"
             />
           </div>
+
+          {/* Sort dropdown */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 whitespace-nowrap">Sort:</span>
+            <select
+              value={sortBy}
+              onChange={e => setSortBy(e.target.value)}
+              className="bg-slate-800 border border-slate-700 text-slate-200 text-xs rounded-xl
+                px-3 py-2 focus:outline-none focus:border-blue-500 cursor-pointer"
+            >
+              <option value="alpha">A → Z</option>
+              <option value="status">By Status (Under → Over → No QB → Match)</option>
+              <option value="under_first">Under-billed First</option>
+              <option value="over_first">Over-billed First</option>
+              <option value="no_qb_first">No QB Data First</option>
+              <option value="match_first">Matches First</option>
+            </select>
+          </div>
+
+          {/* Active filter badge */}
           {qtyFilter && (
             <button
               onClick={() => setQtyFilter('')}
               className="text-xs text-amber-400 hover:text-amber-300 border border-amber-700/40
                 bg-amber-900/20 px-3 py-2 rounded-xl transition-colors"
             >
-              ✕ Clear filter: {qtyFilter.replace('_', ' ')}
+              ✕ Clear filter: {qtyFilter.replace(/_/g, ' ')}
             </button>
           )}
+
           <span className="text-xs text-slate-500 ml-auto">
             {visible.length} customer{visible.length !== 1 ? 's' : ''}
           </span>
@@ -580,6 +618,7 @@ export default function Reconciliation() {
       {/* ── Main table ── */}
       {!loading && visible.length > 0 && (
         <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+          <div className="overflow-y-auto max-h-[calc(100vh-22rem)]">
           <table className="w-full table-fixed text-sm">
             <colgroup>
               <col style={{ width: '32px' }} />
@@ -590,7 +629,7 @@ export default function Reconciliation() {
               <col style={{ width: '27%' }} />
               <col style={{ width: '13%' }} />
             </colgroup>
-            <thead className="bg-slate-900/60">
+            <thead className="bg-slate-900/80 sticky top-0 z-10">
               <tr>
                 <th className="px-3 py-3"></th>
                 <th className="px-4 py-3 text-left text-xs text-slate-400 font-semibold uppercase tracking-wide">Customer</th>
@@ -605,6 +644,7 @@ export default function Reconciliation() {
               {visible.map(c => <CustomerRow key={c.customerId} customer={c} />)}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
