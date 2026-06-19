@@ -72,7 +72,19 @@ def _get_stores():
 
 
 def _normalize(s: str) -> str:
-    return (s or "").strip().lower()
+    """Normalise a customer name for index lookups.
+
+    Strips MyAdmin sub-account suffixes enclosed in braces so that
+    sub-accounts like 'Acme Corp {3rd Party Devices}' match against the
+    QuickBooks invoice name 'Acme Corp' — they are always on the same
+    invoice, just different line items.
+    """
+    s = (s or "").strip()
+    # Strip trailing {...} sub-account qualifier (e.g. "{3rd Party Devices}")
+    brace = s.find("{")
+    if brace != -1:
+        s = s[:brace].strip()
+    return s.lower()
 
 
 # --- Helper: resolve expected price for (customerName, skuKey) ---------------
