@@ -584,7 +584,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 qty_status = "over_billed"    # QB billed MORE than MyAdmin devices
                 cust_qty_over += 1
 
-        qty_rows.append({
+            qty_rows.append({
                 "skuKey":              sku_key,
                 "myAdminCount":        myadmin_count,
                 "qbQty":               qb_qty,
