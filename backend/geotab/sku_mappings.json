@@ -267,7 +267,7 @@
     "ratePlanCode": "REGULATORY MODE",
     "skuKey": "Service Fee Geotab (HOS)",
     "defaultPrice": 22.95,
-    "notes": "MyAdmin billing plan - regulatory/HOS compliance tier; use HOS V2 ($24.95) for customer overrides"
+    "notes": "MyAdmin billing plan - regulatory/HOS compliance tier; defaults to HOS ($22.95); HOS V2 customers handled via customer-specific rate plan mappings"
   },
   {
     "ratePlanCode": "SUSPEND MODE",

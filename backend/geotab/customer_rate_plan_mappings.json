@@ -6,5 +6,117 @@
     "skuKey": "DM Service Fee (Enterprise)",
     "defaultPrice": 9.0,
     "notes": ""
+  },
+  {
+    "id": "1 Elite Transport LLC|REGULATORY MODE",
+    "customerName": "1 Elite Transport LLC",
+    "ratePlanCode": "REGULATORY MODE",
+    "skuKey": "Service Fee Geotab (HOS V2)",
+    "defaultPrice": 24.95,
+    "notes": "Regulatory Mode billed at HOS V2 per QB invoice"
+  },
+  {
+    "id": "AE Construction A LLC|REGULATORY MODE",
+    "customerName": "AE Construction A LLC",
+    "ratePlanCode": "REGULATORY MODE",
+    "skuKey": "Service Fee Geotab (HOS V2)",
+    "defaultPrice": 24.95,
+    "notes": "Regulatory Mode billed at HOS V2 per QB invoice"
+  },
+  {
+    "id": "D's Quick Transport LLC|REGULATORY MODE",
+    "customerName": "D's Quick Transport LLC",
+    "ratePlanCode": "REGULATORY MODE",
+    "skuKey": "Service Fee Geotab (HOS V2)",
+    "defaultPrice": 22.95,
+    "notes": "Regulatory Mode billed at HOS V2 per QB invoice"
+  },
+  {
+    "id": "Expedited Hot Shot Shipping LLC|REGULATORY MODE",
+    "customerName": "Expedited Hot Shot Shipping LLC",
+    "ratePlanCode": "REGULATORY MODE",
+    "skuKey": "Service Fee Geotab (HOS V2)",
+    "defaultPrice": 22.95,
+    "notes": "Regulatory Mode billed at HOS V2 per QB invoice"
+  },
+  {
+    "id": "Florida Floats Inc|REGULATORY MODE",
+    "customerName": "Florida Floats Inc",
+    "ratePlanCode": "REGULATORY MODE",
+    "skuKey": "Service Fee Geotab (HOS V2)",
+    "defaultPrice": 22.95,
+    "notes": "Regulatory Mode billed at HOS V2 per QB invoice"
+  },
+  {
+    "id": "J & B Trucking LLC|REGULATORY MODE",
+    "customerName": "J & B Trucking LLC",
+    "ratePlanCode": "REGULATORY MODE",
+    "skuKey": "Service Fee Geotab (HOS V2)",
+    "defaultPrice": 22.95,
+    "notes": "Regulatory Mode billed at HOS V2 per QB invoice"
+  },
+  {
+    "id": "Last Mile Logistics Distribution|REGULATORY MODE",
+    "customerName": "Last Mile Logistics Distribution",
+    "ratePlanCode": "REGULATORY MODE",
+    "skuKey": "Service Fee Geotab (HOS V2)",
+    "defaultPrice": 22.95,
+    "notes": "Regulatory Mode billed at HOS V2 per QB invoice"
+  },
+  {
+    "id": "Latte Trucking LLC|REGULATORY MODE",
+    "customerName": "Latte Trucking LLC",
+    "ratePlanCode": "REGULATORY MODE",
+    "skuKey": "Service Fee Geotab (HOS V2)",
+    "defaultPrice": 26.95,
+    "notes": "Regulatory Mode billed at HOS V2 per QB invoice"
+  },
+  {
+    "id": "Legit Mitch Transport LLC|REGULATORY MODE",
+    "customerName": "Legit Mitch Transport LLC",
+    "ratePlanCode": "REGULATORY MODE",
+    "skuKey": "Service Fee Geotab (HOS V2)",
+    "defaultPrice": 22.95,
+    "notes": "Regulatory Mode billed at HOS V2 per QB invoice"
+  },
+  {
+    "id": "Lone Mountain Aircraft Maintenance|REGULATORY MODE",
+    "customerName": "Lone Mountain Aircraft Maintenance",
+    "ratePlanCode": "REGULATORY MODE",
+    "skuKey": "Service Fee Geotab (HOS V2)",
+    "defaultPrice": 22.95,
+    "notes": "Regulatory Mode billed at HOS V2 per QB invoice"
+  },
+  {
+    "id": "Muscle Trailer Hauling LLC|REGULATORY MODE",
+    "customerName": "Muscle Trailer Hauling LLC",
+    "ratePlanCode": "REGULATORY MODE",
+    "skuKey": "Service Fee Geotab (HOS V2)",
+    "defaultPrice": 22.95,
+    "notes": "Regulatory Mode billed at HOS V2 per QB invoice"
+  },
+  {
+    "id": "Riptide Transport LLC|REGULATORY MODE",
+    "customerName": "Riptide Transport LLC",
+    "ratePlanCode": "REGULATORY MODE",
+    "skuKey": "Service Fee Geotab (HOS V2)",
+    "defaultPrice": 22.95,
+    "notes": "Regulatory Mode billed at HOS V2 per QB invoice"
+  },
+  {
+    "id": "T T S Coastline Corp|REGULATORY MODE",
+    "customerName": "T T S Coastline Corp",
+    "ratePlanCode": "REGULATORY MODE",
+    "skuKey": "Service Fee Geotab (HOS V2)",
+    "defaultPrice": 22.95,
+    "notes": "Regulatory Mode billed at HOS V2 per QB invoice"
+  },
+  {
+    "id": "Trey Parrish Trucking, Inc|REGULATORY MODE",
+    "customerName": "Trey Parrish Trucking, Inc",
+    "ratePlanCode": "REGULATORY MODE",
+    "skuKey": "Service Fee Geotab (HOS V2)",
+    "defaultPrice": 22.95,
+    "notes": "Regulatory Mode billed at HOS V2 per QB invoice"
   }
 ]
