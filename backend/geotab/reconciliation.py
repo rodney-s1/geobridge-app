@@ -22,12 +22,21 @@ Key logic:
   4. Look up the actual QB-invoiced price from sku_customer_overrides
      (since that's where invoice import stored per-customer prices).
   5. Emit per-device rows and per-customer summary rows with status:
-       ok         -- expected == actual
-       over        -- actual > expected  (customer billed more than catalog)
-       under       -- actual < expected  (customer billed less than catalog)
-       unmapped    -- no SKU mapping found for promoCode or billingPlan
-       no_price    -- SKU exists but no price anywhere
-       not_in_qb   -- customer has no QB data / no invoiced price
+       ok             -- expected == actual
+       over           -- actual > expected  (customer billed more than catalog)
+       under          -- actual < expected  (customer billed less than catalog)
+       unmapped       -- no SKU mapping found for promoCode or billingPlan
+       no_price       -- SKU exists but no price anywhere
+       not_in_qb      -- customer has no QB data / no invoiced price
+       never_activated -- device has never been activated in MyAdmin
+
+NEVER ACTIVATED device billing rules:
+  - Standard customers: bill the device at the same SKU/price as other active
+    devices on that account (they are on the hook for it regardless).
+    The device appears in reconciliation with status="never_activated" and
+    inherits the account's most common active rate plan SKU.
+  - CUA (Charge Upon Activation) customers: NEVER ACTIVATED devices are
+    excluded from reconciliation entirely — they are not billed until active.
 
 NOTE: sku_mappings.json must contain entries for BOTH promo codes (e.g.
 "SWELL") AND billing plan names (e.g. "PROPLUS MODE") to get full coverage.
@@ -136,7 +145,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     }
     """
     # -- Import here to avoid circular imports ---------------------------------
-    from geotab.customers import _sync_cache
+    from geotab.customers import _sync_cache, enrich_customer
 
     contracts = _sync_cache.get("contracts") or []
     if not contracts:
@@ -147,6 +156,16 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         )
 
     device_db_records = _sync_cache.get("device_db_records") or []
+
+    # Build a billing-type index: companyId -> billingType ("CUA", "Standard", ...)
+    # Used to determine whether NEVER ACTIVATED devices should be billed.
+    raw_customers = _sync_cache.get("raw_customers") or []
+    billing_type_index: Dict[str, str] = {}
+    for raw_c in raw_customers:
+        enriched = enrich_customer(raw_c)
+        cid_raw  = str(raw_c.get("companyId") or enriched.get("id") or "")
+        if cid_raw:
+            billing_type_index[cid_raw] = enriched.get("billingType") or "Standard"
 
     # -- Build indexes ---------------------------------------------------------
     catalog, mappings, cust_maps, overrides, qb_qtys = _get_stores()
@@ -194,7 +213,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         if dev_id:
             device_db_map[dev_id] = db_name
 
-    # company_id -> {name, devices: [...]}
+    # company_id -> {name, billingType, devices: [...]}
     company_map: Dict[str, dict] = {}
 
     for c in contracts:
@@ -216,19 +235,35 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         # promoCode is an optional reseller/promo override (e.g. "SWELL", "BUNDLE-GO").
         # Most devices don't have one.  activeDevicePlan.name is the actual billing
         # tier every device has (e.g. "ProPlus Mode", "Base Mode: Live").
-        promo_code  = (c.get("promoCode") or "").upper().strip()
-        adp         = c.get("activeDevicePlan") or {}
+        promo_code   = (c.get("promoCode") or "").upper().strip()
+        adp          = c.get("activeDevicePlan") or {}
         billing_plan = (adp.get("name") or "").strip()
 
+        # Detect never-activated devices: MyAdmin sets activeDevicePlan.name to
+        # "NEVER ACTIVATED" (or leaves it blank) and billingStatus = "Never billed".
+        adp_upper        = billing_plan.upper()
+        is_never_activated = (
+            adp_upper == "NEVER ACTIVATED"
+            or adp_upper == ""
+            or "never" in adp_upper
+        )
+
         if cid not in company_map:
-            company_map[cid] = {"customerId": cid, "customerName": cname, "devices": []}
+            cust_billing_type = billing_type_index.get(cid, "Standard")
+            company_map[cid] = {
+                "customerId":  cid,
+                "customerName": cname,
+                "billingType": cust_billing_type,
+                "devices":     [],
+            }
         if not company_map[cid]["customerName"] and cname:
             company_map[cid]["customerName"] = cname
 
         company_map[cid]["devices"].append({
-            "serialNumber":  serial,
-            "promoCode":     promo_code,
-            "billingPlan":   billing_plan,
+            "serialNumber":    serial,
+            "promoCode":       promo_code,
+            "billingPlan":     billing_plan,
+            "neverActivated":  is_never_activated,
         })
 
     # -- Per-device reconciliation ---------------------------------------------
@@ -244,17 +279,40 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     total_qty_match = total_qty_over = total_qty_under = total_qty_missing = 0
 
     for cid, cdata in company_map.items():
-        cname   = cdata["customerName"]
-        devices = cdata["devices"]
+        cname        = cdata["customerName"]
+        devices      = cdata["devices"]
+        billing_type = cdata.get("billingType") or "Standard"
+        is_cua       = billing_type in ("CUA", "Charge Upon Activation")
 
         cust_ok = cust_over = cust_under = cust_unmapped = cust_no_price = 0
+        cust_never_activated = 0
         cust_expected = cust_actual = 0.0
         device_rows = []
 
-        for dev in devices:
-            promo_code   = dev["promoCode"]       # e.g. "SWELL", "" (most devices)
-            billing_plan = dev["billingPlan"]     # e.g. "ProPlus Mode", "Base Mode: Live"
-            norm_cname   = _normalize(cname)
+        # Separate active from never-activated devices so we can inherit SKUs
+        active_devices       = [d for d in devices if not d.get("neverActivated")]
+        never_activated_devs = [d for d in devices if d.get("neverActivated")]
+
+        # CUA customers: never-activated devices are not billed — skip entirely.
+        # Standard customers: process active devices first, then inherit SKU for
+        # never-activated devices from the most common active SKU on the account.
+        devices_to_process = active_devices if is_cua else devices
+
+        # Track SKU usage for active devices so never-activated can inherit
+        active_sku_counts: Dict[str, int] = {}
+
+        for dev in devices_to_process:
+            promo_code      = dev["promoCode"]       # e.g. "SWELL", "" (most devices)
+            billing_plan    = dev["billingPlan"]     # e.g. "ProPlus Mode", "Base Mode: Live"
+            norm_cname      = _normalize(cname)
+            never_activated = dev.get("neverActivated", False)
+
+            # CUA: already filtered above.
+            # Standard: never-activated devices inherit the most common active SKU —
+            # handled after the active-devices loop below (skip normal lookup for them).
+            if never_activated:
+                # Defer to post-loop processing
+                continue
 
             # --- 4-tier SKU lookup -------------------------------------------
             # Tier 1: customer-specific mapping on promoCode (highest priority)
@@ -295,6 +353,10 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 sku_key      = ""
                 mapping_tier = "none"
             # -----------------------------------------------------------------
+
+            # Track active SKU usage for never-activated inheritance
+            if sku_key:
+                active_sku_counts[sku_key] = active_sku_counts.get(sku_key, 0) + 1
 
             # Display label: prefer promoCode if it exists, else billingPlan
             display_plan = promo_code or billing_plan or "(none)"
@@ -398,10 +460,60 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 "status":        status,
             })
 
+        # -- Never-activated devices (Standard customers only) -----------------
+        # CUA customers: already excluded from devices_to_process above.
+        # Standard customers: never-activated devices are billed at the same SKU
+        # as the other active devices on the account.  Inherit the most-used
+        # active SKU.  If no active devices exist yet (brand-new account), we
+        # emit them as "unmapped" so they show up visibly.
+        if not is_cua and never_activated_devs:
+            # Pick the most common active SKU (or "" if no active devices)
+            inherited_sku = (
+                max(active_sku_counts, key=active_sku_counts.get)
+                if active_sku_counts else ""
+            )
+            for na_dev in never_activated_devs:
+                if inherited_sku:
+                    expected_na, price_source_na = _resolve_price(
+                        cname, inherited_sku, ovr_index, catalog_index
+                    )
+                    device_rows.append({
+                        "serialNumber":  na_dev["serialNumber"],
+                        "ratePlanCode":  "Never Activated",
+                        "skuKey":        inherited_sku,
+                        "skuName":       catalog_name.get(inherited_sku, inherited_sku),
+                        "expectedPrice": round(expected_na, 2) if expected_na is not None else None,
+                        "actualPrice":   None,   # QB won't have a line for this device specifically
+                        "delta":         None,
+                        "priceSource":   price_source_na,
+                        "status":        "never_activated",
+                        "neverActivated": True,
+                    })
+                    cust_never_activated += 1
+                    # Count toward MyAdmin SKU total — they should appear in quantity
+                    if expected_na is not None:
+                        cust_expected += expected_na
+                else:
+                    # No active devices to inherit SKU from — show as unmapped
+                    device_rows.append({
+                        "serialNumber":  na_dev["serialNumber"],
+                        "ratePlanCode":  "Never Activated",
+                        "skuKey":        "",
+                        "skuName":       "",
+                        "expectedPrice": None,
+                        "actualPrice":   None,
+                        "delta":         None,
+                        "priceSource":   "none",
+                        "status":        "never_activated",
+                        "neverActivated": True,
+                    })
+                    cust_never_activated += 1
+
         # -- Customer-level status ---------------------------------------------
-        has_discrepancy = (cust_over + cust_under) > 0
-        has_unmapped    = cust_unmapped > 0
-        has_no_price    = cust_no_price > 0
+        has_discrepancy    = (cust_over + cust_under) > 0
+        has_unmapped       = cust_unmapped > 0
+        has_no_price       = cust_no_price > 0
+        has_never_activated = cust_never_activated > 0
 
         if has_discrepancy:
             cust_status = "discrepancy"
@@ -413,7 +525,9 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             cust_status = "ok"
 
         # -- Quantity reconciliation per SKU for this customer -----------------
-        # Count MyAdmin devices per skuKey (mapped devices only)
+        # Count MyAdmin devices per skuKey (mapped + never_activated devices).
+        # Never-activated devices on Standard accounts count toward the SKU qty
+        # because the customer is billed for them regardless of activation status.
         myadmin_by_sku: Dict[str, int] = {}
         for row in device_rows:
             sk = row.get("skuKey") or ""
@@ -429,9 +543,10 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             sk for (nc, sk) in qb_qty_index.keys() if nc == norm_cname
         }
 
-        # Count unmapped devices for this customer (no rate plan OR no mapping)
+        # Count unmapped devices (no rate plan OR no mapping, excl. never_activated)
         cust_unmapped_count = sum(
-            1 for row in device_rows if row.get("status") == "unmapped"
+            1 for row in device_rows
+            if row.get("status") == "unmapped" and not row.get("neverActivated")
         )
 
         for sku_key in sorted(all_skus):
@@ -452,13 +567,14 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 qty_status = "over_billed"    # QB billed MORE than MyAdmin devices
                 cust_qty_over += 1
 
-            qty_rows.append({
-                "skuKey":         sku_key,
-                "myAdminCount":   myadmin_count,
-                "qbQty":          qb_qty,
-                "qtyDelta":       qty_delta,
-                "qtyStatus":      qty_status,
-                "unmappedCount":  cust_unmapped_count,  # how many devices for this customer are unmapped
+        qty_rows.append({
+                "skuKey":              sku_key,
+                "myAdminCount":        myadmin_count,
+                "qbQty":               qb_qty,
+                "qtyDelta":            qty_delta,
+                "qtyStatus":           qty_status,
+                "unmappedCount":       cust_unmapped_count,
+                "neverActivatedCount": cust_never_activated,
             })
 
         cust_myadmin_total = len(devices)
@@ -484,29 +600,31 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         total_qty_missing     += cust_qty_missing
 
         result_customers.append({
-            "customerId":       cid,
-            "customerName":     cname,
-            "deviceCount":      len(devices),
-            "ok":               cust_ok,
-            "over":             cust_over,
-            "under":            cust_under,
-            "unmapped":         cust_unmapped,
-            "noPrice":          cust_no_price,
-            "expectedMonthly":  round(cust_expected, 2),
-            "actualMonthly":    round(cust_actual, 2),
-            "delta":            round(cust_actual - cust_expected, 2),
-            "status":           cust_status,
-            "devices":          device_rows,
+            "customerId":        cid,
+            "customerName":      cname,
+            "billingType":       billing_type,
+            "deviceCount":       len(devices),
+            "ok":                cust_ok,
+            "over":              cust_over,
+            "under":             cust_under,
+            "unmapped":          cust_unmapped,
+            "neverActivated":    cust_never_activated,
+            "noPrice":           cust_no_price,
+            "expectedMonthly":   round(cust_expected, 2),
+            "actualMonthly":     round(cust_actual, 2),
+            "delta":             round(cust_actual - cust_expected, 2),
+            "status":            cust_status,
+            "devices":           device_rows,
             # Quantity reconciliation fields
-            "myAdminTotal":     cust_myadmin_total,
-            "qbTotal":          cust_qb_total if has_qb_data else None,
-            "qtyDelta":         (cust_myadmin_total - cust_qb_total) if has_qb_data else None,
-            "qtyMatch":         cust_qty_match,
-            "qtyUnderBilled":   cust_qty_under,
-            "qtyOverBilled":    cust_qty_over,
-            "qtyMissing":       cust_qty_missing,
-            "hasQbData":        has_qb_data,
-            "skuQtyBreakdown":  qty_rows,
+            "myAdminTotal":      cust_myadmin_total,
+            "qbTotal":           cust_qb_total if has_qb_data else None,
+            "qtyDelta":          (cust_myadmin_total - cust_qb_total) if has_qb_data else None,
+            "qtyMatch":          cust_qty_match,
+            "qtyUnderBilled":    cust_qty_under,
+            "qtyOverBilled":     cust_qty_over,
+            "qtyMissing":        cust_qty_missing,
+            "hasQbData":         has_qb_data,
+            "skuQtyBreakdown":   qty_rows,
         })
 
     # Sort: discrepancy first, then unmapped, then no_price, then ok; alpha within

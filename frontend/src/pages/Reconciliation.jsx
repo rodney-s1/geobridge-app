@@ -32,8 +32,9 @@ const PRICE_META = {
   under:      { label: 'Under-billed', cls: 'bg-red-900/50    text-red-300    border-red-700/40'    },
   unmapped:   { label: 'Unmapped',     cls: 'bg-amber-900/50  text-amber-300  border-amber-700/40'  },
   no_price:   { label: 'No Price',     cls: 'bg-slate-700/80  text-slate-300  border-slate-600/40'  },
-  not_in_qb:  { label: 'Not in QB',   cls: 'bg-purple-900/50 text-purple-300 border-purple-700/40' },
-  discrepancy:{ label: 'Discrepancy',  cls: 'bg-red-900/50    text-red-300    border-red-700/40'    },
+  not_in_qb:      { label: 'Not in QB',       cls: 'bg-purple-900/50 text-purple-300 border-purple-700/40' },
+  discrepancy:     { label: 'Discrepancy',      cls: 'bg-red-900/50    text-red-300    border-red-700/40'    },
+  never_activated: { label: 'Never Activated',  cls: 'bg-yellow-900/50 text-yellow-300 border-yellow-700/40' },
 }
 
 function QtyChip({ status, size = 'sm' }) {
@@ -102,6 +103,8 @@ function QtyBreakdownTable({ rows }) {
           // If MyAdmin=0 but there are unmapped devices, the discrepancy is likely
           // caused by those devices having no rate plan — annotate rather than alarm
           const unmappedExplains = r.myAdminCount === 0 && (r.unmappedCount > 0)
+          // If never-activated devices inflate the MyAdmin count vs QB, note it
+          const neverActivatedCount = r.neverActivatedCount || 0
           return (
             <tr key={`${r.skuKey}-${i}`} className="border-t border-slate-700/30 hover:bg-slate-700/20">
               <td className="px-4 py-2 font-mono text-slate-300 truncate" title={r.skuKey}>{r.skuKey || '—'}</td>
@@ -110,6 +113,11 @@ function QtyBreakdownTable({ rows }) {
                 {unmappedExplains && (
                   <div className="text-amber-400/70 text-xs font-sans normal-case">
                     {r.unmappedCount} unmapped
+                  </div>
+                )}
+                {neverActivatedCount > 0 && (
+                  <div className="text-yellow-400/70 text-xs font-sans normal-case">
+                    {neverActivatedCount} never activated
                   </div>
                 )}
               </td>
@@ -143,16 +151,29 @@ function PriceBreakdownTable({ devices }) {
   if (!devices || devices.length === 0) return (
     <div className="px-6 py-4 text-xs text-slate-500 italic">No device data available.</div>
   )
-  const noneCount = devices.filter(d => !d.ratePlanCode || d.ratePlanCode === '(none)').length
+  const noneCount          = devices.filter(d => !d.ratePlanCode || d.ratePlanCode === '(none)').length
+  const neverActivatedDevs  = devices.filter(d => d.neverActivated)
+  const neverActivatedCount = neverActivatedDevs.length
   return (
     <div>
       {noneCount > 0 && (
         <div className="mx-4 mt-3 mb-1 px-3 py-2 rounded-lg bg-amber-900/25 border border-amber-700/40 text-xs text-amber-300 flex items-start gap-2">
           <span className="mt-0.5">⚠</span>
           <span>
-            <strong>{noneCount} device{noneCount > 1 ? 's' : ''}</strong> {noneCount > 1 ? 'have' : 'has'} no rate plan assigned in MyAdmin (<code className="font-mono bg-slate-700/60 px-1 rounded">(none)</code>).
-            These devices cannot be mapped to a QB SKU until a rate plan is set in MyAdmin.
-            This is the likely cause of any "Over-billed" rows in the Quantity tab.
+            <strong>{noneCount} device{noneCount > 1 ? 's' : ''}</strong> {noneCount > 1 ? 'have' : 'has'} no billing plan name that matches a Rate Plan Mapping.
+            Go to <strong>Settings → Rate Plan Mappings</strong> and add an entry for this customer's billing plan
+            (e.g. <code className="font-mono bg-slate-700/60 px-1 rounded">PROPLUS MODE</code> → <code className="font-mono bg-slate-700/60 px-1 rounded">Service Fee Geotab (ProPlus)</code>).
+            Most customers use a billing plan name, not a promo code.
+          </span>
+        </div>
+      )}
+      {neverActivatedCount > 0 && (
+        <div className="mx-4 mt-3 mb-1 px-3 py-2 rounded-lg bg-yellow-900/20 border border-yellow-700/40 text-xs text-yellow-300 flex items-start gap-2">
+          <span className="mt-0.5">ℹ</span>
+          <span>
+            <strong>{neverActivatedCount} device{neverActivatedCount > 1 ? 's' : ''}</strong> {neverActivatedCount > 1 ? 'have' : 'has'} never been activated in MyAdmin.
+            {' '}This customer is billed <strong>Standard</strong> — these devices are included in the expected quantity at the account's active rate plan price.
+            They will show <strong>no actual QB price</strong> until they appear on an invoice.
           </span>
         </div>
       )}
@@ -179,9 +200,11 @@ function PriceBreakdownTable({ devices }) {
           <tr key={`${d.serialNumber}-${i}`} className="border-t border-slate-700/30 hover:bg-slate-700/20">
             <td className="px-4 py-2 font-mono text-slate-300">{d.serialNumber || '—'}</td>
             <td className="px-4 py-2 font-mono">
-              {d.ratePlanCode
-                ? <span className="bg-slate-700 text-slate-200 px-1.5 py-0.5 rounded">{d.ratePlanCode}</span>
-                : <span className="text-slate-600">—</span>}
+              {d.neverActivated
+                ? <span className="bg-yellow-900/50 text-yellow-300 border border-yellow-700/40 px-1.5 py-0.5 rounded text-[10px]">Never Activated</span>
+                : d.ratePlanCode
+                  ? <span className="bg-slate-700 text-slate-200 px-1.5 py-0.5 rounded">{d.ratePlanCode}</span>
+                  : <span className="text-slate-600">—</span>}
             </td>
             <td className="px-4 py-2 text-slate-400 truncate">{d.skuKey || '—'}</td>
             <td className="px-4 py-2 font-mono text-slate-300">{fmt$(d.expectedPrice)}</td>
@@ -207,10 +230,10 @@ function CustomerRow({ customer }) {
   const [expanded, setExpanded] = useState(false)
 
   const {
-    customerName, deviceCount,
+    customerName, deviceCount, billingType,
     myAdminTotal, qbTotal, qtyDelta, hasQbData,
     qtyMatch, qtyUnderBilled, qtyOverBilled, qtyMissing,
-    ok, over, under, unmapped, noPrice,
+    ok, over, under, unmapped, noPrice, neverActivated,
     expectedMonthly, actualMonthly, delta,
     status, devices, skuQtyBreakdown,
   } = customer
@@ -283,7 +306,12 @@ function CustomerRow({ customer }) {
                 {unmapped} unmapped
               </span>
             )}
-            {hasQbData && qtyMismatch === false && unmapped === 0 && (
+            {neverActivated > 0 && (
+              <span className="text-xs bg-yellow-900/50 text-yellow-300 border border-yellow-700/40 rounded px-1.5 py-0.5">
+                {neverActivated} never activated
+              </span>
+            )}
+            {hasQbData && qtyMismatch === false && unmapped === 0 && !neverActivated && (
               <span className="text-xs text-emerald-500">✓ Match</span>
             )}
             {!hasQbData && (
