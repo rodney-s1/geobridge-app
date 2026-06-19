@@ -524,6 +524,16 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         else:
             cust_status = "ok"
 
+        # -- Sort device rows by rate plan so same-plan devices are grouped ------
+        # Sort key: (ratePlanCode lower, serialNumber) so plans group together
+        # and within each group serials are alphabetical.
+        # Never-activated devices sort last within their inherited rate plan.
+        device_rows.sort(key=lambda r: (
+            r.get("ratePlanCode") or "zzz",   # blank/none sorts last
+            0 if not r.get("neverActivated") else 1,
+            r.get("serialNumber") or "",
+        ))
+
         # -- Quantity reconciliation per SKU for this customer -----------------
         # Count MyAdmin devices per skuKey (mapped + never_activated devices).
         # Never-activated devices on Standard accounts count toward the SKU qty
