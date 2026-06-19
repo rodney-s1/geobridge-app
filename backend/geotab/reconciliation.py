@@ -770,3 +770,41 @@ async def get_customer_reconciliation(customer_id: str):
     if not customers:
         raise HTTPException(status_code=404, detail="Customer not found or no devices")
     return customers[0]
+
+
+# ===============================================================================
+#  GET /api/reconciliation/debug-contracts
+#  Dumps raw promoCode + billingPlan for every contract matching a customer name
+# ===============================================================================
+
+@router.get("/reconciliation/debug-contracts")
+async def debug_contracts(customer_name: str = ""):
+    """Debug: show raw promoCode and activeDevicePlan.name for contracts."""
+    from geotab.customers import _sync_cache
+    contracts = _sync_cache.get("contracts") or []
+
+    seen_combos: dict = {}  # (promo, plan, company) -> count
+
+    for c in contracts:
+        if c.get("isTerminated"):
+            continue
+        uc      = c.get("userContact") or {}
+        company = (uc.get("userCompany") or {}).get("name") or ""
+        if customer_name and customer_name.lower() not in company.lower():
+            continue
+        promo = (c.get("promoCode") or "").strip()
+        adp   = c.get("activeDevicePlan") or {}
+        plan  = (adp.get("name") or "").strip()
+        key   = (promo, plan, company)
+        seen_combos[key] = seen_combos.get(key, 0) + 1
+
+    results = []
+    for (promo, plan, company), count in sorted(seen_combos.items(), key=lambda x: -x[1]):
+        results.append({
+            "customerName": company,
+            "promoCode":    promo or "(none)",
+            "billingPlan":  plan  or "(none)",
+            "deviceCount":  count,
+        })
+
+    return {"totalGroups": len(results), "groups": results}
