@@ -239,6 +239,13 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         adp          = c.get("activeDevicePlan") or {}
         billing_plan = (adp.get("name") or "").strip()
 
+        # MyAdmin appends status suffixes to plan names: "Base Mode: Live",
+        # "Pro Mode: Live", "Regulatory Mode: Live", etc.
+        # Strip everything from the first colon onward so "Base Mode: Live"
+        # normalises to "Base Mode" and matches the sku_mappings entry.
+        if ":" in billing_plan:
+            billing_plan = billing_plan.split(":")[0].strip()
+
         # Detect never-activated devices: MyAdmin sets activeDevicePlan.name to
         # "NEVER ACTIVATED" (or leaves it blank) and billingStatus = "Never billed".
         adp_upper        = billing_plan.upper()
@@ -303,7 +310,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
 
         for dev in devices_to_process:
             promo_code      = dev["promoCode"]       # e.g. "SWELL", "" (most devices)
-            billing_plan    = dev["billingPlan"]     # e.g. "ProPlus Mode", "Base Mode: Live"
+            billing_plan    = dev["billingPlan"]     # e.g. "ProPlus Mode", "Base Mode" (suffix already stripped)
             norm_cname      = _normalize(cname)
             never_activated = dev.get("neverActivated", False)
 
@@ -703,6 +710,9 @@ async def get_billing_plans():
             continue
         adp  = c.get("activeDevicePlan") or {}
         name = (adp.get("name") or "").strip()
+        # Strip MyAdmin status suffix (e.g. "Base Mode: Live" -> "Base Mode")
+        if ":" in name:
+            name = name.split(":")[0].strip()
         if name:
             plan_counts[name] = plan_counts.get(name, 0) + 1
 
