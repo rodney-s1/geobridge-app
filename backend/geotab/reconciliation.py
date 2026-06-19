@@ -225,8 +225,14 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         if dev_id:
             device_db_map[dev_id] = db_name
 
-    # company_id -> {name, billingType, devices: [...]}
+    # parent_key (normalised parent name) -> {name, billingType, devices: [...]}
+    # Sub-accounts like "Hoopaugh Grading LLC {3rd Party Devices}" are merged
+    # under their parent "Hoopaugh Grading LLC" so QB quantities are not repeated.
     company_map: Dict[str, dict] = {}
+
+    # First pass: build a set of all sub-account cids that belong to each parent
+    # so the customer_id filter (which is a cid) can match any sub-account.
+    _parent_key_for_cid: Dict[str, str] = {}  # cid -> parent_key
 
     for c in contracts:
         if c.get("isTerminated"):
@@ -237,7 +243,36 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         cname   = company.get("name") or ""
         if not cid:
             continue
-        if customer_id and cid != customer_id:
+
+        # Strip {sub-account} suffix to get the parent name and its key.
+        brace = cname.find("{")
+        parent_name = cname[:brace].strip() if brace != -1 else cname
+        parent_key  = _normalize(parent_name)
+        _parent_key_for_cid[cid] = parent_key
+
+    # If filtering by customer_id, find the parent_key that owns that cid.
+    _filter_parent_key: str = ""
+    if customer_id:
+        _filter_parent_key = _parent_key_for_cid.get(customer_id, "")
+
+    for c in contracts:
+        if c.get("isTerminated"):
+            continue
+        uc      = c.get("userContact") or {}
+        company = uc.get("userCompany") or {}
+        cid     = str(company.get("id") or "")
+        cname   = company.get("name") or ""
+        if not cid:
+            continue
+
+        # Derive parent name / key (same logic as first pass).
+        brace = cname.find("{")
+        parent_name = cname[:brace].strip() if brace != -1 else cname
+        parent_key  = _normalize(parent_name)
+
+        # Apply customer_id filter: include only contracts whose parent group
+        # contains the requested cid.
+        if customer_id and parent_key != _filter_parent_key:
             continue
 
         device = c.get("device") or {}
@@ -267,18 +302,27 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             or "never" in adp_upper
         )
 
-        if cid not in company_map:
+        if parent_key not in company_map:
+            # Use the first cid seen for billing-type lookup (parent account
+            # typically has the lowest/canonical cid among its sub-accounts).
             cust_billing_type = billing_type_index.get(cid, "Standard")
-            company_map[cid] = {
-                "customerId":  cid,
-                "customerName": cname,
-                "billingType": cust_billing_type,
-                "devices":     [],
+            company_map[parent_key] = {
+                "customerId":       cid,
+                "customerName":     parent_name,
+                "billingType":      cust_billing_type,
+                "devices":          [],
+                "subAccountIds":    set(),
+                "subAccountNames":  set(),
             }
-        if not company_map[cid]["customerName"] and cname:
-            company_map[cid]["customerName"] = cname
+        # Always record the sub-account cid and display name.
+        company_map[parent_key]["subAccountIds"].add(cid)
+        if cname != parent_name:
+            company_map[parent_key]["subAccountNames"].add(cname)
+        # Prefer the parent name (no braces) as the display name.
+        if not company_map[parent_key]["customerName"] and parent_name:
+            company_map[parent_key]["customerName"] = parent_name
 
-        company_map[cid]["devices"].append({
+        company_map[parent_key]["devices"].append({
             "serialNumber":    serial,
             "promoCode":       promo_code,
             "billingPlan":     billing_plan,
@@ -297,10 +341,17 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     total_qb_devices = 0
     total_qty_match = total_qty_over = total_qty_under = total_qty_missing = 0
 
-    for cid, cdata in company_map.items():
+    for _pkey, cdata in company_map.items():
+        cid          = cdata["customerId"]
         cname        = cdata["customerName"]
         devices      = cdata["devices"]
-        billing_type = cdata.get("billingType") or "Standard"
+        # Re-scan all sub-account cids so CUA billing type is found even when
+        # the first cid seen belongs to a sub-account rather than the parent.
+        sub_cids     = cdata.get("subAccountIds") or {cid}
+        billing_type = next(
+            (billing_type_index[c] for c in sub_cids if c in billing_type_index),
+            cdata.get("billingType") or "Standard",
+        )
         is_cua       = billing_type in ("CUA", "Charge Upon Activation")
 
         cust_ok = cust_over = cust_under = cust_unmapped = cust_no_price = 0
@@ -657,6 +708,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             "customerId":        cid,
             "customerName":      cname,
             "billingType":       billing_type,
+            "subAccountNames":   sorted(cdata.get("subAccountNames") or []),
             "deviceCount":       len(devices),
             "ok":                cust_ok,
             "over":              cust_over,
