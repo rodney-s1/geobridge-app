@@ -359,6 +359,31 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             if sku_key is None:
                 sku_key      = ""
                 mapping_tier = "none"
+
+            # -- DM Service Fee family normalisation (Tier 4.5) ---------------
+            # CELU-TP-250 / CELU-TP-200 promo codes map globally to the bare
+            # "DM Service Fee" skuKey, but QB invoices customers at a specific
+            # variant: DM Service Fee (Periodic), DM Service Fee (Enterprise),
+            # DM Service Fee (Movement), etc.
+            #
+            # Rule: if the resolved skuKey is "DM Service Fee" (bare), scan the
+            # customer's override index for any key that STARTS WITH "DM Service
+            # Fee" and upgrade to that specific variant.  If the customer has
+            # multiple DM Service Fee variants, pick the one with the most QB
+            # invoice quantity (most likely match for this device).
+            if sku_key == "DM Service Fee":
+                dm_variants = [
+                    sk for (nc, sk) in ovr_index.keys()
+                    if nc == norm_cname and sk.startswith("DM Service Fee") and sk != "DM Service Fee"
+                ]
+                if dm_variants:
+                    # Prefer the variant with the highest QB invoice quantity;
+                    # fall back to override price ordering if no qty data.
+                    dm_variants.sort(
+                        key=lambda sk: qb_qty_index.get((norm_cname, sk), 0),
+                        reverse=True,
+                    )
+                    sku_key = dm_variants[0]
             # -----------------------------------------------------------------
 
             # Track active SKU usage for never-activated inheritance
