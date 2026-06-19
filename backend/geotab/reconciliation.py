@@ -45,6 +45,7 @@ Billing plan names should be stored uppercase in ratePlanCode.
 
 from fastapi import APIRouter, HTTPException
 from typing import Dict, Optional, Tuple
+import html as _html
 import json
 import os
 
@@ -240,7 +241,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         uc      = c.get("userContact") or {}
         company = uc.get("userCompany") or {}
         cid     = str(company.get("id") or "")
-        cname   = company.get("name") or ""
+        cname   = _html.unescape(company.get("name") or "").strip()
         if not cid:
             continue
 
@@ -261,7 +262,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         uc      = c.get("userContact") or {}
         company = uc.get("userCompany") or {}
         cid     = str(company.get("id") or "")
-        cname   = company.get("name") or ""
+        cname   = _html.unescape(company.get("name") or "").strip()
         if not cid:
             continue
 

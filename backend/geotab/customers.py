@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict, List
 import asyncio
 import csv
+import html as _html
 import io
 import json
 import os
@@ -52,6 +53,7 @@ name_to_company_id: Dict[str, str]  = {}   # normalize(name) -> companyId, built
 
 # --- MyAdmin sync cache -------------------------------------------------------
 CACHE_TTL_HOURS = 12
+DEVICE_DB_REFRESH_MINUTES = 30   # Background Step-1 refresh interval
 _sync_cache: Dict = _load_json(SYNC_CACHE_FILE, {})
 
 # --- Sync lock -- prevents concurrent fetches when multiple requests arrive ---
@@ -84,6 +86,77 @@ def _set_progress(**kwargs):
     _sync_progress.update(kwargs)
 
 
+# --- Background auto-refresh --------------------------------------------------
+# Runs Step 1 (GetCurrentDeviceDatabases) silently every DEVICE_DB_REFRESH_MINUTES.
+# Contracts (Step 2, the slow 2–5 min fetch) stay on the 12 h manual-sync cache.
+# This keeps the device-database map fresh so newly activated devices appear
+# without requiring a full manual sync.
+
+_bg_refresh_task: asyncio.Task | None = None
+
+
+async def _background_device_db_refresh() -> None:
+    """Infinite loop: wait DEVICE_DB_REFRESH_MINUTES, then refresh Step 1 silently."""
+    interval = DEVICE_DB_REFRESH_MINUTES * 60
+    await asyncio.sleep(interval)   # first refresh after one full interval
+    while True:
+        try:
+            # Only run if we are logged in (session_store populated) and not
+            # already in the middle of a manual full sync.
+            if session_store.get("session_id") and not _sync_progress.get("active"):
+                print(f"[bg-refresh] Running silent Step-1 refresh "
+                      f"(every {DEVICE_DB_REFRESH_MINUTES} min)...")
+                next_id = 0
+                page_num = 0
+                all_device_dbs = []
+                while True:
+                    page_num += 1
+                    result = await myadmin_call(
+                        "GetCurrentDeviceDatabases",
+                        {
+                            "apiKey":     session_store["user_id"],
+                            "sessionId":  session_store["session_id"],
+                            "forAccount": MYADMIN_ACCOUNT,
+                            "nextId":     next_id,
+                        },
+                        timeout=120.0,
+                    )
+                    batch = result.get("result") or []
+                    if not batch:
+                        break
+                    all_device_dbs.extend(batch)
+                    if len(batch) < 1000:
+                        break
+                    next_id = batch[-1].get("Id") or batch[-1].get("id") or 0
+
+                if all_device_dbs:
+                    _sync_cache["device_db_records"] = all_device_dbs
+                    _sync_cache["device_db_refreshed_at"] = time.time()
+                    # Persist only if contracts are already cached (avoid partial saves)
+                    if _sync_cache.get("contracts"):
+                        _save_json(SYNC_CACHE_FILE, _sync_cache)
+                    print(f"[bg-refresh] Step-1 complete: "
+                          f"{len(all_device_dbs):,} device-db records updated.")
+            else:
+                print("[bg-refresh] Skipping -- no session or manual sync in progress.")
+        except Exception as exc:
+            print(f"[bg-refresh] Step-1 refresh failed (non-fatal): {exc}")
+        await asyncio.sleep(interval)
+
+
+def start_background_refresh() -> None:
+    """Schedule the background device-DB refresh loop.
+    Call once from the FastAPI lifespan / startup hook.
+    """
+    global _bg_refresh_task
+    if _bg_refresh_task is None or _bg_refresh_task.done():
+        _bg_refresh_task = asyncio.get_event_loop().create_task(
+            _background_device_db_refresh()
+        )
+        print(f"[bg-refresh] Background device-DB refresh scheduled "
+              f"(every {DEVICE_DB_REFRESH_MINUTES} min).")
+
+
 # --- Billing type map ---------------------------------------------------------
 QB_JOB_TYPE_MAP = {
     "standard":                     "Standard",
@@ -103,6 +176,14 @@ QB_JOB_TYPE_MAP = {
 
 def normalize(name: str) -> str:
     return name.strip().lower()
+
+
+def _clean_name(s: str) -> str:
+    """Decode HTML entities in a MyAdmin company name.
+    MyAdmin returns names like 'Aqua Hero Pool &amp; Spa Service';
+    this converts them to 'Aqua Hero Pool & Spa Service'.
+    """
+    return _html.unescape(s or "").strip()
 
 def map_billing_type(job_type: str) -> str:
     if not job_type:
@@ -317,7 +398,7 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
         company  = uc.get("userCompany") or {}
         device_id_to_company[dev_id] = {
             "companyId":   str(company.get("id") or ""),
-            "companyName": company.get("name") or "",
+            "companyName": _clean_name(company.get("name") or ""),
             "terminated":  bool(c.get("isTerminated")),
         }
 

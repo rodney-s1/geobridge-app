@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
@@ -7,10 +8,21 @@ import os
 _BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(dotenv_path=os.path.join(_BACKEND_DIR, ".env"))
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # --- Startup: kick off background device-DB refresh ----------------------
+    from geotab.customers import start_background_refresh
+    start_background_refresh()
+    yield
+    # --- Shutdown (nothing to clean up) --------------------------------------
+
+
 app = FastAPI(
     title="GeoBridge API",
     description="GeoBridge Invoicing Suite - Backend API",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Allow the React frontend to talk to this backend.
