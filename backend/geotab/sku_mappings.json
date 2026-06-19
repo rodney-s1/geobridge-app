@@ -208,5 +208,71 @@
     "skuKey": "Geotab Service (GO SWELL3-CC)",
     "defaultPrice": 0.0,
     "notes": ""
+  },
+  {
+    "ratePlanCode": "ASSET",
+    "skuKey": "Service Fee Geotab (Asset)",
+    "defaultPrice": 12.0,
+    "notes": "MyAdmin billing plan - standard asset tracking tier"
+  },
+  {
+    "ratePlanCode": "BASE MODE",
+    "skuKey": "Service Fee Geotab (Base)",
+    "defaultPrice": 16.95,
+    "notes": "MyAdmin billing plan - base service tier"
+  },
+  {
+    "ratePlanCode": "GO",
+    "skuKey": "Geotab Service (GO Plan)",
+    "defaultPrice": 26.95,
+    "notes": "MyAdmin billing plan - standard GO tier; promo codes override to specific SKU"
+  },
+  {
+    "ratePlanCode": "GO EXPAND",
+    "skuKey": "Geotab Service (GO Focus Plus)",
+    "defaultPrice": 25.0,
+    "notes": "MyAdmin billing plan - GO Focus/camera plan; promo codes override to specific SKU"
+  },
+  {
+    "ratePlanCode": "PRO MODE",
+    "skuKey": "Service Fee Geotab (Pro)",
+    "defaultPrice": 22.95,
+    "notes": "MyAdmin billing plan - Pro service tier"
+  },
+  {
+    "ratePlanCode": "PROPLUS MODE",
+    "skuKey": "Service Fee Geotab (ProPlus)",
+    "defaultPrice": 27.95,
+    "notes": "MyAdmin billing plan - ProPlus service tier"
+  },
+  {
+    "ratePlanCode": "PROPLUS + KEYLESS",
+    "skuKey": "ProPlus + Keyless",
+    "defaultPrice": 39.0,
+    "notes": "MyAdmin billing plan - ProPlus with keyless entry add-on"
+  },
+  {
+    "ratePlanCode": "PROPLUS + WIFI",
+    "skuKey": "ProPlus + Wifi",
+    "defaultPrice": 37.95,
+    "notes": "MyAdmin billing plan - ProPlus with WiFi add-on"
+  },
+  {
+    "ratePlanCode": "PROPLUS PUBLIC WORKS",
+    "skuKey": "ProPlus + Public Works",
+    "defaultPrice": 29.0,
+    "notes": "MyAdmin billing plan - ProPlus public works tier"
+  },
+  {
+    "ratePlanCode": "REGULATORY MODE",
+    "skuKey": "Service Fee Geotab (HOS)",
+    "defaultPrice": 22.95,
+    "notes": "MyAdmin billing plan - regulatory/HOS compliance tier; use HOS V2 ($24.95) for customer overrides"
+  },
+  {
+    "ratePlanCode": "SUSPEND MODE",
+    "skuKey": "Service Fee Geotab (Suspend)",
+    "defaultPrice": 10.0,
+    "notes": "MyAdmin billing plan - suspended/inactive device tier"
   }
 ]
