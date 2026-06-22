@@ -440,24 +440,28 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 mapping_tier = "none"
 
             # -- DM Service Fee family normalisation (Tier 4.5) ---------------
-            # CELU-TP-250 / CELU-TP-200 promo codes map globally to the bare
-            # "DM Service Fee" skuKey, but QB invoices customers at a specific
-            # variant: DM Service Fee (Periodic), DM Service Fee (Enterprise),
-            # DM Service Fee (Movement), etc.
+            # Devices map to the bare "DM Service Fee" anchor via promo code
+            # (CELU-TP-250 / CELU-TP-200) or HN serial prefix (Tier 0.5).
+            # QB invoices customers at a specific variant — two naming families:
+            #   • "DM Service Fee (Periodic / Movement / Hardwire / Enterprise)"
+            #   • "DM Service (Hardwire / Movement / Periodic / Barra) - RS"
+            # Both families share the "DM Service" prefix.
             #
-            # Rule: if the resolved skuKey is "DM Service Fee" (bare), scan the
-            # customer's override index for any key that STARTS WITH "DM Service
-            # Fee" and upgrade to that specific variant.  If the customer has
-            # multiple DM Service Fee variants, pick the one with the most QB
-            # invoice quantity (most likely match for this device).
+            # Rule: if resolved skuKey is "DM Service Fee" (bare anchor), scan
+            # the customer's ovr_index AND qb_qty_index for any key that starts
+            # with "DM Service" (covers both families) and is not the bare anchor
+            # itself.  Pick the variant with the highest QB invoice quantity.
             if sku_key == "DM Service Fee":
-                dm_variants = [
-                    sk for (nc, sk) in ovr_index.keys()
-                    if nc == norm_cname and sk.startswith("DM Service Fee") and sk != "DM Service Fee"
-                ]
+                dm_variants = list({
+                    sk
+                    for (nc, sk) in list(ovr_index.keys()) + list(qb_qty_index.keys())
+                    if nc == norm_cname
+                    and sk.startswith("DM Service")
+                    and sk != "DM Service Fee"
+                })
                 if dm_variants:
                     # Prefer the variant with the highest QB invoice quantity;
-                    # fall back to override price ordering if no qty data.
+                    # fall back to zero if no qty data for that variant.
                     dm_variants.sort(
                         key=lambda sk: qb_qty_index.get((norm_cname, sk), 0),
                         reverse=True,
