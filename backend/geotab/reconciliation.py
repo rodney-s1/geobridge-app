@@ -54,6 +54,14 @@ router = APIRouter()
 # SKU key exactly as stored in QB data files (QB item codes are truncated at import)
 HAN_CS_CUST_SKU = "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C..."
 
+# SKUs that are billed from an external platform (not MyAdmin).
+# For these, the QB invoice quantity is always correct — MyAdmin will never have
+# matching devices, so they must never appear as over-billed.  The quantity row
+# is emitted as "match" with myAdminCount == qbQty so the UI shows it neutrally.
+QB_AUTHORITATIVE_SKUS: frozenset = frozenset({
+    "BlueArrow Fuel Service",
+})
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 
 # --- Shared stores (imported lazily so circular-import safe) -----------------
@@ -713,6 +721,26 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         for sku_key in sorted(all_skus):
             myadmin_count = myadmin_by_sku.get(sku_key, 0)
             qb_qty        = qb_qty_index.get((norm_cname, sku_key), None)
+
+            # QB-authoritative SKUs (e.g. BlueArrow Fuel Service) are billed from
+            # an external platform — MyAdmin will never have devices for them.
+            # Treat QB qty as ground truth: show as "match" so they never appear
+            # as over-billed, and exclude them from the customer delta totals.
+            if sku_key in QB_AUTHORITATIVE_SKUS:
+                effective_myadmin = qb_qty if qb_qty is not None else 0
+                qty_rows.append({
+                    "skuKey":              sku_key,
+                    "myAdminCount":        effective_myadmin,
+                    "qbQty":               qb_qty,
+                    "qtyDelta":            0,
+                    "qtyStatus":           "match",
+                    "unmappedCount":       cust_unmapped_count,
+                    "neverActivatedCount": cust_never_activated,
+                    "qbAuthoritative":     True,
+                })
+                cust_qty_match += 1
+                continue
+
             qty_delta     = (myadmin_count - qb_qty) if qb_qty is not None else None
 
             if qb_qty is None:
@@ -739,8 +767,14 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             })
 
         cust_myadmin_total = len(devices)
-        cust_qb_total      = sum(r["qbQty"] for r in qty_rows if r["qbQty"] is not None)
-        has_qb_data        = any(r["qbQty"] is not None for r in qty_rows)
+        # Exclude QB-authoritative SKUs (e.g. BlueArrow Fuel Service) from the
+        # customer-level QB total and delta — those SKUs are always in balance by
+        # definition and should not skew the MyAdmin-vs-QB header numbers.
+        cust_qb_total = sum(
+            r["qbQty"] for r in qty_rows
+            if r["qbQty"] is not None and not r.get("qbAuthoritative")
+        )
+        has_qb_data   = any(r["qbQty"] is not None for r in qty_rows)
 
         # -- Apply status filter -----------------------------------------------
         if status_filter and cust_status != status_filter:
