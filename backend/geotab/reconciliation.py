@@ -51,6 +51,9 @@ import os
 
 router = APIRouter()
 
+# SKU key exactly as stored in QB data files (QB item codes are truncated at import)
+HAN_CS_CUST_SKU = "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C..."
+
 _HERE = os.path.dirname(os.path.abspath(__file__))
 
 # --- Shared stores (imported lazily so circular-import safe) -----------------
@@ -448,6 +451,19 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                         reverse=True,
                     )
                     sku_key = dm_variants[0]
+            # -----------------------------------------------------------------
+
+            # -- Tier 5: Han-CS billing-type override -------------------------
+            # If QB has this customer flagged as "Han-CS" (Hanover Cost Share),
+            # every device is billed to the customer under the HANOVER-CS Cust
+            # SKU regardless of what MyAdmin reports as the billing plan.
+            # The parent Geotab Service Fee (HANOVER) SKU is billed directly to
+            # Hanover Insurance Group — it never appears on the customer invoice.
+            HAN_CS_SKU = HAN_CS_CUST_SKU
+            if billing_type in ("Han-CS", "Hanover"):
+                sku_key      = HAN_CS_SKU
+                mapping_tier = "billing_type"
+                lookup_code  = f"Han-CS override ({billing_plan or promo_code or 'none'})"
             # -----------------------------------------------------------------
 
             # Track active SKU usage for never-activated inheritance
