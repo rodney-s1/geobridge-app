@@ -745,6 +745,14 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             if sk:
                 myadmin_by_sku[sk] = myadmin_by_sku.get(sk, 0) + 1
 
+        # Hanover customers: ALL GO devices roll up to the HIG master invoice,
+        # regardless of which SKU they map to individually.  Count every device
+        # that is NOT the Han-CS cost-share SKU toward the consolidated total.
+        if billing_type == "Hanover":
+            for sk, cnt in myadmin_by_sku.items():
+                if sk != HAN_CS_CUST_SKU:
+                    hanover_myadmin_total += cnt
+
         norm_cname = _normalize(cname)
         qty_rows = []
         cust_qty_match = cust_qty_over = cust_qty_under = cust_qty_missing = 0
@@ -769,11 +777,13 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             # Hanover customer.  For billing_type == "Hanover" customers, treat the
             # MyAdmin device count as authoritative — there will never be a matching
             # QB qty row on the customer's own invoice.
-            if (sku_key == "Geotab Service Fee (HANOVER)"
-                    and billing_type == "Hanover"
-                    and qb_qty is None):
-                # Accumulate into cross-customer total for HIG master row comparison
-                hanover_myadmin_total += myadmin_count
+            # Hanover-consolidated: ALL SKUs on billing_type=="Hanover" customers
+            # are invoiced under Hanover Insurance Group's master QB account.
+            # Individual customer invoices never have QB qty rows for these devices.
+            # Show as match with hanoverConsolidated=True so the UI annotates them
+            # with "via Hanover Ins." and they don't show as missing from QB.
+            if billing_type == "Hanover" and qb_qty is None and sku_key != HAN_CS_CUST_SKU:
+                # Device count already accumulated into hanover_myadmin_total above.
                 qty_rows.append({
                     "skuKey":              sku_key,
                     "myAdminCount":        myadmin_count,

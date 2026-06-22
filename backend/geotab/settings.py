@@ -435,13 +435,14 @@ def _parse_qb_csv(content: str) -> dict:
             continue
 
         try:
-            price = float(price_raw)
+            price = float(price_raw.replace(',', ''))
         except ValueError:
             continue
 
-        # Parse quantity -- QB exports fractional qty sometimes, round to nearest int
+        # Parse quantity -- QB exports commas in large numbers (e.g. "3,591.00")
+        # and fractional qty sometimes; strip commas then round to nearest int.
         try:
-            qty = max(1, round(float(qty_raw))) if qty_raw else 1
+            qty = max(1, round(float(qty_raw.replace(',', '')))) if qty_raw else 1
         except ValueError:
             qty = 1
 
