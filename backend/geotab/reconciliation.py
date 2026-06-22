@@ -378,6 +378,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         for dev in devices_to_process:
             promo_code      = dev["promoCode"]       # e.g. "SWELL", "" (most devices)
             billing_plan    = dev["billingPlan"]     # e.g. "ProPlus Mode", "Base Mode" (suffix already stripped)
+            serial          = dev.get("serialNumber") or ""
             norm_cname      = _normalize(cname)
             never_activated = dev.get("neverActivated", False)
 
@@ -393,6 +394,17 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             sku_key      = None
             lookup_code  = ""   # what we actually matched on (for display)
             mapping_tier = "none"
+
+            # -- Tier 0.5: HN serial prefix + Pro Mode = DM Service Fee -------
+            # Devices with serial numbers starting with "HN" on Pro Mode billing
+            # are DM (Data Management) units. They don't receive the CELU-TP-250
+            # promo code in MyAdmin but belong to the same DM Service Fee family.
+            if (not promo_code
+                    and serial.upper().startswith("HN")
+                    and billing_plan.upper() == "PRO MODE"):
+                sku_key      = "DM Service Fee"
+                mapping_tier = "serial_prefix"
+                lookup_code  = f"HN serial + Pro Mode"
 
             if promo_code:
                 sku_key = cust_mapping_index.get((norm_cname, promo_code), None)
