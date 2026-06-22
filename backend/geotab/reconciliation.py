@@ -901,6 +901,9 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             if nc not in covered_norm_names:
                 qb_only_names.setdefault(nc, []).append((sk, qty))
 
+        print(f"[reconciliation] QB-only injection: {len(qb_only_names)} customers "
+              f"(in qb_qty_index but not in MyAdmin company_map)")
+
         for norm_nc, sku_entries in sorted(qb_only_names.items()):
             # Look up display name and billing type from qb_customers
             qb_rec       = _qb_customers.get(norm_nc) or {}

@@ -64,7 +64,7 @@ print(f"[customers] QB data: {len(qb_customers)} customers loaded from disk"
       if _qb_loaded else "[customers] QB data: no saved file -- import a CSV to populate")
 if _sync_cache.get("fetched_at"):
     age_h = (time.time() - _sync_cache["fetched_at"]) / 3600
-    print(f"[customers] MyAdmin cache: {len(_sync_cache.get('customers', []))} customers, "
+    print(f"[customers] MyAdmin cache: {len(_sync_cache.get('contracts', []))} contracts, "
           f"{age_h:.1f}h old (TTL {CACHE_TTL_HOURS}h)")
 
 # --- Real-time sync progress state --------------------------------------------
