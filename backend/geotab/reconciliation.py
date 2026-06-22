@@ -500,6 +500,34 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                     sku_key = chosen
             # -----------------------------------------------------------------
 
+            # -- Tier 4.6: Suspend family upgrade ------------------------------
+            # The global SKU mapping resolves "SUSPEND MODE" to the bare anchor
+            # "Service Fee Geotab (Suspend)".  Some customers are invoiced in QB
+            # on "Service Fee Geotab (Suspend V2)" instead — both SKUs represent
+            # the same MyAdmin billing plan; which one applies depends solely on
+            # what is set on the customer's QB invoice.
+            #
+            # Rule: if resolved skuKey is the bare Suspend anchor, scan
+            # ovr_index and qb_qty_index for any "Service Fee Geotab (Suspend"
+            # variant that is NOT the bare anchor and upgrade to it.
+            # If multiple variants somehow exist, pick the one with the highest
+            # QB invoice quantity.
+            if sku_key == "Service Fee Geotab (Suspend)":
+                suspend_variants = list({
+                    sk
+                    for (nc, sk) in list(ovr_index.keys()) + list(qb_qty_index.keys())
+                    if nc == norm_cname
+                    and sk.startswith("Service Fee Geotab (Suspend")
+                    and sk != "Service Fee Geotab (Suspend)"
+                })
+                if suspend_variants:
+                    suspend_variants.sort(
+                        key=lambda sk: qb_qty_index.get((norm_cname, sk), 0),
+                        reverse=True,
+                    )
+                    sku_key = suspend_variants[0]
+            # -----------------------------------------------------------------
+
             # -- Tier 5: Han-CS billing-type override -------------------------
             # If QB has this customer flagged as "Han-CS" (Hanover Cost Share),
             # every device is billed to the customer under the HANOVER-CS Cust
