@@ -399,12 +399,17 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             # Devices with serial numbers starting with "HN" on Pro Mode billing
             # are DM (Data Management) units. They don't receive the CELU-TP-250
             # promo code in MyAdmin but belong to the same DM Service Fee family.
+            # HN serials always correspond to the "(Hardwire)" QB SKU variant;
+            # this flag is passed through to Tier 4.5 to select the right variant.
+            is_hn_serial = serial.upper().startswith("HN")
             if (not promo_code
-                    and serial.upper().startswith("HN")
+                    and is_hn_serial
                     and billing_plan.upper() == "PRO MODE"):
                 sku_key      = "DM Service Fee"
                 mapping_tier = "serial_prefix"
-                lookup_code  = f"HN serial + Pro Mode"
+                lookup_code  = "HN serial + Pro Mode"
+            else:
+                is_hn_serial = False   # only relevant when we actually triggered Tier 0.5
 
             if promo_code:
                 sku_key = cust_mapping_index.get((norm_cname, promo_code), None)
@@ -460,13 +465,31 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                     and sk != "DM Service Fee"
                 })
                 if dm_variants:
-                    # Prefer the variant with the highest QB invoice quantity;
-                    # fall back to zero if no qty data for that variant.
-                    dm_variants.sort(
-                        key=lambda sk: qb_qty_index.get((norm_cname, sk), 0),
-                        reverse=True,
-                    )
-                    sku_key = dm_variants[0]
+                    if is_hn_serial:
+                        # HN serial → must be a Hardwire device; pick the variant
+                        # whose name contains "(Hardwire)" (case-insensitive).
+                        # Fall back to highest-qty variant if no Hardwire entry found.
+                        hardwire = [sk for sk in dm_variants if "hardwire" in sk.lower()]
+                        chosen   = hardwire[0] if hardwire else None
+                        if not chosen:
+                            dm_variants.sort(
+                                key=lambda sk: qb_qty_index.get((norm_cname, sk), 0),
+                                reverse=True,
+                            )
+                            chosen = dm_variants[0]
+                    else:
+                        # Non-HN serial (CELU-TP promo code path) → prefer the
+                        # variant with the highest QB quantity that is NOT Hardwire,
+                        # since HN devices already claim the Hardwire slot.
+                        # Fall back to highest-qty overall if nothing else exists.
+                        non_hw = [sk for sk in dm_variants if "hardwire" not in sk.lower()]
+                        pool   = non_hw if non_hw else dm_variants
+                        pool.sort(
+                            key=lambda sk: qb_qty_index.get((norm_cname, sk), 0),
+                            reverse=True,
+                        )
+                        chosen = pool[0]
+                    sku_key = chosen
             # -----------------------------------------------------------------
 
             # -- Tier 5: Han-CS billing-type override -------------------------
