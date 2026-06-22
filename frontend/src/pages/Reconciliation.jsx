@@ -109,9 +109,11 @@ function QtyBreakdownTable({ rows }) {
             <tr key={`${r.skuKey}-${i}`} className="border-t border-slate-700/30 hover:bg-slate-700/20">
               <td className="px-4 py-2 font-mono text-slate-300 truncate" title={r.skuKey}>{r.skuKey || '—'}</td>
               <td className="px-4 py-2 text-right font-mono text-slate-200">
-                {r.qbOnly
-                  ? <span className="text-slate-600">—</span>
-                  : r.myAdminCount
+                {r.hanoverMaster
+                  ? <span>{r.myAdminCount}<div className="text-violet-400/70 text-xs font-sans normal-case">all Hanover customers</div></span>
+                  : r.qbOnly
+                    ? <span className="text-slate-600">—</span>
+                    : r.myAdminCount
                 }
                 {unmappedExplains && (
                   <div className="text-amber-400/70 text-xs font-sans normal-case">

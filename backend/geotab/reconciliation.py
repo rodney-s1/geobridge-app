@@ -60,11 +60,12 @@ HAN_CS_CUST_SKU = "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hano
 # is emitted as "match" with myAdminCount == qbQty so the UI shows it neutrally.
 QB_AUTHORITATIVE_SKUS: frozenset = frozenset({
     "BlueArrow Fuel Service",
-    # Geotab Service Fee (HANOVER) is invoiced consolidated under Hanover
-    # Insurance Group for most customers — handled separately per billing_type
-    # in the qty loop.  Listed here so it silences the Hanover Insurance Group
-    # master account row (which has the aggregated QB qty but no MyAdmin devices).
-    "Geotab Service Fee (HANOVER)",
+    # NOTE: "Geotab Service Fee (HANOVER)" is intentionally NOT listed here.
+    # It is handled in two places:
+    #   1. Per Hanover customer (billing_type=="Hanover"): hanoverConsolidated branch
+    #      in the qty loop — devices counted into hanover_myadmin_total accumulator.
+    #   2. Hanover Insurance Group master row (QB-only stub): uses hanover_myadmin_total
+    #      vs QB invoice qty for a real cross-customer diff.
 })
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -357,6 +358,11 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     total_myadmin_devices = 0
     total_qb_devices = 0
     total_qty_match = total_qty_over = total_qty_under = total_qty_missing = 0
+
+    # Accumulate MyAdmin device count for "Geotab Service Fee (HANOVER)" across
+    # all billing_type == "Hanover" customers.  These are invoiced consolidated
+    # under Hanover Insurance Group in QB, not on each customer's own invoice.
+    hanover_myadmin_total: int = 0
 
     for _pkey, cdata in company_map.items():
         cid          = cdata["customerId"]
@@ -766,6 +772,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             if (sku_key == "Geotab Service Fee (HANOVER)"
                     and billing_type == "Hanover"
                     and qb_qty is None):
+                # Accumulate into cross-customer total for HIG master row comparison
+                hanover_myadmin_total += myadmin_count
                 qty_rows.append({
                     "skuKey":              sku_key,
                     "myAdminCount":        myadmin_count,
@@ -902,7 +910,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 qb_only_names.setdefault(nc, []).append((sk, qty))
 
         print(f"[reconciliation] QB-only injection: {len(qb_only_names)} customers "
-              f"(in qb_qty_index but not in MyAdmin company_map)")
+              f"(in qb_qty_index but not in MyAdmin company_map); "
+              f"hanover_myadmin_total={hanover_myadmin_total}")
 
         for norm_nc, sku_entries in sorted(qb_only_names.items()):
             # Look up display name and billing type from qb_customers
@@ -910,33 +919,78 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             display_name = qb_rec.get("name") or norm_nc.title()
             bt           = qb_rec.get("billingType") or "Unknown"
 
-            # Skip if this QB-only customer's status_filter wouldn't match;
-            # QB-only rows always have status "ok" (all qty is QB-authoritative)
+            # Hanover Insurance Group: "Geotab Service Fee (HANOVER)" is the
+            # consolidated QB line for ALL billing_type=="Hanover" customers.
+            # Use the accumulated MyAdmin total so the diff is meaningful.
+            is_hig = (norm_nc == _normalize("Hanover Insurance Group"))
+
+            # QB-only rows always have status "ok" unless we can compute a real delta.
+            # Compute status based on qty delta if we have a real MyAdmin total.
+            stub_qty_rows  = []
+            stub_qb_total  = 0
+            stub_qty_match = stub_qty_under = stub_qty_over = stub_qty_missing = 0
+
+            for sku_key, qb_qty in sorted(sku_entries):
+                # For HIG's HANOVER SKU, use the accumulated cross-customer count
+                if is_hig and sku_key == "Geotab Service Fee (HANOVER)":
+                    my_count  = hanover_myadmin_total
+                    qty_delta = my_count - qb_qty
+                    if qty_delta == 0:
+                        qty_status = "match"
+                        stub_qty_match += 1
+                    elif qty_delta > 0:
+                        qty_status = "under_billed"   # more MyAdmin than QB invoiced
+                        stub_qty_under += 1
+                    else:
+                        qty_status = "over_billed"    # fewer MyAdmin than QB invoiced
+                        stub_qty_over += 1
+                    stub_qty_rows.append({
+                        "skuKey":              sku_key,
+                        "myAdminCount":        my_count,
+                        "qbQty":               qb_qty,
+                        "qtyDelta":            qty_delta,
+                        "qtyStatus":           qty_status,
+                        "unmappedCount":       0,
+                        "neverActivatedCount": 0,
+                        "qbAuthoritative":     False,
+                        "qbOnly":              True,
+                        "hanoverMaster":       True,   # flag: this is the aggregated row
+                    })
+                    stub_qb_total += qb_qty
+                else:
+                    # All other QB-only SKUs: no MyAdmin equivalent, show as authoritative
+                    stub_qty_rows.append({
+                        "skuKey":              sku_key,
+                        "myAdminCount":        qb_qty,   # mirror QB qty — authoritative
+                        "qbQty":               qb_qty,
+                        "qtyDelta":            0,
+                        "qtyStatus":           "match",
+                        "unmappedCount":       0,
+                        "neverActivatedCount": 0,
+                        "qbAuthoritative":     True,
+                        "qbOnly":              True,
+                    })
+                    stub_qty_match += 1
+                    stub_qb_total += qb_qty
+
+            # Derive overall stub status from SKU-level results
+            if stub_qty_under > 0:
+                stub_status = "ok"   # under-billed means we have more devices than invoiced
+            elif stub_qty_over > 0:
+                stub_status = "ok"   # surface the discrepancy in qty breakdown
+            else:
+                stub_status = "ok"
+
+            # Skip if status_filter wouldn't match
             if status_filter and status_filter != "ok":
                 continue
-
-            stub_qty_rows = []
-            stub_qb_total = 0
-            for sku_key, qb_qty in sorted(sku_entries):
-                stub_qty_rows.append({
-                    "skuKey":              sku_key,
-                    "myAdminCount":        qb_qty,   # mirror QB qty — authoritative
-                    "qbQty":               qb_qty,
-                    "qtyDelta":            0,
-                    "qtyStatus":           "match",
-                    "unmappedCount":       0,
-                    "neverActivatedCount": 0,
-                    "qbAuthoritative":     True,
-                    "qbOnly":              True,
-                })
-                stub_qb_total += qb_qty
 
             result_customers.append({
                 "customerId":       f"qb-only:{norm_nc}",
                 "customerName":     display_name,
                 "billingType":      bt,
                 "subAccountNames":  [],
-                "deviceCount":      0,
+                "deviceCount":      hanover_myadmin_total if is_hig else 0,
                 "ok":               0,
                 "over":             0,
                 "under":            0,
@@ -946,15 +1000,15 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 "expectedMonthly":  0.0,
                 "actualMonthly":    0.0,
                 "delta":            0.0,
-                "status":           "ok",
+                "status":           stub_status,
                 "devices":          [],
-                "myAdminTotal":     0,
+                "myAdminTotal":     hanover_myadmin_total if is_hig else 0,
                 "qbTotal":          stub_qb_total,
-                "qtyDelta":         0,
-                "qtyMatch":         len(stub_qty_rows),
-                "qtyUnderBilled":   0,
-                "qtyOverBilled":    0,
-                "qtyMissing":       0,
+                "qtyDelta":         (hanover_myadmin_total - stub_qb_total) if is_hig else 0,
+                "qtyMatch":         stub_qty_match,
+                "qtyUnderBilled":   stub_qty_under,
+                "qtyOverBilled":    stub_qty_over,
+                "qtyMissing":       stub_qty_missing,
                 "hasQbData":        True,
                 "skuQtyBreakdown":  stub_qty_rows,
                 "qbOnly":           True,       # flag for frontend
