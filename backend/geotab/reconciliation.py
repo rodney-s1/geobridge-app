@@ -529,14 +529,17 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             # -----------------------------------------------------------------
 
             # -- Tier 5: Han-CS billing-type override -------------------------
-            # If QB has this customer flagged as "Han-CS" (Hanover Cost Share),
-            # every device is billed to the customer under the HANOVER-CS Cust
-            # SKU regardless of what MyAdmin reports as the billing plan.
-            # The parent Geotab Service Fee (HANOVER) SKU is billed directly to
-            # Hanover Insurance Group — it never appears on the customer invoice.
-            HAN_CS_SKU = HAN_CS_CUST_SKU
-            if billing_type in ("Han-CS", "Hanover"):
-                sku_key      = HAN_CS_SKU
+            # "Han-CS" = Hanover Cost Share: the customer is subsidised by
+            # Hanover Insurance and is invoiced on the HANOVER-CS Cust SKU
+            # regardless of what MyAdmin reports as the billing plan.
+            #
+            # "Hanover" is a DIFFERENT billing type: the customer IS a Hanover
+            # account but is invoiced directly on Geotab Service Fee (HANOVER)
+            # via the normal HANOVER rate plan code.  Their GO devices resolve
+            # correctly through Tier 4 (HANOVER → Geotab Service Fee (HANOVER))
+            # and must NOT be overridden here.
+            if billing_type == "Han-CS":
+                sku_key      = HAN_CS_CUST_SKU
                 mapping_tier = "billing_type"
                 lookup_code  = f"Han-CS override ({billing_plan or promo_code or 'none'})"
             # -----------------------------------------------------------------
