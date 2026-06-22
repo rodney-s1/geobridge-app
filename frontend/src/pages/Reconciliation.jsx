@@ -109,7 +109,10 @@ function QtyBreakdownTable({ rows }) {
             <tr key={`${r.skuKey}-${i}`} className="border-t border-slate-700/30 hover:bg-slate-700/20">
               <td className="px-4 py-2 font-mono text-slate-300 truncate" title={r.skuKey}>{r.skuKey || '—'}</td>
               <td className="px-4 py-2 text-right font-mono text-slate-200">
-                {r.myAdminCount}
+                {r.qbOnly
+                  ? <span className="text-slate-600">—</span>
+                  : r.myAdminCount
+                }
                 {unmappedExplains && (
                   <div className="text-amber-400/70 text-xs font-sans normal-case">
                     {r.unmappedCount} unmapped
@@ -121,7 +124,12 @@ function QtyBreakdownTable({ rows }) {
                   </div>
                 )}
               </td>
-              <td className="px-4 py-2 text-right font-mono text-slate-200">{r.qbQty ?? '—'}</td>
+              <td className="px-4 py-2 text-right font-mono text-slate-200">
+                {r.qbQty ?? '—'}
+                {r.hanoverConsolidated && (
+                  <div className="text-violet-400/70 text-xs font-sans normal-case">via Hanover Ins.</div>
+                )}
+              </td>
               <td className="px-4 py-2 text-right font-mono">
                 {diff === null || diff === undefined
                   ? <span className="text-slate-600">—</span>
@@ -236,6 +244,7 @@ function CustomerRow({ customer }) {
     ok, over, under, unmapped, noPrice, neverActivated,
     expectedMonthly, actualMonthly, delta,
     status, devices, skuQtyBreakdown,
+    qbOnly,
   } = customer
 
   // Quantity status for the row badge
@@ -261,11 +270,17 @@ function CustomerRow({ customer }) {
         {/* Customer name */}
         <td className="px-4 py-3">
           <span className="text-sm font-medium text-slate-200">{customerName}</span>
+          {qbOnly && (
+            <span className="ml-2 text-xs bg-violet-900/50 text-violet-300 border border-violet-700/40 rounded px-1.5 py-0.5 align-middle">QB Only</span>
+          )}
         </td>
 
         {/* MyAdmin device count */}
         <td className="px-4 py-3 text-right">
-          <span className="text-sm font-mono font-bold text-slate-200">{myAdminTotal}</span>
+          {qbOnly
+            ? <span className="text-slate-600 text-sm">—</span>
+            : <span className="text-sm font-mono font-bold text-slate-200">{myAdminTotal}</span>
+          }
         </td>
 
         {/* QB invoice count */}

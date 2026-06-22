@@ -174,7 +174,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     }
     """
     # -- Import here to avoid circular imports ---------------------------------
-    from geotab.customers import _sync_cache, enrich_customer
+    from geotab.customers import _sync_cache, enrich_customer, qb_customers as _qb_customers
 
     contracts = _sync_cache.get("contracts") or []
     if not contracts:
@@ -882,6 +882,81 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             "hasQbData":         has_qb_data,
             "skuQtyBreakdown":   qty_rows,
         })
+
+    # -- QB-only customers -------------------------------------------------------
+    # Some QB customers (e.g. Hanover Insurance Group) are pure billing accounts
+    # with no MyAdmin presence.  They have entries in qb_qty_index but were never
+    # added to company_map.  Inject them as stub rows so their QB qty is visible
+    # in reconciliation and they are not silently ignored.
+    #
+    # Only inject when not filtering by a specific customer_id (the QB-only
+    # account won't have a matching MyAdmin cid anyway).
+    if not customer_id:
+        # Collect the set of normalised names already covered by company_map
+        covered_norm_names: set = {_normalize(c["customerName"]) for c in result_customers}
+
+        # Group qb_qty_index keys by customer name
+        qb_only_names: Dict[str, list] = {}
+        for (nc, sk), qty in qb_qty_index.items():
+            if nc not in covered_norm_names:
+                qb_only_names.setdefault(nc, []).append((sk, qty))
+
+        for norm_nc, sku_entries in sorted(qb_only_names.items()):
+            # Look up display name and billing type from qb_customers
+            qb_rec       = _qb_customers.get(norm_nc) or {}
+            display_name = qb_rec.get("name") or norm_nc.title()
+            bt           = qb_rec.get("billingType") or "Unknown"
+
+            # Skip if this QB-only customer's status_filter wouldn't match;
+            # QB-only rows always have status "ok" (all qty is QB-authoritative)
+            if status_filter and status_filter != "ok":
+                continue
+
+            stub_qty_rows = []
+            stub_qb_total = 0
+            for sku_key, qb_qty in sorted(sku_entries):
+                stub_qty_rows.append({
+                    "skuKey":              sku_key,
+                    "myAdminCount":        qb_qty,   # mirror QB qty — authoritative
+                    "qbQty":               qb_qty,
+                    "qtyDelta":            0,
+                    "qtyStatus":           "match",
+                    "unmappedCount":       0,
+                    "neverActivatedCount": 0,
+                    "qbAuthoritative":     True,
+                    "qbOnly":              True,
+                })
+                stub_qb_total += qb_qty
+
+            result_customers.append({
+                "customerId":       f"qb-only:{norm_nc}",
+                "customerName":     display_name,
+                "billingType":      bt,
+                "subAccountNames":  [],
+                "deviceCount":      0,
+                "ok":               0,
+                "over":             0,
+                "under":            0,
+                "unmapped":         0,
+                "neverActivated":   0,
+                "noPrice":          0,
+                "expectedMonthly":  0.0,
+                "actualMonthly":    0.0,
+                "delta":            0.0,
+                "status":           "ok",
+                "devices":          [],
+                "myAdminTotal":     0,
+                "qbTotal":          stub_qb_total,
+                "qtyDelta":         0,
+                "qtyMatch":         len(stub_qty_rows),
+                "qtyUnderBilled":   0,
+                "qtyOverBilled":    0,
+                "qtyMissing":       0,
+                "hasQbData":        True,
+                "skuQtyBreakdown":  stub_qty_rows,
+                "qbOnly":           True,       # flag for frontend
+            })
+    # ---------------------------------------------------------------------------
 
     # Sort: discrepancy first, then unmapped, then no_price, then ok; alpha within
     result_customers.sort(key=lambda c: (
