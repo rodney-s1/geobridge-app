@@ -176,15 +176,20 @@ def start_background_refresh() -> None:
 
 
 # --- Billing type map ---------------------------------------------------------
+# Maps QB Job Type values (lower-cased) to internal billing type strings.
+# QB Job Type is often a compound value like "Charge Upon Activation:Hanover"
+# or "Han-CS" — the primary type is the segment AFTER the last colon.
+# We try exact match on the full key first, then on the primary segment only.
 QB_JOB_TYPE_MAP = {
     "standard":                     "Standard",
     "cua":                          "CUA",
+    "charge upon activation":       "CUA",
+    "cua - charge upon activation": "CUA",
     "sourcewell":                   "Sourcewell",
     "hanover":                      "Hanover",
+    "hanover deal":                 "Hanover",
     "han-cs":                       "Han-CS",
     "hancs":                        "Han-CS",
-    "charge upon activation":       "Charge Upon Activation",
-    "cua - charge upon activation": "Charge Upon Activation",
     "check before sending":         "Check Before Sending",
     "reseller":                     "Reseller",
     "in collections":               "In Collections",
@@ -204,12 +209,34 @@ def _clean_name(s: str) -> str:
     return _html.unescape(s or "").strip()
 
 def map_billing_type(job_type: str) -> str:
+    """Map a QB Job Type string to a GeoBridge billing type.
+
+    QB Job Type is sometimes a compound value like "Charge Upon Activation:Hanover"
+    where the primary type is the segment BEFORE the colon and the qualifier
+    (e.g. the insurance program) is AFTER.  We:
+      1. Try an exact match on the full lower-cased value.
+      2. If no hit, try each colon-delimited segment from right to left
+         (last segment = most specific qualifier, first = base type).
+      3. Still no hit → "Unknown".
+
+    Examples:
+      "HANOVER"                       -> "Hanover"   (exact)
+      "Han-CS"                        -> "Han-CS"    (exact)
+      "Charge Upon Activation:Hanover"-> "CUA"       (first segment)
+      "Charge Upon Activation:Han-CS" -> "Han-CS"    (last segment, more specific)
+      "Standard:Hanover"              -> "Hanover"   (last segment wins)
+    """
     if not job_type:
         return "Unknown"
-    key = normalize(job_type)
-    for pattern, billing in QB_JOB_TYPE_MAP.items():
-        if pattern in key:
-            return billing
+    full_key = normalize(job_type)
+    # 1. Exact match on full string
+    if full_key in QB_JOB_TYPE_MAP:
+        return QB_JOB_TYPE_MAP[full_key]
+    # 2. Split on ':' — check segments right-to-left (most specific first)
+    segments = [s.strip() for s in full_key.split(":") if s.strip()]
+    for seg in reversed(segments):
+        if seg in QB_JOB_TYPE_MAP:
+            return QB_JOB_TYPE_MAP[seg]
     return "Unknown"
 
 def enrich_customer(customer: dict) -> dict:

@@ -60,6 +60,11 @@ HAN_CS_CUST_SKU = "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hano
 # is emitted as "match" with myAdminCount == qbQty so the UI shows it neutrally.
 QB_AUTHORITATIVE_SKUS: frozenset = frozenset({
     "BlueArrow Fuel Service",
+    # Geotab Service Fee (HANOVER) is invoiced consolidated under Hanover
+    # Insurance Group for most customers — handled separately per billing_type
+    # in the qty loop.  Listed here so it silences the Hanover Insurance Group
+    # master account row (which has the aggregated QB qty but no MyAdmin devices).
+    "Geotab Service Fee (HANOVER)",
 })
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
@@ -753,10 +758,34 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             myadmin_count = myadmin_by_sku.get(sku_key, 0)
             qb_qty        = qb_qty_index.get((norm_cname, sku_key), None)
 
+            # Hanover-consolidated SKU: "Geotab Service Fee (HANOVER)" is invoiced
+            # under Hanover Insurance Group's QB account, not under each individual
+            # Hanover customer.  For billing_type == "Hanover" customers, treat the
+            # MyAdmin device count as authoritative — there will never be a matching
+            # QB qty row on the customer's own invoice.
+            if (sku_key == "Geotab Service Fee (HANOVER)"
+                    and billing_type == "Hanover"
+                    and qb_qty is None):
+                qty_rows.append({
+                    "skuKey":              sku_key,
+                    "myAdminCount":        myadmin_count,
+                    "qbQty":               None,
+                    "qtyDelta":            0,
+                    "qtyStatus":           "match",
+                    "unmappedCount":       cust_unmapped_count,
+                    "neverActivatedCount": cust_never_activated,
+                    "qbAuthoritative":     True,
+                    "hanoverConsolidated": True,
+                })
+                cust_qty_match += 1
+                continue
+
             # QB-authoritative SKUs (e.g. BlueArrow Fuel Service) are billed from
             # an external platform — MyAdmin will never have devices for them.
             # Treat QB qty as ground truth: show as "match" so they never appear
             # as over-billed, and exclude them from the customer delta totals.
+            # Also covers the Hanover Insurance Group master account row which holds
+            # the aggregated Geotab Service Fee (HANOVER) QB qty for all sub-customers.
             if sku_key in QB_AUTHORITATIVE_SKUS:
                 effective_myadmin = qb_qty if qb_qty is not None else 0
                 qty_rows.append({
