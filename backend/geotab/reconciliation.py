@@ -119,6 +119,38 @@ def _normalize(s: str) -> str:
         return s[:first_open].strip().lower()
 
 
+def _normalize_loose(s: str) -> str:
+    """Lossy normalisation for fuzzy cross-source name matching.
+
+    Strips punctuation that commonly differs between MyAdmin and QB exports
+    (commas, periods, apostrophes, extra whitespace) so that names like
+    "Hoopaugh Grading LLC" and "Hoopaugh Grading, LLC" both collapse to
+    "hoopaugh grading llc".
+
+    Used exclusively for the Hanover/Han-CS billing-type QB-invoice fallback
+    where we need to match MyAdmin parent names against QB invoice names.
+    NOT used for primary lookups (those use _normalize).
+    """
+    import re
+    # First, apply the same brace-stripping logic as _normalize so we compare
+    # the same base name without any sub-account or Han-CS qualifiers.
+    s = (s or "").strip()
+    first_open = s.find("{")
+    if first_open != -1:
+        first_close = s.find("}", first_open)
+        first_token = s[first_open + 1 : first_close].strip() if first_close != -1 else ""
+        if first_token.lower() == "han-cs":
+            s = s[:first_close + 1].strip()
+        else:
+            s = s[:first_open].strip()
+    # Remove punctuation that differs between exports: commas, periods, apostrophes,
+    # hyphens-as-punctuation (keep alphanumeric and spaces).
+    s = re.sub(r"[,.\\'\"()]", "", s)
+    # Collapse multiple spaces
+    s = re.sub(r"\s+", " ", s).strip()
+    return s.lower()
+
+
 def _extract_parent(cname: str):
     """Extract the canonical parent name and sub-account tag from a MyAdmin
     company name.
@@ -298,17 +330,18 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         for q in qb_qtys
     }
 
-    # Set of normalised QB customer names that have a HANOVER or Han-CS line on
-    # their invoice.  Used as a fallback to detect Hanover/Han-CS customers whose
-    # MyAdmin name doesn't exactly match the QB name (name mismatch → "Unknown").
+    # Set of LOOSELY-normalised QB customer names that have a HANOVER or Han-CS
+    # line on their invoice.  Using _normalize_loose (punctuation-stripped) allows
+    # matching MyAdmin names against QB invoice names even when they differ in
+    # commas, periods, or similar minor punctuation — the most common mismatch.
     _HANOVER_QB_SKU     = "Geotab Service Fee (HANOVER)"
     _HAN_CS_QB_SKU_PART = "HANOVER-CS"   # substring present in HAN_CS_CUST_SKU
     qb_hanover_names: set = {
-        nc for (nc, sk) in qb_qty_index
+        _normalize_loose(nc) for (nc, sk) in qb_qty_index
         if sk == _HANOVER_QB_SKU
     }
     qb_han_cs_names: set = {
-        nc for (nc, sk) in qb_qty_index
+        _normalize_loose(nc) for (nc, sk) in qb_qty_index
         if _HAN_CS_QB_SKU_PART in sk
     }
 
@@ -447,26 +480,40 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     # under Hanover Insurance Group in QB, not on each customer's own invoice.
     hanover_myadmin_total: int = 0
 
+    # Accumulate MyAdmin device count for the HANOVER-CS Cust SKU across all
+    # billing_type == "Han-CS" customers.  These are also invoiced under HIG in
+    # QB (Service Fee (HANOVER-CS) line), not on each individual customer's invoice.
+    han_cs_myadmin_total: int = 0
+
     for _pkey, cdata in company_map.items():
         cid          = cdata["customerId"]
         cname        = cdata["customerName"]
         devices      = cdata["devices"]
-        # Re-scan all sub-account cids so CUA billing type is found even when
-        # the first cid seen belongs to a sub-account rather than the parent.
+        # Re-scan all sub-account cids so billing type is found even when
+        # the first cid seen belongs to a sub-account with an Unknown type.
+        # Priority order (most specific wins):
+        #   CUA / Hanover / Han-CS / Sourcewell / … > Standard > Unknown > (missing)
+        _LOW_PRIORITY = {"Unknown", "Standard"}
         sub_cids     = cdata.get("subAccountIds") or {cid}
-        billing_type = next(
-            (billing_type_index[c] for c in sub_cids if c in billing_type_index),
-            cdata.get("billingType") or "Standard",
-        )
+        billing_type = cdata.get("billingType") or "Standard"
+        for _c in sub_cids:
+            _bt = billing_type_index.get(_c)
+            if _bt and _bt not in _LOW_PRIORITY:
+                billing_type = _bt
+                break
+            if _bt and billing_type in _LOW_PRIORITY:
+                billing_type = _bt   # take any definite value over the default
 
         # Fallback: if billing_type is still Unknown or Standard, check the QB
         # invoice index by customer name.  Many Hanover customers have a name
         # mismatch between MyAdmin and QB (e.g. case, punctuation, suffix
         # differences) that causes enrich_customer() to return "Unknown".
-        # The QB invoice is ground truth: if the customer's normalised name
-        # appears as the payer of a HANOVER SKU line, they are Hanover.
+        # The QB invoice is ground truth: if the customer's loosely-normalised
+        # name appears as the payer of a HANOVER SKU line, they are Hanover.
+        # _normalize_loose strips commas/periods so "Hoopaugh Grading LLC" and
+        # "Hoopaugh Grading, LLC" both become "hoopaugh grading llc".
         if billing_type in ("Unknown", "Standard"):
-            _nc = _normalize(cname)
+            _nc = _normalize_loose(cname)
             if _nc in qb_hanover_names:
                 billing_type = "Hanover"
             elif _nc in qb_han_cs_names:
@@ -859,6 +906,13 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 if sk != HAN_CS_CUST_SKU:
                     hanover_myadmin_total += cnt
 
+        # Han-CS customers: devices mapped to HAN_CS_CUST_SKU roll up to the HIG
+        # master invoice under the "Service Fee (HANOVER-CS)" QB line.
+        # Accumulate separately so the HIG stub row can show the real MyAdmin count
+        # for that SKU rather than mirroring the QB qty as authoritative.
+        if billing_type == "Han-CS":
+            han_cs_myadmin_total += myadmin_by_sku.get(HAN_CS_CUST_SKU, 0)
+
         norm_cname = _normalize(cname)
         qty_rows = []
         cust_qty_match = cust_qty_over = cust_qty_under = cust_qty_missing = 0
@@ -1027,7 +1081,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
 
         print(f"[reconciliation] QB-only injection: {len(qb_only_names)} customers "
               f"(in qb_qty_index but not in MyAdmin company_map); "
-              f"hanover_myadmin_total={hanover_myadmin_total}")
+              f"hanover_myadmin_total={hanover_myadmin_total}  "
+              f"han_cs_myadmin_total={han_cs_myadmin_total}")
 
         for norm_nc, sku_entries in sorted(qb_only_names.items()):
             # Look up display name and billing type from qb_customers
@@ -1073,6 +1128,34 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                         "hanoverMaster":       True,   # flag: this is the aggregated row
                     })
                     stub_qb_total += qb_qty
+
+                # For HIG's HANOVER-CS SKU, use the accumulated Han-CS MyAdmin count.
+                # Match by substring since the truncated SKU key may vary slightly.
+                elif is_hig and _HAN_CS_QB_SKU_PART in sku_key:
+                    my_count  = han_cs_myadmin_total
+                    qty_delta = my_count - qb_qty
+                    if qty_delta == 0:
+                        qty_status = "match"
+                        stub_qty_match += 1
+                    elif qty_delta > 0:
+                        qty_status = "under_billed"
+                        stub_qty_under += 1
+                    else:
+                        qty_status = "over_billed"
+                        stub_qty_over += 1
+                    stub_qty_rows.append({
+                        "skuKey":              sku_key,
+                        "myAdminCount":        my_count,
+                        "qbQty":               qb_qty,
+                        "qtyDelta":            qty_delta,
+                        "qtyStatus":           qty_status,
+                        "unmappedCount":       0,
+                        "neverActivatedCount": 0,
+                        "qbAuthoritative":     False,
+                        "qbOnly":              True,
+                        "hanoverMaster":       True,
+                    })
+                    stub_qb_total += qb_qty
                 else:
                     # All other QB-only SKUs: no MyAdmin equivalent, show as authoritative
                     stub_qty_rows.append({
@@ -1101,12 +1184,15 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             if status_filter and status_filter != "ok":
                 continue
 
+            # HIG total = Hanover devices + Han-CS devices (both roll up to HIG in QB)
+            hig_myadmin_total = hanover_myadmin_total + han_cs_myadmin_total
+
             result_customers.append({
                 "customerId":       f"qb-only:{norm_nc}",
                 "customerName":     display_name,
                 "billingType":      bt,
                 "subAccountNames":  [],
-                "deviceCount":      hanover_myadmin_total if is_hig else 0,
+                "deviceCount":      hig_myadmin_total if is_hig else 0,
                 "ok":               0,
                 "over":             0,
                 "under":            0,
@@ -1118,9 +1204,9 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 "delta":            0.0,
                 "status":           stub_status,
                 "devices":          [],
-                "myAdminTotal":     hanover_myadmin_total if is_hig else 0,
+                "myAdminTotal":     hig_myadmin_total if is_hig else 0,
                 "qbTotal":          stub_qb_total,
-                "qtyDelta":         (hanover_myadmin_total - stub_qb_total) if is_hig else 0,
+                "qtyDelta":         (hig_myadmin_total - stub_qb_total) if is_hig else 0,
                 "qtyMatch":         stub_qty_match,
                 "qtyUnderBilled":   stub_qty_under,
                 "qtyOverBilled":    stub_qty_over,
