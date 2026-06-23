@@ -908,22 +908,27 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             if sk:
                 myadmin_by_sku[sk] = myadmin_by_sku.get(sk, 0) + 1
 
-        # Hanover customers: ALL GO devices roll up to the HIG master invoice,
-        # regardless of which SKU they map to individually.  Count every device
-        # that is NOT the Han-CS cost-share SKU toward the consolidated total.
-        # Devices in a "{Han-CS}" sub-account are already routed to HAN_CS_CUST_SKU
-        # by Tier 5, so they naturally fall into the exclusion below.
-        if billing_type == "Hanover":
-            for sk, cnt in myadmin_by_sku.items():
-                if sk != HAN_CS_CUST_SKU:
-                    hanover_myadmin_total += cnt
-
-        # Han-CS customers: devices mapped to HAN_CS_CUST_SKU roll up to the HIG
-        # master invoice under the "Service Fee (HANOVER-CS)" QB line.
-        # Accumulate separately so the HIG stub row can show the real MyAdmin count
-        # for that SKU rather than mirroring the QB qty as authoritative.
-        if billing_type == "Han-CS":
-            han_cs_myadmin_total += myadmin_by_sku.get(HAN_CS_CUST_SKU, 0)
+        # Hanover master invoice accumulation — driven by SKU, not billing_type label.
+        #
+        # Rule (per user): "Geotab Service Fee (HANOVER)" counts every device
+        # across all CELU01 accounts that has promoCode == "HANOVER" AND is on
+        # a GO Plan — i.e. every device that resolved to the HANOVER SKU via
+        # the normal Tier 3/4 mapping AND was NOT overridden to HAN_CS_CUST_SKU
+        # by Tier 5.  We accumulate by skuKey from myadmin_by_sku, which already
+        # has the correct split: Tier 5 routes {Han-CS} account devices to
+        # HAN_CS_CUST_SKU before they ever land in "Geotab Service Fee (HANOVER)".
+        #
+        # "Service Fee (HANOVER-CS)": only {Han-CS} account devices that have
+        # promoCode == "HANOVER" → Tier 5 routes them to HAN_CS_CUST_SKU.
+        #
+        # Both accumulate from ANY customer whose devices map to those SKUs —
+        # billing_type is NOT used as a gate here (that label may be Unknown
+        # due to name mismatches, but the promo code is always ground truth).
+        _HANOVER_SKU = "Geotab Service Fee (HANOVER)"
+        if _HANOVER_SKU in myadmin_by_sku:
+            hanover_myadmin_total += myadmin_by_sku[_HANOVER_SKU]
+        if HAN_CS_CUST_SKU in myadmin_by_sku:
+            han_cs_myadmin_total += myadmin_by_sku[HAN_CS_CUST_SKU]
 
         norm_cname = _normalize(cname)
         qty_rows = []
@@ -944,17 +949,16 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             myadmin_count = myadmin_by_sku.get(sku_key, 0)
             qb_qty        = qb_qty_index.get((norm_cname, sku_key), None)
 
-            # Hanover-consolidated SKU: "Geotab Service Fee (HANOVER)" is invoiced
-            # under Hanover Insurance Group's QB account, not under each individual
-            # Hanover customer.  For billing_type == "Hanover" customers, treat the
-            # MyAdmin device count as authoritative — there will never be a matching
-            # QB qty row on the customer's own invoice.
-            # Hanover-consolidated: ALL SKUs on billing_type=="Hanover" customers
-            # are invoiced under Hanover Insurance Group's master QB account.
-            # Individual customer invoices never have QB qty rows for these devices.
-            # Show as match with hanoverConsolidated=True so the UI annotates them
-            # with "via Hanover Ins." and they don't show as missing from QB.
-            if billing_type == "Hanover" and qb_qty is None and sku_key != HAN_CS_CUST_SKU:
+            # Hanover-consolidated: "Geotab Service Fee (HANOVER)" and HAN_CS_CUST_SKU
+            # are both invoiced under Hanover Insurance Group's QB master account —
+            # never on each individual customer's own QB invoice.
+            # Detect by SKU key directly (promoCode is the ground truth) rather than
+            # by billing_type label, which may be Unknown due to name mismatches.
+            # Show as hanoverConsolidated=True so the UI annotates with "via Hanover Ins."
+            # and devices don't appear as missing-from-QB on the individual row.
+            _is_hanover_sku = (sku_key == "Geotab Service Fee (HANOVER)")
+            _is_han_cs_sku  = (sku_key == HAN_CS_CUST_SKU)
+            if (_is_hanover_sku or _is_han_cs_sku) and qb_qty is None:
                 # Device count already accumulated into hanover_myadmin_total above.
                 qty_rows.append({
                     "skuKey":              sku_key,
