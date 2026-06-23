@@ -252,7 +252,92 @@ def test_scale_ground_truth():
 
 
 # ---------------------------------------------------------------------------
-# Runner
+# Tests: per-SKU neverActivatedCount correctness
+# ---------------------------------------------------------------------------
+
+def simulate_never_activated_by_sku(device_rows):
+    """
+    Replicate the never_activated_by_sku dict built in reconciliation.py.
+    device_rows: list of dicts with 'skuKey' and optional 'neverActivated'.
+    Returns {skuKey: count_of_never_activated_on_that_sku}.
+    """
+    myadmin_by_sku = {}
+    never_activated_by_sku = {}
+    for row in device_rows:
+        sk = row.get("skuKey") or ""
+        if sk:
+            myadmin_by_sku[sk] = myadmin_by_sku.get(sk, 0) + 1
+            if row.get("neverActivated"):
+                never_activated_by_sku[sk] = never_activated_by_sku.get(sk, 0) + 1
+    return myadmin_by_sku, never_activated_by_sku
+
+
+def test_per_sku_never_activated_count():
+    """
+    The Blood Connection scenario (from screenshot):
+      - 4 never-activated devices total, all inherited to 'Geotab Service (GO SW-SI2)'
+      - Multiple other SKU rows that previously showed '4 never activated' incorrectly.
+
+    After fix: only 'Geotab Service (GO SW-SI2)' should show neverActivatedCount=4.
+    All other SKU rows should show neverActivatedCount=0.
+    """
+    device_rows = [
+        # BlueArrow: 13 active
+        *[{"skuKey": "BlueArrow Fuel Service", "neverActivated": False}] * 13,
+        # GO SW-SI2: 249 active + 4 never-activated (inherited)
+        *[{"skuKey": "Geotab Service (GO SW-SI2)", "neverActivated": False}] * 249,
+        *[{"skuKey": "Geotab Service (GO SW-SI2)", "neverActivated": True}] * 4,
+    ]
+    myadmin_by_sku, never_by_sku = simulate_never_activated_by_sku(device_rows)
+
+    assert myadmin_by_sku["BlueArrow Fuel Service"] == 13
+    assert myadmin_by_sku["Geotab Service (GO SW-SI2)"] == 253  # 249 + 4
+
+    # KEY ASSERTION: never-activated count is per-SKU, not customer-level total
+    assert never_by_sku.get("BlueArrow Fuel Service", 0) == 0, \
+        "BlueArrow row should show 0 never-activated, not the customer total"
+    assert never_by_sku.get("Geotab Service (GO SW-SI2)", 0) == 4, \
+        "GO SW-SI2 row should show 4 (the devices that actually inherited this SKU)"
+    print("PASS test_per_sku_never_activated_count")
+
+
+def test_per_sku_never_activated_split_across_skus():
+    """
+    Stokes County scenario: 1 never-activated device, 5 SKU rows.
+    The 1 never-activated device inherits 'Geotab Service (GO SW-SI2)'.
+    Only that SKU row should show neverActivatedCount=1.
+    All others should show 0.
+    """
+    # 20 active on GO SW-SI2, 1 never-activated inherits GO SW-SI2
+    # Other SKUs have only QB data (myAdminCount=0)
+    device_rows = [
+        *[{"skuKey": "Geotab Service (GO SW-SI2)", "neverActivated": False}] * 20,
+        {"skuKey": "Geotab Service (GO SW-SI2)", "neverActivated": True},  # 1 inherited
+    ]
+    _, never_by_sku = simulate_never_activated_by_sku(device_rows)
+
+    assert never_by_sku.get("Geotab Service (GO SW-SI2)", 0) == 1
+    # SKUs with no device_rows entries (QB-only) won't appear in never_by_sku at all
+    assert never_by_sku.get("GO9 SW", 0) == 0
+    assert never_by_sku.get("Geotab Service (GO SW-SI3)", 0) == 0
+    assert never_by_sku.get("Geotab Shipping", 0) == 0
+    print("PASS test_per_sku_never_activated_split_across_skus")
+
+
+def test_no_never_activated_devices():
+    """Customer with zero never-activated devices: all rows should show 0."""
+    device_rows = [
+        {"skuKey": "Geotab Service (GO SW-SI2)", "neverActivated": False},
+        {"skuKey": "Geotab Service (GO SW-SI2)", "neverActivated": False},
+        {"skuKey": "BlueArrow Fuel Service", "neverActivated": False},
+    ]
+    _, never_by_sku = simulate_never_activated_by_sku(device_rows)
+    assert never_by_sku == {}, f"Expected empty dict, got {never_by_sku}"
+    print("PASS test_no_never_activated_devices")
+
+
+# ---------------------------------------------------------------------------
+# Runner — must be last so all test functions are defined
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
@@ -268,6 +353,9 @@ if __name__ == "__main__":
         test_case_insensitive_promo,
         test_empty_groups,
         test_scale_ground_truth,
+        test_per_sku_never_activated_count,
+        test_per_sku_never_activated_split_across_skus,
+        test_no_never_activated_devices,
     ]
 
     passed = failed = 0

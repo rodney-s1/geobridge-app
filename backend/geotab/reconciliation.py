@@ -911,10 +911,16 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         # Never-activated devices on Standard accounts count toward the SKU qty
         # because the customer is billed for them regardless of activation status.
         myadmin_by_sku: Dict[str, int] = {}
+        # Also track how many of the never-activated devices landed on each SKU
+        # so qty_rows can show per-SKU never-activated counts instead of the
+        # customer-level total on every row.
+        never_activated_by_sku: Dict[str, int] = {}
         for row in device_rows:
             sk = row.get("skuKey") or ""
             if sk:
                 myadmin_by_sku[sk] = myadmin_by_sku.get(sk, 0) + 1
+                if row.get("neverActivated"):
+                    never_activated_by_sku[sk] = never_activated_by_sku.get(sk, 0) + 1
 
         # hanover_myadmin_total and han_cs_myadmin_total are incremented
         # per-device inside the device loop above (promoCode == "HANOVER" gate).
@@ -958,7 +964,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                     "qtyDelta":            0,
                     "qtyStatus":           "match",
                     "unmappedCount":       cust_unmapped_count,
-                    "neverActivatedCount": cust_never_activated,
+                    "neverActivatedCount": never_activated_by_sku.get(sku_key, 0),
                     "qbAuthoritative":     True,
                     "hanoverConsolidated": True,
                 })
@@ -980,7 +986,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                     "qtyDelta":            0,
                     "qtyStatus":           "match",
                     "unmappedCount":       cust_unmapped_count,
-                    "neverActivatedCount": cust_never_activated,
+                    "neverActivatedCount": never_activated_by_sku.get(sku_key, 0),
                     "qbAuthoritative":     True,
                 })
                 cust_qty_match += 1
@@ -1008,7 +1014,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 "qtyDelta":            qty_delta,
                 "qtyStatus":           qty_status,
                 "unmappedCount":       cust_unmapped_count,
-                "neverActivatedCount": cust_never_activated,
+                "neverActivatedCount": never_activated_by_sku.get(sku_key, 0),
             })
 
         cust_myadmin_total = len(devices)
