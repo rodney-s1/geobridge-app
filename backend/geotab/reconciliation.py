@@ -345,6 +345,11 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             "promoCode":       promo_code,
             "billingPlan":     billing_plan,
             "neverActivated":  is_never_activated,
+            # Preserve the sub-account tag (text inside braces, if any).
+            # e.g. "ACES Controls LLC {Han-CS}" -> subAccountTag = "Han-CS"
+            # Used in reconciliation to route {Han-CS} devices to the cost-share SKU
+            # regardless of the parent account's billing type.
+            "subAccountTag":   cname[brace+1:cname.rfind("}")].strip() if brace != -1 else "",
         })
 
     # -- Per-device reconciliation ---------------------------------------------
@@ -400,6 +405,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             serial          = dev.get("serialNumber") or ""
             norm_cname      = _normalize(cname)
             never_activated = dev.get("neverActivated", False)
+            sub_account_tag = dev.get("subAccountTag") or ""  # e.g. "Han-CS", "3rd Party Devices"
 
             # CUA: already filtered above.
             # Standard: never-activated devices inherit the most common active SKU —
@@ -544,12 +550,12 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             # Hanover Insurance and is invoiced on the HANOVER-CS Cust SKU
             # regardless of what MyAdmin reports as the billing plan.
             #
-            # "Hanover" is a DIFFERENT billing type: the customer IS a Hanover
-            # account but is invoiced directly on Geotab Service Fee (HANOVER)
-            # via the normal HANOVER rate plan code.  Their GO devices resolve
-            # correctly through Tier 4 (HANOVER → Geotab Service Fee (HANOVER))
-            # and must NOT be overridden here.
-            if billing_type == "Han-CS":
+            # Also fires when the device belongs to a "{Han-CS}" sub-account
+            # under a Hanover parent (e.g. "ACES Controls LLC {Han-CS}").
+            # The sub-account tag takes priority over the parent billing type.
+            #
+            # "Hanover" (without cost-share) must NOT be overridden here.
+            if billing_type == "Han-CS" or sub_account_tag.lower() == "han-cs":
                 sku_key      = HAN_CS_CUST_SKU
                 mapping_tier = "billing_type"
                 lookup_code  = f"Han-CS override ({billing_plan or promo_code or 'none'})"
@@ -748,6 +754,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         # Hanover customers: ALL GO devices roll up to the HIG master invoice,
         # regardless of which SKU they map to individually.  Count every device
         # that is NOT the Han-CS cost-share SKU toward the consolidated total.
+        # Devices in a "{Han-CS}" sub-account are already routed to HAN_CS_CUST_SKU
+        # by Tier 5, so they naturally fall into the exclusion below.
         if billing_type == "Hanover":
             for sk, cnt in myadmin_by_sku.items():
                 if sk != HAN_CS_CUST_SKU:
