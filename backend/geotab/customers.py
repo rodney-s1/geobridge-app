@@ -223,6 +223,35 @@ def _strip_han_cs(name: str) -> str:
     return stripped
 
 
+def _strip_sub_account_suffix(name: str) -> str:
+    """Strip a non-Han-CS sub-account brace suffix for QB lookups.
+
+    Sub-accounts in MyAdmin are named like 'AWT Construction Group Inc. {3rd Party Devices}'.
+    QuickBooks only has the parent name 'AWT Construction Group Inc.', so the brace
+    suffix must be removed before doing a QB lookup.
+
+    Rules:
+      - If there is no '{', return unchanged.
+      - If the FIRST token inside braces is 'han-cs', return unchanged —
+        '{Han-CS}' is an identity qualifier handled separately by _strip_han_cs().
+      - Otherwise, strip everything from the first '{' onward.
+
+    Examples:
+      'AWT Construction Group Inc. {3rd Party Devices}' -> 'AWT Construction Group Inc.'
+      'ACES Controls LLC {Han-CS} {Sub}'                -> 'ACES Controls LLC {Han-CS} {Sub}'  (unchanged -- han-cs identity)
+      'ACES Controls LLC {Han-CS}'                      -> 'ACES Controls LLC {Han-CS}'  (unchanged)
+      'Normal Customer Name'                            -> 'Normal Customer Name'  (unchanged)
+    """
+    idx = name.find("{")
+    if idx == -1:
+        return name
+    close = name.find("}", idx)
+    first_token = name[idx + 1 : close].strip() if close != -1 else ""
+    if first_token.lower() == "han-cs":
+        return name  # identity qualifier — leave as-is; _strip_han_cs handles it
+    return name[:idx].strip()
+
+
 def _clean_name(s: str) -> str:
     """Decode HTML entities in a MyAdmin company name.
     MyAdmin returns names like 'Aqua Hero Pool &amp; Spa Service';
@@ -267,10 +296,14 @@ def enrich_customer(customer: dict) -> dict:
     company_name = customer.get("customerName") or ""
     db_name      = customer.get("primaryDatabase") or ""
 
-    # Han-CS customers are stored in MyAdmin as e.g. 'ACES Controls LLC {Han-CS}'
-    # but QuickBooks has them under 'ACES Controls LLC'.  Strip the suffix so the
-    # qb_customers lookup succeeds and we get the correct billing type / terms / etc.
-    qb_lookup_name = _strip_han_cs(company_name)
+    # Build the QB lookup name by stripping suffixes in order:
+    #   1. Strip any non-Han-CS sub-account suffix, e.g. '{3rd Party Devices}',
+    #      so 'AWT Construction Group Inc. {3rd Party Devices}' looks up
+    #      'AWT Construction Group Inc.' and inherits the parent's billing type.
+    #   2. Strip '{Han-CS}' identity suffix, so 'ACES Controls LLC {Han-CS}'
+    #      looks up 'ACES Controls LLC' in QB.
+    # This ensures both sub-accounts and Han-CS customers resolve correctly.
+    qb_lookup_name = _strip_han_cs(_strip_sub_account_suffix(company_name))
     qb = qb_customers.get(normalize(qb_lookup_name)) or {}
 
     # Display name: prefer QB name (for non-Han-CS customers QB name is canonical);
@@ -286,7 +319,9 @@ def enrich_customer(customer: dict) -> dict:
 
     # Billing type priority:
     #   1. Manual override (billing_overrides.json)
-    #   2. QB Job Type (from qb_customers lookup)
+    #   2. QB Job Type (from qb_customers lookup — parent name after stripping suffixes)
+    #      Sub-accounts (e.g. 'AWT... {3rd Party Devices}') look up the parent QB
+    #      record and inherit its billing type here.
     #   3. If the company name has '{Han-CS}' suffix and QB has no override,
     #      default to 'Han-CS' (the name itself tells us the type).
     #   4. Fall back to 'Unknown'
