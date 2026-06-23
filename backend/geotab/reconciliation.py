@@ -344,6 +344,10 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         _normalize_loose(nc) for (nc, sk) in qb_qty_index
         if _HAN_CS_QB_SKU_PART in sk
     }
+    print(f"[recon-diag] qb_hanover_names ({len(qb_hanover_names)}): "
+          f"{sorted(qb_hanover_names)}")
+    print(f"[recon-diag] qb_han_cs_names ({len(qb_han_cs_names)}): "
+          f"{sorted(qb_han_cs_names)}")
 
     # -- Group contracts by company --------------------------------------------
     device_db_map: Dict[str, str] = {}
@@ -518,6 +522,14 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 billing_type = "Hanover"
             elif _nc in qb_han_cs_names:
                 billing_type = "Han-CS"
+
+        # DIAGNOSTIC: log customers still Unknown/Standard after all fallbacks,
+        # with device count — these are the ones contributing to the gap.
+        if billing_type in ("Unknown", "Standard"):
+            _dev_cnt = len(devices)
+            print(f"[recon-diag] unresolved billing_type={billing_type!r}  "
+                  f"devices={_dev_cnt}  name={cname!r}  "
+                  f"loose={_normalize_loose(cname)!r}")
 
         is_cua       = billing_type in ("CUA", "Charge Upon Activation")
 
