@@ -201,6 +201,28 @@ def normalize(name: str) -> str:
     return name.strip().lower()
 
 
+_HAN_CS_SUFFIX_LOWER = "{han-cs}"
+
+def _strip_han_cs(name: str) -> str:
+    """Strip the '{Han-CS}' suffix from a customer name for QB lookups.
+
+    MyAdmin stores Han-CS customers as e.g. 'ACES Controls LLC {Han-CS}'.
+    QuickBooks has only 'ACES Controls LLC' as the customer name.  When
+    looking up QB data (billing type, account number, etc.) for a Han-CS
+    customer we must strip the suffix so the lookup succeeds.
+
+    Examples:
+      'ACES Controls LLC {Han-CS}'   -> 'ACES Controls LLC'
+      'ACES Controls LLC'            -> 'ACES Controls LLC'  (unchanged)
+      'Hoopaugh Grading LLC'         -> 'Hoopaugh Grading LLC'  (unchanged)
+    """
+    stripped = name.strip()
+    lower    = stripped.lower()
+    if lower.endswith(_HAN_CS_SUFFIX_LOWER):
+        return stripped[: -len(_HAN_CS_SUFFIX_LOWER)].strip()
+    return stripped
+
+
 def _clean_name(s: str) -> str:
     """Decode HTML entities in a MyAdmin company name.
     MyAdmin returns names like 'Aqua Hero Pool &amp; Spa Service';
@@ -245,13 +267,33 @@ def enrich_customer(customer: dict) -> dict:
     company_name = customer.get("customerName") or ""
     db_name      = customer.get("primaryDatabase") or ""
 
-    qb = qb_customers.get(normalize(company_name)) or {}
-    display_name = qb.get("name") or company_name or f"Company {company_id}"
+    # Han-CS customers are stored in MyAdmin as e.g. 'ACES Controls LLC {Han-CS}'
+    # but QuickBooks has them under 'ACES Controls LLC'.  Strip the suffix so the
+    # qb_customers lookup succeeds and we get the correct billing type / terms / etc.
+    qb_lookup_name = _strip_han_cs(company_name)
+    qb = qb_customers.get(normalize(qb_lookup_name)) or {}
+
+    # Display name: prefer QB name (for non-Han-CS customers QB name is canonical);
+    # for Han-CS customers keep the full MyAdmin name with '{Han-CS}' as part of
+    # the identity so the Customers page shows it as a distinct entry.
+    is_han_cs_customer = company_name.strip().lower().endswith(_HAN_CS_SUFFIX_LOWER)
+    display_name = (
+        company_name  # keep full name including {Han-CS}
+        if is_han_cs_customer
+        else (qb.get("name") or company_name or f"Company {company_id}")
+    )
     cid = company_id or normalize(company_name)
 
+    # Billing type priority:
+    #   1. Manual override (billing_overrides.json)
+    #   2. QB Job Type (from qb_customers lookup)
+    #   3. If the company name has '{Han-CS}' suffix and QB has no override,
+    #      default to 'Han-CS' (the name itself tells us the type).
+    #   4. Fall back to 'Unknown'
     billing_type = (
         billing_overrides.get(cid)
         or qb.get("billingType")
+        or ("Han-CS" if is_han_cs_customer else None)
         or "Unknown"
     )
 

@@ -92,17 +92,80 @@ def _get_stores():
 def _normalize(s: str) -> str:
     """Normalise a customer name for index lookups.
 
-    Strips MyAdmin sub-account suffixes enclosed in braces so that
-    sub-accounts like 'Acme Corp {3rd Party Devices}' match against the
-    QuickBooks invoice name 'Acme Corp' — they are always on the same
-    invoice, just different line items.
+    Rules (mirrors _extract_parent):
+      • If the FIRST brace token is exactly "{Han-CS}" (case-insensitive),
+        it is kept as part of the name — Han-CS customers are distinct
+        entities from their non-Han-CS counterparts in QB.
+        Any SUBSEQUENT brace tokens are sub-account qualifiers and are
+        stripped.
+          'ACES Controls LLC {Han-CS}'            → 'aces controls llc {han-cs}'
+          'ACES Controls LLC {Han-CS} {Cameras}'  → 'aces controls llc {han-cs}'
+      • For all other first brace tokens, strip from the first brace onward
+        (original sub-account behaviour):
+          'Hoopaugh Grading LLC {3rd Party}'      → 'hoopaugh grading llc'
     """
     s = (s or "").strip()
-    # Strip trailing {...} sub-account qualifier (e.g. "{3rd Party Devices}")
-    brace = s.find("{")
-    if brace != -1:
-        s = s[:brace].strip()
-    return s.lower()
+    first_open = s.find("{")
+    if first_open == -1:
+        return s.lower()
+    first_close = s.find("}", first_open)
+    first_token = s[first_open + 1 : first_close].strip() if first_close != -1 else ""
+    if first_token.lower() == "han-cs":
+        # Keep "{Han-CS}" in the key; strip any further brace suffixes
+        base = s[:first_close + 1].strip()   # e.g. "ACES Controls LLC {Han-CS}"
+        return base.lower()
+    else:
+        # Ordinary sub-account suffix — strip from first brace
+        return s[:first_open].strip().lower()
+
+
+def _extract_parent(cname: str):
+    """Extract the canonical parent name and sub-account tag from a MyAdmin
+    company name.
+
+    MyAdmin naming convention:
+      • "Acme Corp"                         → parent='Acme Corp',      sub=''
+      • "Acme Corp {3rd Party Devices}"     → parent='Acme Corp',      sub='3rd Party Devices'
+      • "ACES Controls LLC {Han-CS}"        → parent='ACES Controls LLC {Han-CS}', sub=''
+      • "ACES Controls LLC {Han-CS} {Cameras}" → parent='ACES Controls LLC {Han-CS}', sub='Cameras'
+
+    Rule:
+      1. Find the first "{...}" token.
+      2. If it is "{Han-CS}" (case-insensitive), include it in the parent
+         name; look for a SECOND "{...}" token for the sub-account tag.
+      3. Otherwise, everything from the first "{" onward is stripped from
+         the parent name and the content of the first braces is the tag.
+
+    Returns:
+        (parent_name: str, sub_account_tag: str)
+    """
+    first_open  = cname.find("{")
+    if first_open == -1:
+        return cname, ""
+
+    first_close = cname.find("}", first_open)
+    if first_close == -1:
+        # Malformed — treat whole name as parent
+        return cname, ""
+
+    first_token = cname[first_open + 1 : first_close].strip()
+
+    if first_token.lower() == "han-cs":
+        # "{Han-CS}" is part of the identity — include it in parent name.
+        parent_name = cname[:first_close + 1].strip()
+        # Look for a sub-account tag after the {Han-CS} token.
+        rest       = cname[first_close + 1:].strip()
+        sub_open   = rest.find("{")
+        if sub_open != -1:
+            sub_close = rest.find("}", sub_open)
+            sub_tag   = rest[sub_open + 1 : sub_close].strip() if sub_close != -1 else ""
+        else:
+            sub_tag = ""
+        return parent_name, sub_tag
+    else:
+        # Ordinary sub-account: strip from first brace; the token itself is the tag.
+        parent_name = cname[:first_open].strip()
+        return parent_name, first_token
 
 
 # --- Helper: resolve expected price for (customerName, skuKey) ---------------
@@ -262,9 +325,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         if not cid:
             continue
 
-        # Strip {sub-account} suffix to get the parent name and its key.
-        brace = cname.find("{")
-        parent_name = cname[:brace].strip() if brace != -1 else cname
+        # Derive parent name / key using the Han-CS-aware extractor.
+        parent_name, _sub_tag = _extract_parent(cname)
         parent_key  = _normalize(parent_name)
         _parent_key_for_cid[cid] = parent_key
 
@@ -284,8 +346,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             continue
 
         # Derive parent name / key (same logic as first pass).
-        brace = cname.find("{")
-        parent_name = cname[:brace].strip() if brace != -1 else cname
+        parent_name, sub_account_tag = _extract_parent(cname)
         parent_key  = _normalize(parent_name)
 
         # Apply customer_id filter: include only contracts whose parent group
@@ -345,11 +406,14 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             "promoCode":       promo_code,
             "billingPlan":     billing_plan,
             "neverActivated":  is_never_activated,
-            # Preserve the sub-account tag (text inside braces, if any).
-            # e.g. "ACES Controls LLC {Han-CS}" -> subAccountTag = "Han-CS"
-            # Used in reconciliation to route {Han-CS} devices to the cost-share SKU
-            # regardless of the parent account's billing type.
-            "subAccountTag":   cname[brace+1:cname.rfind("}")].strip() if brace != -1 else "",
+            # sub_account_tag from _extract_parent:
+            #   - "ACES Controls LLC {Han-CS} {Cameras}" → "Cameras"
+            #   - "Acme Corp {3rd Party Devices}"        → "3rd Party Devices"
+            #   - "ACES Controls LLC {Han-CS}"           → ""  (tag is empty; Han-CS is the parent)
+            # Tier 5 uses this to route {Han-CS} sub-account devices to HAN_CS_CUST_SKU.
+            # For top-level Han-CS customers (billing_type == 'Han-CS'), Tier 5 fires
+            # directly on billing_type — sub_account_tag will be empty here.
+            "subAccountTag":   sub_account_tag,
         })
 
     # -- Per-device reconciliation ---------------------------------------------
@@ -550,9 +614,15 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             # Hanover Insurance and is invoiced on the HANOVER-CS Cust SKU
             # regardless of what MyAdmin reports as the billing plan.
             #
-            # Also fires when the device belongs to a "{Han-CS}" sub-account
-            # under a Hanover parent (e.g. "ACES Controls LLC {Han-CS}").
-            # The sub-account tag takes priority over the parent billing type.
+            # MyAdmin stores Han-CS customers with "{Han-CS}" as part of the
+            # company name (e.g. "ACES Controls LLC {Han-CS}").  _extract_parent
+            # treats "{Han-CS}" as part of the parent name, so these customers
+            # appear as standalone entries with billing_type == "Han-CS".
+            # Any further sub-accounts under them (e.g. "{Cameras}") are merged
+            # under that parent and inherit the same billing_type.
+            #
+            # sub_account_tag.lower() == "han-cs" is kept as a safety net for
+            # any legacy device records that may still carry it.
             #
             # "Hanover" (without cost-share) must NOT be overridden here.
             if billing_type == "Han-CS" or sub_account_tag.lower() == "han-cs":
