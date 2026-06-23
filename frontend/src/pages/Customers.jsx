@@ -34,23 +34,69 @@ function BillingBadge({ type }) {
 }
 
 // ─── Sub-account grouping helpers ─────────────────────────────────────────────
-// Returns the parent name: strips " {anything}" suffix from the end.
-// "City of Raleigh {Cameras}" → "City of Raleigh"
-// "City of Raleigh - Solid Waste {Cameras}" → "City of Raleigh - Solid Waste"
-// "Acme Corp" → "Acme Corp"  (unchanged — it IS the parent)
+// ── Han-CS-aware name helpers ────────────────────────────────────────────────
+// MyAdmin naming convention:
+//   "ACES Controls LLC {Han-CS}"            → parent name (Han-CS is identity)
+//   "ACES Controls LLC {Han-CS} {Cameras}"  → sub of "ACES Controls LLC {Han-CS}"
+//   "City of Raleigh {Cameras}"             → sub of "City of Raleigh"
+//   "Acme Corp"                             → standalone parent
+//
+// Rule: if the FIRST {token} is "han-cs" (case-insensitive), it belongs to
+// the parent name.  A SECOND {token} (if present) is the sub-account label.
+// For all other first tokens, strip from the first { onward (original behaviour).
+
+function _firstToken(name) {
+  const open  = name.indexOf('{')
+  if (open === -1) return null
+  const close = name.indexOf('}', open)
+  if (close === -1) return null
+  return name.slice(open + 1, close).trim()
+}
+
+// Returns the canonical parent name.
+// "ACES Controls LLC {Han-CS}"           → "ACES Controls LLC {Han-CS}"
+// "ACES Controls LLC {Han-CS} {Cameras}" → "ACES Controls LLC {Han-CS}"
+// "City of Raleigh {Cameras}"            → "City of Raleigh"
+// "Acme Corp"                            → "Acme Corp"
 function getParentName(name) {
-  const idx = name.indexOf('{')
-  if (idx === -1) return name
-  return name.slice(0, idx).trimEnd()
+  const open = name.indexOf('{')
+  if (open === -1) return name
+  const token = _firstToken(name)
+  if (token && token.toLowerCase() === 'han-cs') {
+    // {Han-CS} is part of the parent — include it, stop there
+    const close = name.indexOf('}', open)
+    return name.slice(0, close + 1).trimEnd()
+  }
+  // Ordinary sub-account suffix — strip from first {
+  return name.slice(0, open).trimEnd()
 }
 
+// Returns true if this name is a sub-account entry (should be indented under parent).
 function isSubAccount(name) {
-  return name.includes('{')
+  const token = _firstToken(name)
+  if (!token) return false
+  if (token.toLowerCase() === 'han-cs') {
+    // Only a sub-account if there is a SECOND {token} after {Han-CS}
+    const close = name.indexOf('}', name.indexOf('{'))
+    return name.indexOf('{', close + 1) !== -1
+  }
+  return true
 }
 
-// Returns the sub-account label: the part inside {…}
-// "City of Raleigh {Cameras}" → "Cameras"
+// Returns the sub-account label: the part inside the RELEVANT {…}.
+// For Han-CS names the label is the SECOND brace token (first is identity).
+// "ACES Controls LLC {Han-CS} {Cameras}" → "Cameras"
+// "City of Raleigh {Cameras}"            → "Cameras"
 function getSubLabel(name) {
+  const token = _firstToken(name)
+  if (token && token.toLowerCase() === 'han-cs') {
+    // Skip the first {Han-CS} token and grab the second
+    const firstClose = name.indexOf('}', name.indexOf('{'))
+    const secondOpen  = name.indexOf('{', firstClose + 1)
+    if (secondOpen === -1) return ''
+    const secondClose = name.indexOf('}', secondOpen)
+    return secondClose !== -1 ? name.slice(secondOpen + 1, secondClose).trim() : ''
+  }
   const m = name.match(/\{([^}]+)\}/)
   return m ? m[1] : ''
 }
