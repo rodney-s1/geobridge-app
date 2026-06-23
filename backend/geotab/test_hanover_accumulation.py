@@ -337,6 +337,173 @@ def test_no_never_activated_devices():
 
 
 # ---------------------------------------------------------------------------
+# Tests: _extract_parent parenthesis path + _strip_dealer_suffix
+# ---------------------------------------------------------------------------
+
+import sys as _sys
+_sys.path.insert(0, _sys.path[0].replace("geotab", "") if "geotab" in _sys.path[0] else _sys.path[0])
+# Import helpers directly from reconciliation module
+try:
+    import importlib.util as _ilu
+    import os as _os
+    _HERE = _os.path.dirname(_os.path.abspath(__file__))
+    _spec = _ilu.spec_from_file_location("recon", _os.path.join(_HERE, "reconciliation.py"))
+    _recon = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_recon)
+    _extract_parent    = _recon._extract_parent
+    _strip_dealer_suffix = _recon._strip_dealer_suffix
+    _normalize         = _recon._normalize
+    _RECON_AVAILABLE   = True
+except Exception as _e:
+    _RECON_AVAILABLE   = False
+    _RECON_SKIP_REASON = str(_e)
+
+
+def _skip_if_no_recon(fn):
+    """Decorator: skip test with a warning if reconciliation.py couldn't be loaded."""
+    def wrapper():
+        if not _RECON_AVAILABLE:
+            print(f"SKIP {fn.__name__}: reconciliation.py not importable ({_RECON_SKIP_REASON})")
+            return
+        fn()
+    wrapper.__name__ = fn.__name__
+    return wrapper
+
+
+@_skip_if_no_recon
+def test_extract_parent_paren_basic():
+    """'Acme Corp (Cameras)' → parent='Acme Corp', sub='Cameras'."""
+    p, s = _extract_parent("Acme Corp (Cameras)")
+    assert p == "Acme Corp", f"Expected 'Acme Corp', got {p!r}"
+    assert s == "Cameras",   f"Expected 'Cameras', got {s!r}"
+    print("PASS test_extract_parent_paren_basic")
+
+
+@_skip_if_no_recon
+def test_extract_parent_paren_with_dealer_suffix():
+    """'Absolute Services (Cameras) - Trey Banks' → parent='Absolute Services - Trey Banks', sub='Cameras'.
+
+    The dealer suffix is preserved in the parent name so both the main account
+    ('Absolute Services - Trey Banks') and camera sub-account normalise to the
+    same parent_key ('absolute services - trey banks').
+    """
+    p, s = _extract_parent("Absolute Services (Cameras) - Trey Banks")
+    assert p == "Absolute Services - Trey Banks", \
+        f"Expected 'Absolute Services - Trey Banks', got {p!r}"
+    assert s == "Cameras", f"Expected 'Cameras', got {s!r}"
+    print("PASS test_extract_parent_paren_with_dealer_suffix")
+
+
+@_skip_if_no_recon
+def test_extract_parent_paren_grouping():
+    """Main account and (Cameras) sub-account must produce the same parent_key."""
+    p_main, _ = _extract_parent("Absolute Services - Trey Banks")
+    p_cam,  _ = _extract_parent("Absolute Services (Cameras) - Trey Banks")
+    k_main = _normalize(p_main)
+    k_cam  = _normalize(p_cam)
+    assert k_main == k_cam, \
+        f"parent_keys differ: main={k_main!r}  camera={k_cam!r}"
+    print("PASS test_extract_parent_paren_grouping")
+
+
+@_skip_if_no_recon
+def test_extract_parent_paren_qb_norm():
+    """After _strip_dealer_suffix, both names must produce the same QB lookup key."""
+    p_main, _ = _extract_parent("Absolute Services - Trey Banks")
+    p_cam,  _ = _extract_parent("Absolute Services (Cameras) - Trey Banks")
+    qb_main = _normalize(_strip_dealer_suffix(p_main))
+    qb_cam  = _normalize(_strip_dealer_suffix(p_cam))
+    assert qb_main == "absolute services", \
+        f"Expected 'absolute services', got {qb_main!r}"
+    assert qb_main == qb_cam, \
+        f"QB norm keys differ: main={qb_main!r}  camera={qb_cam!r}"
+    print("PASS test_extract_parent_paren_qb_norm")
+
+
+@_skip_if_no_recon
+def test_extract_parent_no_paren():
+    """Plain name without any braces or parens is returned unchanged."""
+    p, s = _extract_parent("Acme Corp")
+    assert p == "Acme Corp", f"Expected 'Acme Corp', got {p!r}"
+    assert s == "",           f"Expected empty sub, got {s!r}"
+    print("PASS test_extract_parent_no_paren")
+
+
+@_skip_if_no_recon
+def test_extract_parent_brace_wins_over_paren():
+    """Curly-brace path takes priority; parenthesis path is NOT invoked when braces exist."""
+    # Ordinary sub-account via braces
+    p, s = _extract_parent("Hoopaugh Grading LLC {3rd Party}")
+    assert p == "Hoopaugh Grading LLC", f"Expected 'Hoopaugh Grading LLC', got {p!r}"
+    assert s == "3rd Party",            f"Expected '3rd Party', got {s!r}"
+    print("PASS test_extract_parent_brace_wins_over_paren")
+
+
+# ---------------------------------------------------------------------------
+# Tests: _strip_dealer_suffix — personal name detection
+# ---------------------------------------------------------------------------
+
+@_skip_if_no_recon
+def test_strip_single_word_personal_name():
+    """'Acme Corp - Smith' → 'Acme Corp' (single Title-Cased word)."""
+    assert _strip_dealer_suffix("Acme Corp - Smith") == "Acme Corp", \
+        f"Got {_strip_dealer_suffix('Acme Corp - Smith')!r}"
+    print("PASS test_strip_single_word_personal_name")
+
+
+@_skip_if_no_recon
+def test_strip_two_word_personal_name():
+    """'Absolute Services - Trey Banks' → 'Absolute Services'."""
+    assert _strip_dealer_suffix("Absolute Services - Trey Banks") == "Absolute Services", \
+        f"Got {_strip_dealer_suffix('Absolute Services - Trey Banks')!r}"
+    print("PASS test_strip_two_word_personal_name")
+
+
+@_skip_if_no_recon
+def test_strip_no_suffix():
+    """Name with no ' - ' suffix is returned unchanged."""
+    assert _strip_dealer_suffix("Absolute Services") == "Absolute Services"
+    assert _strip_dealer_suffix("City of Durham") == "City of Durham"
+    print("PASS test_strip_no_suffix")
+
+
+@_skip_if_no_recon
+def test_strip_org_suffix_not_stripped():
+    """'City of Durham - General Services' must NOT be stripped (org vocabulary)."""
+    result = _strip_dealer_suffix("City of Durham - General Services")
+    assert result == "City of Durham - General Services", \
+        f"False-positive strip: got {result!r}, expected unchanged"
+    print("PASS test_strip_org_suffix_not_stripped")
+
+
+@_skip_if_no_recon
+def test_strip_service_word_not_stripped():
+    """'ACG - Allegiance Contracting Group' — 3 words, must NOT be stripped."""
+    result = _strip_dealer_suffix("ACG - Allegiance Contracting Group")
+    assert result == "ACG - Allegiance Contracting Group", \
+        f"False-positive strip: got {result!r}"
+    print("PASS test_strip_service_word_not_stripped")
+
+
+@_skip_if_no_recon
+def test_strip_single_org_word_not_stripped():
+    """'Durham - Services' — 'Services' is an org word, must NOT be stripped."""
+    result = _strip_dealer_suffix("Durham - Services")
+    assert result == "Durham - Services", \
+        f"False-positive: got {result!r}"
+    print("PASS test_strip_single_org_word_not_stripped")
+
+
+@_skip_if_no_recon
+def test_strip_hyphenated_surname():
+    """'Some Corp - Mary-Jane' — hyphenated personal name should strip."""
+    result = _strip_dealer_suffix("Some Corp - Mary-Jane")
+    # "Mary-Jane" matches [A-Z][a-z][a-zA-Z-]* — single word, no org vocab → strip
+    assert result == "Some Corp", f"Got {result!r}"
+    print("PASS test_strip_hyphenated_surname")
+
+
+# ---------------------------------------------------------------------------
 # Runner — must be last so all test functions are defined
 # ---------------------------------------------------------------------------
 
@@ -355,6 +522,22 @@ if __name__ == "__main__":
         test_scale_ground_truth,
         test_per_sku_never_activated_count,
         test_per_sku_never_activated_split_across_skus,
+        test_no_never_activated_devices,
+        # _extract_parent parenthesis path
+        test_extract_parent_paren_basic,
+        test_extract_parent_paren_with_dealer_suffix,
+        test_extract_parent_paren_grouping,
+        test_extract_parent_paren_qb_norm,
+        test_extract_parent_no_paren,
+        test_extract_parent_brace_wins_over_paren,
+        # _strip_dealer_suffix
+        test_strip_single_word_personal_name,
+        test_strip_two_word_personal_name,
+        test_strip_no_suffix,
+        test_strip_org_suffix_not_stripped,
+        test_strip_service_word_not_stripped,
+        test_strip_single_org_word_not_stripped,
+        test_strip_hyphenated_surname,
         test_no_never_activated_devices,
     ]
 

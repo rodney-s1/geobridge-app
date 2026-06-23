@@ -1,5 +1,13 @@
 [
   {
+    "id": "Absolute Services|PRO MODE",
+    "customerName": "Absolute Services",
+    "ratePlanCode": "PRO MODE",
+    "skuKey": "Service Fee Geotab (Pro V2)",
+    "defaultPrice": 28.95,
+    "notes": "Absolute Services GO9 devices (Pro Mode) billed at Pro V2 per QB invoice"
+  },
+  {
     "id": "Enterprise Holdings|CELU-TP-250",
     "customerName": "Enterprise Holdings",
     "ratePlanCode": "CELU-TP-250",
