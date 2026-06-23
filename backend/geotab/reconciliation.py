@@ -827,9 +827,21 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         # Devices in a "{Han-CS}" sub-account are already routed to HAN_CS_CUST_SKU
         # by Tier 5, so they naturally fall into the exclusion below.
         if billing_type == "Hanover":
+            cust_hanover_contrib = 0
             for sk, cnt in myadmin_by_sku.items():
                 if sk != HAN_CS_CUST_SKU:
                     hanover_myadmin_total += cnt
+                    cust_hanover_contrib  += cnt
+            unmapped_cnt = sum(
+                1 for row in device_rows
+                if row.get("status") == "unmapped" and not row.get("neverActivated")
+            )
+            print(
+                f"[hanover-debug] {cname!r:50s}  "
+                f"devices={len(devices)}  contrib={cust_hanover_contrib}  "
+                f"unmapped={unmapped_cnt}  "
+                f"sku_breakdown={dict(myadmin_by_sku)}"
+            )
 
         norm_cname = _normalize(cname)
         qty_rows = []
@@ -980,6 +992,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         })
 
     # -- QB-only customers -------------------------------------------------------
+    print(f"[hanover-debug] TOTAL hanover_myadmin_total={hanover_myadmin_total}  "
+          f"hanover_customer_count={sum(1 for _,cd in company_map.items() if next((billing_type_index[c] for c in (cd.get('subAccountIds') or {cd['customerId']}) if c in billing_type_index), cd.get('billingType','Standard')) == 'Hanover')}")
     # Some QB customers (e.g. Hanover Insurance Group) are pure billing accounts
     # with no MyAdmin presence.  They have entries in qb_qty_index but were never
     # added to company_map.  Inject them as stub rows so their QB qty is visible
