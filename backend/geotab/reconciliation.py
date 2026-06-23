@@ -416,7 +416,33 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             "subAccountTag":   sub_account_tag,
         })
 
+    # DEBUG: show billing_type distribution in billing_type_index
+    _bt_dist: Dict[str, int] = {}
+    for _bt in billing_type_index.values():
+        _bt_dist[_bt] = _bt_dist.get(_bt, 0) + 1
+    print(f"[hanover-debug] billing_type_index has {len(billing_type_index)} entries: {dict(sorted(_bt_dist.items()))}")
+
     # -- Per-device reconciliation ---------------------------------------------
+    # but whose cid is missing from billing_type_index entirely — these are the
+    # customers whose billing type can't be determined from QB data.
+    _missing_bt = []
+    for _pk, _cd in company_map.items():
+        _cid = _cd["customerId"]
+        _sub_cids = _cd.get("subAccountIds") or {_cid}
+        _resolved = next(
+            (billing_type_index[c] for c in _sub_cids if c in billing_type_index),
+            None
+        )
+        if _resolved is None:
+            _missing_bt.append((_cd["customerName"], len(_cd["devices"]), _cid))
+    _missing_bt.sort(key=lambda x: -x[1])
+    if _missing_bt:
+        print(f"[hanover-debug] {len(_missing_bt)} customers NOT in billing_type_index "
+              f"(will default to 'Standard'):")
+        for _n, _d, _c in _missing_bt[:30]:
+            print(f"[hanover-debug]   cid={_c}  devices={_d:4d}  name={_n!r}")
+        if len(_missing_bt) > 30:
+            print(f"[hanover-debug]   ... and {len(_missing_bt)-30} more")
     STATUS_PRIORITY = {"discrepancy": 0, "unmapped": 1, "no_price": 2, "not_in_qb": 3, "ok": 4}
 
     result_customers = []
