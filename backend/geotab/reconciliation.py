@@ -298,6 +298,20 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         for q in qb_qtys
     }
 
+    # Set of normalised QB customer names that have a HANOVER or Han-CS line on
+    # their invoice.  Used as a fallback to detect Hanover/Han-CS customers whose
+    # MyAdmin name doesn't exactly match the QB name (name mismatch → "Unknown").
+    _HANOVER_QB_SKU     = "Geotab Service Fee (HANOVER)"
+    _HAN_CS_QB_SKU_PART = "HANOVER-CS"   # substring present in HAN_CS_CUST_SKU
+    qb_hanover_names: set = {
+        nc for (nc, sk) in qb_qty_index
+        if sk == _HANOVER_QB_SKU
+    }
+    qb_han_cs_names: set = {
+        nc for (nc, sk) in qb_qty_index
+        if _HAN_CS_QB_SKU_PART in sk
+    }
+
     # -- Group contracts by company --------------------------------------------
     device_db_map: Dict[str, str] = {}
     for rec in device_db_records:
@@ -416,33 +430,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             "subAccountTag":   sub_account_tag,
         })
 
-    # DEBUG: show billing_type distribution in billing_type_index
-    _bt_dist: Dict[str, int] = {}
-    for _bt in billing_type_index.values():
-        _bt_dist[_bt] = _bt_dist.get(_bt, 0) + 1
-    print(f"[hanover-debug] billing_type_index has {len(billing_type_index)} entries: {dict(sorted(_bt_dist.items()))}")
-
     # -- Per-device reconciliation ---------------------------------------------
-    # but whose cid is missing from billing_type_index entirely — these are the
-    # customers whose billing type can't be determined from QB data.
-    _missing_bt = []
-    for _pk, _cd in company_map.items():
-        _cid = _cd["customerId"]
-        _sub_cids = _cd.get("subAccountIds") or {_cid}
-        _resolved = next(
-            (billing_type_index[c] for c in _sub_cids if c in billing_type_index),
-            None
-        )
-        if _resolved is None:
-            _missing_bt.append((_cd["customerName"], len(_cd["devices"]), _cid))
-    _missing_bt.sort(key=lambda x: -x[1])
-    if _missing_bt:
-        print(f"[hanover-debug] {len(_missing_bt)} customers NOT in billing_type_index "
-              f"(will default to 'Standard'):")
-        for _n, _d, _c in _missing_bt[:30]:
-            print(f"[hanover-debug]   cid={_c}  devices={_d:4d}  name={_n!r}")
-        if len(_missing_bt) > 30:
-            print(f"[hanover-debug]   ... and {len(_missing_bt)-30} more")
     STATUS_PRIORITY = {"discrepancy": 0, "unmapped": 1, "no_price": 2, "not_in_qb": 3, "ok": 4}
 
     result_customers = []
@@ -470,6 +458,20 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             (billing_type_index[c] for c in sub_cids if c in billing_type_index),
             cdata.get("billingType") or "Standard",
         )
+
+        # Fallback: if billing_type is still Unknown or Standard, check the QB
+        # invoice index by customer name.  Many Hanover customers have a name
+        # mismatch between MyAdmin and QB (e.g. case, punctuation, suffix
+        # differences) that causes enrich_customer() to return "Unknown".
+        # The QB invoice is ground truth: if the customer's normalised name
+        # appears as the payer of a HANOVER SKU line, they are Hanover.
+        if billing_type in ("Unknown", "Standard"):
+            _nc = _normalize(cname)
+            if _nc in qb_hanover_names:
+                billing_type = "Hanover"
+            elif _nc in qb_han_cs_names:
+                billing_type = "Han-CS"
+
         is_cua       = billing_type in ("CUA", "Charge Upon Activation")
 
         cust_ok = cust_over = cust_under = cust_unmapped = cust_no_price = 0
@@ -853,21 +855,9 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         # Devices in a "{Han-CS}" sub-account are already routed to HAN_CS_CUST_SKU
         # by Tier 5, so they naturally fall into the exclusion below.
         if billing_type == "Hanover":
-            cust_hanover_contrib = 0
             for sk, cnt in myadmin_by_sku.items():
                 if sk != HAN_CS_CUST_SKU:
                     hanover_myadmin_total += cnt
-                    cust_hanover_contrib  += cnt
-            unmapped_cnt = sum(
-                1 for row in device_rows
-                if row.get("status") == "unmapped" and not row.get("neverActivated")
-            )
-            print(
-                f"[hanover-debug] {cname!r:50s}  "
-                f"devices={len(devices)}  contrib={cust_hanover_contrib}  "
-                f"unmapped={unmapped_cnt}  "
-                f"sku_breakdown={dict(myadmin_by_sku)}"
-            )
 
         norm_cname = _normalize(cname)
         qty_rows = []
@@ -1018,8 +1008,6 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         })
 
     # -- QB-only customers -------------------------------------------------------
-    print(f"[hanover-debug] TOTAL hanover_myadmin_total={hanover_myadmin_total}  "
-          f"hanover_customer_count={sum(1 for _,cd in company_map.items() if next((billing_type_index[c] for c in (cd.get('subAccountIds') or {cd['customerId']}) if c in billing_type_index), cd.get('billingType','Standard')) == 'Hanover')}")
     # Some QB customers (e.g. Hanover Insurance Group) are pure billing accounts
     # with no MyAdmin presence.  They have entries in qb_qty_index but were never
     # added to company_map.  Inject them as stub rows so their QB qty is visible
