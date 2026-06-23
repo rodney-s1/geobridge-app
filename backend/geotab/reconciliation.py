@@ -344,10 +344,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         _normalize_loose(nc) for (nc, sk) in qb_qty_index
         if _HAN_CS_QB_SKU_PART in sk
     }
-    print(f"[recon-diag] qb_hanover_names ({len(qb_hanover_names)}): "
-          f"{sorted(qb_hanover_names)}")
-    print(f"[recon-diag] qb_han_cs_names ({len(qb_han_cs_names)}): "
-          f"{sorted(qb_han_cs_names)}")
+
 
     # -- Group contracts by company --------------------------------------------
     device_db_map: Dict[str, str] = {}
@@ -522,14 +519,6 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 billing_type = "Hanover"
             elif _nc in qb_han_cs_names:
                 billing_type = "Han-CS"
-
-        # DIAGNOSTIC: log customers still Unknown/Standard after all fallbacks,
-        # with device count — these are the ones contributing to the gap.
-        if billing_type in ("Unknown", "Standard"):
-            _dev_cnt = len(devices)
-            print(f"[recon-diag] unresolved billing_type={billing_type!r}  "
-                  f"devices={_dev_cnt}  name={cname!r}  "
-                  f"loose={_normalize_loose(cname)!r}")
 
         is_cua       = billing_type in ("CUA", "Charge Upon Activation")
 
@@ -722,6 +711,25 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             if sku_key:
                 active_sku_counts[sku_key] = active_sku_counts.get(sku_key, 0) + 1
 
+            # Per-device promoCode-gated accumulation for the HIG master row.
+            # promoCode is ground truth — only devices explicitly tagged
+            # "HANOVER" belong in these totals, regardless of SKU or billing_type.
+            #
+            # Han-CS split: a device is Han-CS if its account is Han-CS
+            # (billing_type == "Han-CS") OR the device came from a {Han-CS}
+            # sub-account (sub_account_tag.lower() == "han-cs").
+            # All other HANOVER-promo devices on non-Han-CS CELU01 accounts
+            # belong to the standard "Geotab Service Fee (HANOVER)" bucket.
+            if promo_code == "HANOVER" and not never_activated:
+                _is_han_cs_device = (
+                    billing_type == "Han-CS"
+                    or sub_account_tag.lower() == "han-cs"
+                )
+                if _is_han_cs_device:
+                    han_cs_myadmin_total += 1
+                else:
+                    hanover_myadmin_total += 1
+
             # Display label: prefer promoCode if it exists, else billingPlan
             display_plan = promo_code or billing_plan or "(none)"
 
@@ -908,27 +916,9 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             if sk:
                 myadmin_by_sku[sk] = myadmin_by_sku.get(sk, 0) + 1
 
-        # Hanover master invoice accumulation — driven by SKU, not billing_type label.
-        #
-        # Rule (per user): "Geotab Service Fee (HANOVER)" counts every device
-        # across all CELU01 accounts that has promoCode == "HANOVER" AND is on
-        # a GO Plan — i.e. every device that resolved to the HANOVER SKU via
-        # the normal Tier 3/4 mapping AND was NOT overridden to HAN_CS_CUST_SKU
-        # by Tier 5.  We accumulate by skuKey from myadmin_by_sku, which already
-        # has the correct split: Tier 5 routes {Han-CS} account devices to
-        # HAN_CS_CUST_SKU before they ever land in "Geotab Service Fee (HANOVER)".
-        #
-        # "Service Fee (HANOVER-CS)": only {Han-CS} account devices that have
-        # promoCode == "HANOVER" → Tier 5 routes them to HAN_CS_CUST_SKU.
-        #
-        # Both accumulate from ANY customer whose devices map to those SKUs —
-        # billing_type is NOT used as a gate here (that label may be Unknown
-        # due to name mismatches, but the promo code is always ground truth).
-        _HANOVER_SKU = "Geotab Service Fee (HANOVER)"
-        if _HANOVER_SKU in myadmin_by_sku:
-            hanover_myadmin_total += myadmin_by_sku[_HANOVER_SKU]
-        if HAN_CS_CUST_SKU in myadmin_by_sku:
-            han_cs_myadmin_total += myadmin_by_sku[HAN_CS_CUST_SKU]
+        # hanover_myadmin_total and han_cs_myadmin_total are incremented
+        # per-device inside the device loop above (promoCode == "HANOVER" gate).
+        # No post-loop accumulation needed here.
 
         norm_cname = _normalize(cname)
         qty_rows = []
@@ -959,7 +949,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             _is_hanover_sku = (sku_key == "Geotab Service Fee (HANOVER)")
             _is_han_cs_sku  = (sku_key == HAN_CS_CUST_SKU)
             if (_is_hanover_sku or _is_han_cs_sku) and qb_qty is None:
-                # Device count already accumulated into hanover_myadmin_total above.
+                # Devices counted into hanover_myadmin_total / han_cs_myadmin_total
+                # per-device in the loop above (promoCode == "HANOVER" gate).
                 qty_rows.append({
                     "skuKey":              sku_key,
                     "myAdminCount":        myadmin_count,
