@@ -527,6 +527,13 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         cust_expected = cust_actual = 0.0
         device_rows = []
 
+        # Per-customer HANOVER+GO-gated device counts (mirror the global
+        # hanover_myadmin_total / han_cs_myadmin_total accumulators but scoped
+        # to this customer so hanoverConsolidated qty rows show the correct
+        # business-logic count rather than the raw myadmin_by_sku count).
+        cust_han_cs_count:  int = 0
+        cust_hanover_count: int = 0
+
         # Separate active from never-activated devices so we can inherit SKUs
         active_devices       = [d for d in devices if not d.get("neverActivated")]
         never_activated_devs = [d for d in devices if d.get("neverActivated")]
@@ -733,8 +740,10 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 )
                 if _is_han_cs_device:
                     han_cs_myadmin_total += 1
+                    cust_han_cs_count    += 1
                 else:
                     hanover_myadmin_total += 1
+                    cust_hanover_count   += 1
 
             # Display label: prefer promoCode if it exists, else billingPlan
             display_plan = promo_code or billing_plan or "(none)"
@@ -961,11 +970,14 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             _is_hanover_sku = (sku_key == "Geotab Service Fee (HANOVER)")
             _is_han_cs_sku  = (sku_key == HAN_CS_CUST_SKU)
             if (_is_hanover_sku or _is_han_cs_sku) and qb_qty is None:
-                # Devices counted into hanover_myadmin_total / han_cs_myadmin_total
-                # per-device in the loop above (promoCode == "HANOVER" gate).
+                # Use the per-customer HANOVER+GO-gated count, not the raw
+                # myadmin_by_sku count.  myadmin_by_sku counts ALL Tier-5-routed
+                # devices (including non-HANOVER / non-GO plan ones), which
+                # overstates the business-correct billable count.
+                _gated_count = cust_han_cs_count if _is_han_cs_sku else cust_hanover_count
                 qty_rows.append({
                     "skuKey":              sku_key,
-                    "myAdminCount":        myadmin_count,
+                    "myAdminCount":        _gated_count,
                     "qbQty":               None,
                     "qtyDelta":            0,
                     "qtyStatus":           "match",
