@@ -3,6 +3,7 @@ import Customers from './Customers'
 import CustomerDetail from './CustomerDetail'
 import Settings from './Settings'
 import Reconciliation from './Reconciliation'
+import Invoices from './Invoices'
 
 const API = 'http://127.0.0.1:8001'
 
@@ -137,7 +138,7 @@ function Dashboard({ sessionData, onLogout }) {
             }
           </div>
           {activePage === 'reconciliation' && <Reconciliation />}
-          {activePage === 'invoices' && <ComingSoon page="Invoices" />}
+          {activePage === 'invoices' && <Invoices />}
           {activePage === 'sync' && <ComingSoon page="Sync Status" />}
           {activePage === 'reports' && <ComingSoon page="Reports" />}
           {activePage === 'settings' && <Settings />}
