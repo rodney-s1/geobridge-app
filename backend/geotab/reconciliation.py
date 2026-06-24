@@ -650,21 +650,37 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             lookup_code  = ""   # what we actually matched on (for display)
             mapping_tier = "none"
 
-            # -- Tier 0.5: HN serial prefix + Pro Mode = DM Service Fee -------
+            # -- Tier 0.5a: {Cameras} sub-account tag = SS Service Fee -----------
+            # Surfsight camera devices live under a "{Cameras}" sub-account on
+            # Han-CS (and potentially other) parent accounts.  MyAdmin reports
+            # their activeDevicePlan.name as "Pro Mode" — the same plan used by
+            # standard Geotab GO devices — so the normal billing-plan lookup
+            # would incorrectly route them to "Service Fee Geotab (Pro)".
+            #
+            # The sub_account_tag "Cameras" is the reliable discriminator: any
+            # device on a {Cameras} sub-account is a camera unit billed at the
+            # SS Camera Service Fee rate, regardless of reported billing plan.
+            if sub_account_tag.lower() == "cameras":
+                sku_key      = "SS Service Fee"
+                mapping_tier = "sub_account_tag"
+                lookup_code  = "Cameras sub-account"
+
+            # -- Tier 0.5b: HN serial prefix + Pro Mode = DM Service Fee -------
             # Devices with serial numbers starting with "HN" on Pro Mode billing
             # are DM (Data Management) units. They don't receive the CELU-TP-250
             # promo code in MyAdmin but belong to the same DM Service Fee family.
             # HN serials always correspond to the "(Hardwire)" QB SKU variant;
             # this flag is passed through to Tier 4.5 to select the right variant.
             is_hn_serial = serial.upper().startswith("HN")
-            if (not promo_code
+            if (sku_key is None
+                    and not promo_code
                     and is_hn_serial
                     and billing_plan.upper() == "PRO MODE"):
                 sku_key      = "DM Service Fee"
                 mapping_tier = "serial_prefix"
                 lookup_code  = "HN serial + Pro Mode"
             else:
-                is_hn_serial = False   # only relevant when we actually triggered Tier 0.5
+                is_hn_serial = False   # only relevant when we actually triggered Tier 0.5b
 
             if promo_code:
                 sku_key = cust_mapping_index.get((norm_cname, promo_code), None)
