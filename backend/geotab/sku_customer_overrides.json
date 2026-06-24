@@ -3597,7 +3597,8 @@
     "id": "Hollywood Feed Corporate|Manage Services",
     "customerName": "Hollywood Feed Corporate",
     "skuKey": "Manage Services",
-    "price": 3.0
+    "price": 3.0,
+    "mirrorOf": "Service Fee Geotab"
   },
   {
     "id": "Holmes County Ohio|Geotab Service (ProPlus-Ohio)",

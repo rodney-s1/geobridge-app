@@ -327,6 +327,17 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         for o in overrides
     }
 
+    # (norm_customerName, skuKey) -> mirrorOf prefix string
+    # When present the SKU's MyAdmin count is computed as the sum of all
+    # myadmin_by_sku counts whose key starts with the mirrorOf value.
+    # Example: Manage Services mirrorOf "Service Fee Geotab" sums
+    #          Base + Pro + ProPlus + Suspend V2 device counts.
+    mirror_index: Dict[tuple, str] = {
+        (_normalize(o["customerName"]), o["skuKey"]): o["mirrorOf"]
+        for o in overrides
+        if o.get("mirrorOf")
+    }
+
     # QB invoice quantities: (norm_customerName, skuKey) -> qbQty
     qb_qty_index: Dict[tuple, int] = {
         (_normalize(q["customerName"]), q["skuKey"]): int(q.get("qbQty") or 0)
@@ -1063,7 +1074,19 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         )
 
         for sku_key in sorted(all_skus):
-            myadmin_count = myadmin_by_sku.get(sku_key, 0)
+            # Mirror SKUs: MyAdmin count = sum of all SKUs whose key starts with
+            # the mirrorOf prefix for this customer.  This lets an add-on QB line
+            # (e.g. "Manage Services" @ $3/device) track the total device count
+            # of a family of service SKUs (e.g. all "Service Fee Geotab (*)"
+            # variants) without those devices being double-counted in the header.
+            _mirror_prefix = mirror_index.get((_qb_cname, sku_key))
+            if _mirror_prefix:
+                myadmin_count = sum(
+                    cnt for sk, cnt in myadmin_by_sku.items()
+                    if sk.startswith(_mirror_prefix)
+                )
+            else:
+                myadmin_count = myadmin_by_sku.get(sku_key, 0)
             qb_qty        = qb_qty_index.get((_qb_cname, sku_key), None)
 
             # Hanover-consolidated: "Geotab Service Fee (HANOVER)" and HAN_CS_CUST_SKU
