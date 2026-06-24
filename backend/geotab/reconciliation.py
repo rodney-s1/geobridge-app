@@ -1168,6 +1168,11 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
 
         cust_myadmin_total = len(devices)
 
+        # CUA (Charge Upon Activation) customers: never-activated devices are
+        # not billed and are excluded from the QB invoice.  Subtract them from
+        # the MyAdmin total so the header delta only reflects billed devices.
+        _cua_never_activated = len(never_activated_devs) if is_cua else 0
+
         # Hanover-consolidated devices (HANOVER+GO-gated) are billed via the
         # Hanover Insurance Group master invoice — not on this customer's own QB
         # invoice.  Exclude them from the customer-level MyAdmin total so the
@@ -1181,8 +1186,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         # Non-gated devices on a Han-CS account (e.g. suspended, ProPlus) still
         # route to HAN_CS_CUST_SKU but are NOT covered by HIG — they remain in
         # cust_myadmin_direct so any billing gap is still visible.
-        _hig_covered       = cust_hanover_count + cust_han_cs_count
-        cust_myadmin_direct = cust_myadmin_total - _hig_covered
+        _hig_covered        = cust_hanover_count + cust_han_cs_count
+        cust_myadmin_direct = cust_myadmin_total - _hig_covered - _cua_never_activated
 
         # Exclude QB-authoritative SKUs (e.g. BlueArrow Fuel Service) from the
         # customer-level QB total and delta — those SKUs are always in balance by

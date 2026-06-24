@@ -932,13 +932,22 @@ async def get_customer(account_id: str):
             def _date(raw: str) -> str:
                 return (raw or "")[:10]
 
+            # Determine activation status.  Terminated contracts are already
+            # filtered out above, so the only remaining distinction is whether
+            # the device has ever been activated (non-blank billing plan).
+            _adp_upper = active_billing_plan.upper()
+            _is_never_activated = (
+                not active_billing_plan
+                or _adp_upper == "NEVER ACTIVATED"
+                or "never" in _adp_upper
+            )
             normalized.append({
                 "serialNumber":      device.get("serialNumber") or "",
                 "deviceType":        (device.get("deviceType") or {}).get("name") or "",
                 "activeBillingPlan": active_billing_plan,
                 "ratePlanCode":      rate_plan_code,
                 "database":          db_name,
-                "status":            "Active",   # terminated already filtered above
+                "status":            "Never Activated" if _is_never_activated else "Active",
                 "contractStartDate": _date(d.get("startDate") or ""),
                 "contractEndDate":   _date(d.get("endDate") or ""),
             })
