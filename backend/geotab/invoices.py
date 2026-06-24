@@ -434,11 +434,7 @@ async def get_prorated_invoices(
      cust_map_index, full_path_index, sku_desc_index) = _build_indices()
 
     # Import billing_type lookup from customers module
-    from .customers import _build_customer, billing_type_overrides, qb_customers
-
-    # We need the billing type per company.  Re-use _build_customer logic via
-    # the billing_type_overrides + qb_customers already in memory.
-    from .customers import _normalize as cust_normalize
+    from .customers import billing_type_overrides, qb_customers
 
     invoices: List[dict] = []
 
@@ -446,14 +442,13 @@ async def get_prorated_invoices(
         if not company_contracts:
             continue
 
-        # Derive billing type ── use the same priority chain as _build_customer:
-        #  1. manual override  2. QB record  3. {Han-CS} suffix  4. Unknown
+        # Derive billing type — priority: manual override → QB record → Unknown
         raw_name = ((company_contracts[0].get("userContact") or {})
                     .get("userCompany") or {}).get("name") or ""
 
         bt = (
             billing_type_overrides.get(company_id)
-            or (qb_customers.get(cust_normalize(raw_name)) or {}).get("billingType")
+            or (qb_customers.get(_normalize(raw_name)) or {}).get("billingType")
             or "Unknown"
         )
 
@@ -538,13 +533,12 @@ async def get_prorated_invoice_for_customer(
      cust_map_index, full_path_index, sku_desc_index) = _build_indices()
 
     from .customers import billing_type_overrides, qb_customers
-    from .customers import _normalize as cust_normalize
 
     raw_name = ((company_contracts[0].get("userContact") or {})
                 .get("userCompany") or {}).get("name") or ""
     bt = (
         billing_type_overrides.get(customer_id)
-        or (qb_customers.get(cust_normalize(raw_name)) or {}).get("billingType")
+        or (qb_customers.get(_normalize(raw_name)) or {}).get("billingType")
         or "Unknown"
     )
 
