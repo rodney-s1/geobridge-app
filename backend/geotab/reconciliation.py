@@ -492,6 +492,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     _diag_han_cs_non_hanover_promo_go: _col.Counter = _col.Counter()   # GO plan but promo != HANOVER
     _diag_han_cs_neither:             _col.Counter = _col.Counter()   # active Han-CS, neither condition
     _diag_han_cs_sub_tag_passing:     _col.Counter = _col.Counter()   # sub-tagged devices that pass gate
+    # Customers assigned Han-CS via QB fallback (no {Han-CS} in MyAdmin name)
+    _diag_han_cs_qb_fallback: _col.Counter = _col.Counter()
 
     for _pkey, cdata in company_map.items():
         cid          = cdata["customerId"]
@@ -526,6 +528,12 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 billing_type = "Hanover"
             elif _nc in qb_han_cs_names:
                 billing_type = "Han-CS"
+                # [diag] Record customers promoted to Han-CS via QB fallback
+                # (their MyAdmin name has no {Han-CS} tag so diag_han_cs_plans misses them)
+                if "{Han-CS}" not in cname:
+                    _diag_han_cs_qb_fallback[cname] += len([
+                        d for d in devices if not d.get("neverActivated")
+                    ])
 
         is_cua       = billing_type in ("CUA", "Charge Upon Activation")
 
@@ -1155,6 +1163,11 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         if _diag_han_cs_sub_tag_passing:
             print(f"[diag] Han-CS sub-tagged devices PASSING gate: "
                   f"{dict(_diag_han_cs_sub_tag_passing.most_common())}")
+        if _diag_han_cs_qb_fallback:
+            total_fallback = sum(_diag_han_cs_qb_fallback.values())
+            print(f"[diag] Han-CS via QB-fallback ({total_fallback} active devices, "
+                  f"no {{Han-CS}} in MyAdmin name): "
+                  f"{dict(_diag_han_cs_qb_fallback.most_common())}")
 
         for norm_nc, sku_entries in sorted(qb_only_names.items()):
             # Look up display name and billing type from qb_customers
