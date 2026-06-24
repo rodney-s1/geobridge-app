@@ -712,15 +712,21 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 active_sku_counts[sku_key] = active_sku_counts.get(sku_key, 0) + 1
 
             # Per-device promoCode-gated accumulation for the HIG master row.
-            # promoCode is ground truth — only devices explicitly tagged
-            # "HANOVER" belong in these totals, regardless of SKU or billing_type.
+            # Billing rules (per business logic):
+            #   • promoCode must be "HANOVER" (uppercased on read, so case-insensitive)
+            #   • device must be active (not never_activated)
+            #   • billingPlan must be strictly the base "GO" plan — suspended, pro,
+            #     proplus, GO Expand, etc. are NOT counted because we only bill
+            #     Han-CS / Hanover customers when the device is on an active GO plan.
             #
             # Han-CS split: a device is Han-CS if its account is Han-CS
             # (billing_type == "Han-CS") OR the device came from a {Han-CS}
             # sub-account (sub_account_tag.lower() == "han-cs").
-            # All other HANOVER-promo devices on non-Han-CS CELU01 accounts
-            # belong to the standard "Geotab Service Fee (HANOVER)" bucket.
-            if promo_code == "HANOVER" and not never_activated:
+            # All other qualifying devices on non-Han-CS accounts go to the
+            # standard "Geotab Service Fee (HANOVER)" bucket.
+            if (promo_code == "HANOVER"
+                    and not never_activated
+                    and billing_plan.upper() == "GO"):
                 _is_han_cs_device = (
                     billing_type == "Han-CS"
                     or sub_account_tag.lower() == "han-cs"

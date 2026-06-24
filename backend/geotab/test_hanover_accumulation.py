@@ -49,6 +49,7 @@ def simulate_accumulation(customer_groups):
           billing_type   : str   — resolved billing type ("Han-CS", "Hanover", "Standard", …)
           devices        : list of dict, each with:
             promoCode        : str  — e.g. "HANOVER" or ""
+            billingPlan      : str  — e.g. "GO", "Pro Mode", "Suspend Mode", ""
             neverActivated   : bool
             subAccountTag    : str  — e.g. "Han-CS", "3rd Party Devices", ""
 
@@ -63,11 +64,15 @@ def simulate_accumulation(customer_groups):
         billing_type = cdata["billing_type"]
         for dev in cdata["devices"]:
             promo_code      = (dev.get("promoCode") or "").upper().strip()
+            billing_plan    = (dev.get("billingPlan") or "").strip()
             never_activated = dev.get("neverActivated", False)
             sub_account_tag = dev.get("subAccountTag") or ""
 
-            # Mirror the exact gate from reconciliation.py
-            if promo_code == "HANOVER" and not never_activated:
+            # Mirror the exact gate from reconciliation.py:
+            # promoCode == "HANOVER", active, AND strictly on the base GO plan.
+            if (promo_code == "HANOVER"
+                    and not never_activated
+                    and billing_plan.upper() == "GO"):
                 _is_han_cs_device = (
                     billing_type == "Han-CS"
                     or sub_account_tag.lower() == "han-cs"
@@ -84,8 +89,8 @@ def simulate_accumulation(customer_groups):
 # Test cases
 # ---------------------------------------------------------------------------
 
-def make_dev(promo="HANOVER", never=False, sub_tag=""):
-    return {"promoCode": promo, "neverActivated": never, "subAccountTag": sub_tag}
+def make_dev(promo="HANOVER", never=False, sub_tag="", plan="GO"):
+    return {"promoCode": promo, "neverActivated": never, "subAccountTag": sub_tag, "billingPlan": plan}
 
 
 def test_basic_hanover_only():
@@ -108,14 +113,13 @@ def test_basic_han_cs_only():
 
 def test_han_cs_non_hanover_promo_excluded():
     """
-    Han-CS account with 10 HANOVER-promo + 10 non-promo devices.
-    ONLY the 10 HANOVER-promo ones should count → han_cs=10.
-    This is the primary source of the +384 overcount fixed in this PR.
+    Han-CS account with 10 HANOVER-promo GO devices + 10 non-promo + 3 GO9-promo.
+    ONLY the 10 HANOVER-promo GO-plan ones should count → han_cs=10.
     """
     devices = (
-        [make_dev(promo="HANOVER") for _ in range(10)]
-        + [make_dev(promo="")      for _ in range(10)]
-        + [make_dev(promo="GO9")   for _ in range(3)]
+        [make_dev(promo="HANOVER", plan="GO") for _ in range(10)]
+        + [make_dev(promo="",       plan="GO") for _ in range(10)]
+        + [make_dev(promo="GO9",    plan="GO") for _ in range(3)]
     )
     groups = [{"billing_type": "Han-CS", "devices": devices}]
     h, hc = simulate_accumulation(groups)
@@ -177,31 +181,35 @@ def test_sub_account_tag_other_ignored():
 
 def test_mixed_customers():
     """
-    Multiple customers across billing types.  Only count HANOVER promo, active devices.
+    Multiple customers across billing types.  Only count HANOVER promo, active, GO-plan devices.
 
-    Customer A: Hanover,  8 HANOVER active,  2 non-promo active  → h+=8
-    Customer B: Han-CS,  10 HANOVER active, 15 non-promo active  → hc+=10
-    Customer C: Unknown,  5 HANOVER active                       → h+=5
-    Customer D: Standard, 3 HANOVER active  (name mismatch case) → h+=3
-    Customer E: Han-CS,   0 HANOVER, 20 GO-Plan active           → hc+=0
-    Never-activated: 12 HANOVER, Han-CS account                  → hc+=0
+    Customer A: Hanover,  8 HANOVER GO active,  2 non-promo GO active      → h+=8
+    Customer B: Han-CS,  10 HANOVER GO active, 15 non-promo GO active      → hc+=10
+    Customer C: Unknown,  5 HANOVER GO active                              → h+=5
+    Customer D: Standard, 3 HANOVER GO active  (name mismatch case)        → h+=3
+    Customer E: Han-CS,   0 HANOVER, 20 GO-Plan active (wrong promo)       → hc+=0
+    Customer F: Han-CS,   4 HANOVER Pro Mode active  (wrong plan)          → hc+=0
+    Never-activated: 12 HANOVER GO, Han-CS account                         → hc+=0
     -----------------------------------------------------------------------
     Expected: hanover = 8+5+3 = 16,  han_cs = 10
     """
     groups = [
         {"billing_type": "Hanover",
-         "devices": [make_dev("HANOVER")] * 8 + [make_dev("")] * 2},
+         "devices": [make_dev("HANOVER", plan="GO")] * 8 + [make_dev("", plan="GO")] * 2},
         {"billing_type": "Han-CS",
-         "devices": [make_dev("HANOVER")] * 10 + [make_dev("")] * 15},
+         "devices": [make_dev("HANOVER", plan="GO")] * 10 + [make_dev("", plan="GO")] * 15},
         {"billing_type": "Unknown",
-         "devices": [make_dev("HANOVER")] * 5},
+         "devices": [make_dev("HANOVER", plan="GO")] * 5},
         {"billing_type": "Standard",
-         "devices": [make_dev("HANOVER")] * 3},
+         "devices": [make_dev("HANOVER", plan="GO")] * 3},
         {"billing_type": "Han-CS",
-         "devices": [make_dev("GO9")] * 20},
-        # Never-activated HANOVER on Han-CS account — must be excluded
+         "devices": [make_dev("GO9", plan="GO")] * 20},
+        # HANOVER promo but wrong billing plan — must NOT count
         {"billing_type": "Han-CS",
-         "devices": [make_dev("HANOVER", never=True)] * 12},
+         "devices": [make_dev("HANOVER", plan="Pro Mode")] * 4},
+        # Never-activated HANOVER GO on Han-CS account — must be excluded
+        {"billing_type": "Han-CS",
+         "devices": [make_dev("HANOVER", never=True, plan="GO")] * 12},
     ]
     h, hc = simulate_accumulation(groups)
     assert h  == 16, f"Expected hanover=16, got {h}"
@@ -232,18 +240,17 @@ def test_empty_groups():
 def test_scale_ground_truth():
     """
     Smoke-test matching the user-reported ground truth: 3,315 HANOVER + 1,378 Han-CS.
-    We don't have the real dataset, but we verify that the accumulator correctly
-    totals what it's given without off-by-one errors or double-counting.
+    All qualifying devices are HANOVER promo, active, on the base GO plan.
     """
     groups = [
-        # 3,315 active HANOVER devices across non-Han-CS accounts
-        {"billing_type": "Hanover",  "devices": [make_dev("HANOVER")] * 3315},
-        # 1,378 active HANOVER devices on Han-CS accounts
-        {"billing_type": "Han-CS",   "devices": [make_dev("HANOVER")] * 1378},
-        # Non-HANOVER Han-CS devices that should NOT appear in either total
-        {"billing_type": "Han-CS",   "devices": [make_dev("")] * 384},
+        # 3,315 active HANOVER GO devices across non-Han-CS accounts
+        {"billing_type": "Hanover",  "devices": [make_dev("HANOVER", plan="GO")] * 3315},
+        # 1,378 active HANOVER GO devices on Han-CS accounts
+        {"billing_type": "Han-CS",   "devices": [make_dev("HANOVER", plan="GO")] * 1378},
+        # Non-HANOVER Han-CS GO devices — must NOT count
+        {"billing_type": "Han-CS",   "devices": [make_dev("", plan="GO")] * 384},
         # Non-HANOVER non-Han-CS devices
-        {"billing_type": "Standard", "devices": [make_dev("GO9")] * 500},
+        {"billing_type": "Standard", "devices": [make_dev("GO9", plan="GO")] * 500},
     ]
     h, hc = simulate_accumulation(groups)
     assert h  == 3315, f"Expected hanover=3315, got {h}"
@@ -251,9 +258,54 @@ def test_scale_ground_truth():
     print("PASS test_scale_ground_truth")
 
 
+def test_go_plan_gate_hanover():
+    """HANOVER promo devices NOT on the base GO plan must not count — Hanover side."""
+    devices = (
+        [make_dev("HANOVER", plan="GO")]           * 5   # qualifying
+        + [make_dev("HANOVER", plan="Pro Mode")]   * 3   # wrong plan
+        + [make_dev("HANOVER", plan="Suspend Mode")] * 2 # wrong plan
+        + [make_dev("HANOVER", plan="GO EXPAND")]  * 1   # wrong plan (not base GO)
+        + [make_dev("HANOVER", plan="")]           * 2   # blank plan = never-activated-like, not GO
+    )
+    groups = [{"billing_type": "Hanover", "devices": devices}]
+    h, hc = simulate_accumulation(groups)
+    assert h == 5, f"Expected hanover=5 (only base GO), got {h}"
+    assert hc == 0
+    print("PASS test_go_plan_gate_hanover")
+
+
+def test_go_plan_gate_han_cs():
+    """HANOVER promo devices NOT on the base GO plan must not count — Han-CS side."""
+    devices = (
+        [make_dev("HANOVER", plan="GO")]           * 7   # qualifying
+        + [make_dev("HANOVER", plan="ProPlus Mode")] * 4 # wrong plan
+        + [make_dev("HANOVER", plan="Regulatory Mode")] * 2  # wrong plan
+    )
+    groups = [{"billing_type": "Han-CS", "devices": devices}]
+    h, hc = simulate_accumulation(groups)
+    assert h  == 0, f"Expected hanover=0, got {h}"
+    assert hc == 7, f"Expected han_cs=7 (only base GO), got {hc}"
+    print("PASS test_go_plan_gate_han_cs")
+
+
+def test_go_plan_case_insensitive():
+    """billing_plan 'go', 'Go', 'GO' should all qualify (uppercased before compare)."""
+    devices = [
+        make_dev("HANOVER", plan="go"),
+        make_dev("HANOVER", plan="Go"),
+        make_dev("HANOVER", plan="GO"),
+    ]
+    groups = [{"billing_type": "Hanover", "devices": devices}]
+    h, hc = simulate_accumulation(groups)
+    assert h == 3, f"Expected hanover=3, got {h}"
+    print("PASS test_go_plan_case_insensitive")
+
+
 # ---------------------------------------------------------------------------
 # Tests: per-SKU neverActivatedCount correctness
 # ---------------------------------------------------------------------------
+
+
 
 def simulate_never_activated_by_sku(device_rows):
     """
@@ -353,6 +405,9 @@ if __name__ == "__main__":
         test_case_insensitive_promo,
         test_empty_groups,
         test_scale_ground_truth,
+        test_go_plan_gate_hanover,
+        test_go_plan_gate_han_cs,
+        test_go_plan_case_insensitive,
         test_per_sku_never_activated_count,
         test_per_sku_never_activated_split_across_skus,
         test_no_never_activated_devices,
