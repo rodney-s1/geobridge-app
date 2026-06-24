@@ -467,6 +467,41 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             "subAccountTag":   sub_account_tag,
         })
 
+    # -- Reverse QB Han-CS check -----------------------------------------------
+    # Find QB customers that have a HANOVER-CS SKU on their invoice but whose
+    # name does NOT match any MyAdmin {Han-CS} customer (neither by {Han-CS} tag
+    # nor by QB-fallback promotion).  These are either:
+    #   a) Former Han-CS members whose MyAdmin account was renamed/removed, OR
+    #   b) Name mismatches that prevent the QB-fallback from matching them.
+    # Exclude Hanover Insurance Group (the master consolidated row).
+    _myadmin_han_cs_loose: set = {
+        _normalize_loose(cdata["customerName"])
+        for cdata in company_map.values()
+        if "{Han-CS}" in cdata["customerName"]
+           or _normalize_loose(cdata["customerName"]) in qb_han_cs_names
+    }
+    _HIG_LOOSE = _normalize_loose("Hanover Insurance Group")
+    _qb_han_cs_unmatched: list = []
+    for _nc, _sk in qb_qty_index:
+        if (_HAN_CS_QB_SKU_PART in _sk
+                and _nc not in _myadmin_han_cs_loose
+                and _nc != _HIG_LOOSE):
+            # Look up display name and QB qty
+            _qb_rec   = _qb_customers.get(_nc) or {}
+            _disp     = _qb_rec.get("name") or _nc.title()
+            _qb_qty   = qb_qty_index.get((_nc, _sk), 0)
+            _qb_han_cs_unmatched.append({
+                "customerName": _disp,
+                "skuKey":       _sk,
+                "qbQty":        _qb_qty,
+                "note": (
+                    "Has a HANOVER-CS SKU on QB invoice but no matching "
+                    "{Han-CS} account found in MyAdmin. Check if the MyAdmin "
+                    "account was renamed, removed, or needs a "
+                    "billing_type_overrides.json entry."
+                ),
+            })
+
     # -- Per-device reconciliation ---------------------------------------------
     STATUS_PRIORITY = {"discrepancy": 0, "unmapped": 1, "no_price": 2, "not_in_qb": 3, "ok": 4}
 
@@ -1359,6 +1394,9 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         # (no {Han-CS} / {Hanover} tag in MyAdmin). If any of these are former
         # program members, add them to billing_type_overrides.json.
         "qbFallbackCustomers": _qb_fallback_customers,
+        # QB customers with a HANOVER-CS SKU but no matching {Han-CS} MyAdmin account.
+        # These need investigation — possible name mismatch or departed customer.
+        "qbHanCsUnmatched": _qb_han_cs_unmatched,
     }
 
 

@@ -431,6 +431,7 @@ export default function Reconciliation() {
   const summary              = data?.summary
   const customers            = data?.customers || []
   const qbFallbackCustomers  = data?.qbFallbackCustomers || []
+  const qbHanCsUnmatched     = data?.qbHanCsUnmatched    || []
 
   // Client-side filtering + sorting
   const getQtyStatus = c => !c.hasQbData ? 'no_qb_data'
@@ -589,6 +590,40 @@ export default function Reconciliation() {
                     <span className="text-amber-400/60">·</span>
                     <span className="text-amber-400/80">{fc.activeDevices} devices</span>
                   </span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── QB HANOVER-CS Unmatched Warning Banner ── */}
+      {qbHanCsUnmatched.length > 0 && (
+        <div className="rounded-xl border border-red-600/40 bg-red-950/30 px-4 py-3">
+          <div className="flex items-start gap-3">
+            <span className="text-red-400 text-lg mt-0.5">🔴</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-red-300 mb-1">
+                {qbHanCsUnmatched.length === 1
+                  ? '1 QB invoice has a HANOVER-CS SKU with no matching MyAdmin account'
+                  : `${qbHanCsUnmatched.length} QB invoices have a HANOVER-CS SKU with no matching MyAdmin account`}
+              </p>
+              <p className="text-xs text-red-200/70 mb-2">
+                These customers appear on QB invoices with a HANOVER-CS line item but have no{' '}
+                <code className="bg-slate-800 px-1 rounded text-red-300">{'{Han-CS}'}</code>{' '}
+                account in MyAdmin. This may indicate a departed customer, a name mismatch, or
+                a QB invoice that needs correction.
+              </p>
+              <div className="flex flex-col gap-1.5">
+                {qbHanCsUnmatched.map((fc, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs bg-slate-800/70
+                    border border-red-700/30 text-red-200 rounded-lg px-2.5 py-1.5 flex-wrap">
+                    <span className="font-medium">{fc.customerName}</span>
+                    <span className="text-red-400/60">·</span>
+                    <span className="text-red-400/80">QB qty: {fc.qbQty}</span>
+                    <span className="text-red-400/60">·</span>
+                    <span className="text-red-300/60 truncate max-w-xs" title={fc.skuKey}>{fc.skuKey}</span>
+                  </div>
                 ))}
               </div>
             </div>
