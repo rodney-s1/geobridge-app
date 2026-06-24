@@ -784,14 +784,21 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             # company name (e.g. "ACES Controls LLC {Han-CS}").  _extract_parent
             # treats "{Han-CS}" as part of the parent name, so these customers
             # appear as standalone entries with billing_type == "Han-CS".
-            # Any further sub-accounts under them (e.g. "{Cameras}") are merged
-            # under that parent and inherit the same billing_type.
             #
-            # sub_account_tag.lower() == "han-cs" is kept as a safety net for
-            # any legacy device records that may still carry it.
+            # EXCEPTION: sub-accounts with a non-Han-CS tag (e.g. "{Cameras}",
+            # "{3rd Party Devices}") are billed on their own SKU (e.g. SS Service
+            # Fee for Surfsight cameras), NOT on the HANOVER-CS Cust SKU.
+            # These devices have sub_account_tag set to "Cameras" etc. and must
+            # be routed by their actual billing plan, not force-overridden here.
+            # Only apply the Han-CS override when:
+            #   a) the device has no sub-account tag (it's directly on the Han-CS
+            #      parent account), OR
+            #   b) the sub-account tag is explicitly "han-cs" (legacy safety net).
             #
             # "Hanover" (without cost-share) must NOT be overridden here.
-            if billing_type == "Han-CS" or sub_account_tag.lower() == "han-cs":
+            _is_han_cs_sub = sub_account_tag.lower() == "han-cs"
+            _is_other_sub  = sub_account_tag and not _is_han_cs_sub
+            if (billing_type == "Han-CS" or _is_han_cs_sub) and not _is_other_sub:
                 sku_key      = HAN_CS_CUST_SKU
                 mapping_tier = "billing_type"
                 lookup_code  = f"Han-CS override ({billing_plan or promo_code or 'none'})"
