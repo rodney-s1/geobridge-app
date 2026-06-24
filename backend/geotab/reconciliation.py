@@ -156,132 +156,48 @@ def _extract_parent(cname: str):
     company name.
 
     MyAdmin naming convention:
-      • "Acme Corp"                              → parent='Acme Corp',      sub=''
-      • "Acme Corp {3rd Party Devices}"          → parent='Acme Corp',      sub='3rd Party Devices'
-      • "Acme Corp (Cameras)"                    → parent='Acme Corp',      sub='Cameras'
-      • "Acme Corp (Cameras) - Trey Banks"       → parent='Acme Corp - Trey Banks', sub='Cameras'
-      • "ACES Controls LLC {Han-CS}"             → parent='ACES Controls LLC {Han-CS}', sub=''
-      • "ACES Controls LLC {Han-CS} {Cameras}"  → parent='ACES Controls LLC {Han-CS}', sub='Cameras'
+      • "Acme Corp"                         → parent='Acme Corp',      sub=''
+      • "Acme Corp {3rd Party Devices}"     → parent='Acme Corp',      sub='3rd Party Devices'
+      • "ACES Controls LLC {Han-CS}"        → parent='ACES Controls LLC {Han-CS}', sub=''
+      • "ACES Controls LLC {Han-CS} {Cameras}" → parent='ACES Controls LLC {Han-CS}', sub='Cameras'
 
-    Sub-account detection (in priority order):
-      1. Curly-brace token "{tag}" — original convention.
-         If the first token is "{Han-CS}", include it in the parent name
-         and look for a second "{...}" token as the sub-account tag.
-      2. Trailing parenthesis token "(tag)" — MyAdmin also uses parentheses
-         for camera/device-type sub-accounts (e.g. "Acme (Cameras)").
-         Detected only when NO curly-brace token is present.
-         The "(tag)" portion is removed from the parent name; any trailing
-         dealer suffix (" - Trey Banks") is kept so all sub-accounts still
-         share the same parent_key after normalisation.
+    Rule:
+      1. Find the first "{...}" token.
+      2. If it is "{Han-CS}" (case-insensitive), include it in the parent
+         name; look for a SECOND "{...}" token for the sub-account tag.
+      3. Otherwise, everything from the first "{" onward is stripped from
+         the parent name and the content of the first braces is the tag.
 
     Returns:
         (parent_name: str, sub_account_tag: str)
     """
-    import re as _re
-
     first_open  = cname.find("{")
+    if first_open == -1:
+        return cname, ""
 
-    # --- Curly-brace path (existing logic, unchanged) -------------------------
-    if first_open != -1:
-        first_close = cname.find("}", first_open)
-        if first_close == -1:
-            # Malformed — treat whole name as parent
-            return cname, ""
+    first_close = cname.find("}", first_open)
+    if first_close == -1:
+        # Malformed — treat whole name as parent
+        return cname, ""
 
-        first_token = cname[first_open + 1 : first_close].strip()
+    first_token = cname[first_open + 1 : first_close].strip()
 
-        if first_token.lower() == "han-cs":
-            # "{Han-CS}" is part of the identity — include it in parent name.
-            parent_name = cname[:first_close + 1].strip()
-            # Look for a sub-account tag after the {Han-CS} token.
-            rest       = cname[first_close + 1:].strip()
-            sub_open   = rest.find("{")
-            if sub_open != -1:
-                sub_close = rest.find("}", sub_open)
-                sub_tag   = rest[sub_open + 1 : sub_close].strip() if sub_close != -1 else ""
-            else:
-                sub_tag = ""
-            return parent_name, sub_tag
+    if first_token.lower() == "han-cs":
+        # "{Han-CS}" is part of the identity — include it in parent name.
+        parent_name = cname[:first_close + 1].strip()
+        # Look for a sub-account tag after the {Han-CS} token.
+        rest       = cname[first_close + 1:].strip()
+        sub_open   = rest.find("{")
+        if sub_open != -1:
+            sub_close = rest.find("}", sub_open)
+            sub_tag   = rest[sub_open + 1 : sub_close].strip() if sub_close != -1 else ""
         else:
-            # Ordinary sub-account: strip from first brace; the token itself is the tag.
-            parent_name = cname[:first_open].strip()
-            return parent_name, first_token
-
-    # --- Parenthesis path (new) -----------------------------------------------
-    # Detect trailing "(tag)" suffix used for camera/device-type sub-accounts.
-    # MyAdmin uses parentheses as well as braces: "Acme Corp (Cameras) - Trey Banks"
-    # Pattern: "(non-empty content)" that appears before any optional " - Dealer" tail.
-    # We remove the "(tag)" from the parent name but preserve the dealer suffix so
-    # that both the main account and sub-account normalise to the same parent_key.
-    paren_match = _re.search(r'\s*\(([^)]+)\)\s*', cname)
-    if paren_match:
-        sub_tag     = paren_match.group(1).strip()
-        # Remove the (tag) portion; ensure exactly one space at the join point.
-        before = cname[:paren_match.start()].rstrip()
-        after  = cname[paren_match.end():].lstrip()
-        parent_name = (before + (" " if after else "") + after).strip()
+            sub_tag = ""
         return parent_name, sub_tag
-
-    return cname, ""
-
-
-def _strip_dealer_suffix(name: str) -> str:
-    """Strip trailing \" - Dealer Name\" suffix from a MyAdmin company name.
-
-    MyAdmin appends the dealer/rep name to many company names when displayed:
-      "Absolute Services - Trey Banks"    → "Absolute Services"
-      "Acme Corp - John Smith"            → "Acme Corp"
-
-    QB stores the clean company name without this suffix, so it must be
-    stripped before QB qty/price/override lookups.
-
-    This is a display-time lookup helper only — parent grouping (_extract_parent
-    / _normalize) intentionally keeps the full name so that all sub-accounts
-    under the same dealer still collapse to the same parent_key.
-
-    Heuristic rules (all must be satisfied to strip):
-      1. Suffix is exactly 1 or 2 Title-Cased words (letters/hyphens only, no digits).
-      2. No word in the suffix is a known organisational / department term.
-         This prevents false-positives like "City of Durham - General Services"
-         where "General" and "Services" look Title-Cased but are org vocabulary,
-         not a personal name.
-
-    Returns the stripped name if the pattern matches, otherwise the original.
-    """
-    import re as _re
-
-    # Words that commonly appear in organisation names / department titles.
-    # If ANY suffix word matches (case-insensitive), the suffix is NOT a
-    # personal name and we do NOT strip.
-    _ORG_WORDS = frozenset({
-        # Generic business / org types
-        "services", "service", "group", "associates", "solutions",
-        "systems", "industries", "enterprises", "ventures", "partners",
-        "consulting", "management", "operations", "division", "department",
-        # Government / civic
-        "general", "public", "municipal", "county", "city", "state",
-        "federal", "district", "authority", "agency", "office", "bureau",
-        # Common title words that are NOT given names
-        "sales", "marketing", "finance", "legal", "technical", "digital",
-        "national", "international", "global", "regional", "local",
-    })
-
-    # Match " - " followed by exactly 1 or 2 Title-Cased words.
-    # Word pattern: starts with a capital, rest are lowercase letters or hyphens.
-    m = _re.search(
-        r'\s+-\s+([A-Z][a-z][a-zA-Z-]*(?:\s+[A-Z][a-z][a-zA-Z-]*)?)$',
-        name
-    )
-    if m:
-        suffix_words = m.group(1).split()
-        # Rule 1: at most 2 words (personal name is short)
-        if len(suffix_words) > 2:
-            return name
-        # Rule 2: none of the suffix words are org/department vocabulary
-        if any(w.lower() in _ORG_WORDS for w in suffix_words):
-            return name
-        return name[:m.start()].strip()
-    return name
+    else:
+        # Ordinary sub-account: strip from first brace; the token itself is the tag.
+        parent_name = cname[:first_open].strip()
+        return parent_name, first_token
 
 
 # --- Helper: resolve expected price for (customerName, skuKey) ---------------
@@ -623,17 +539,11 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         # Track SKU usage for active devices so never-activated can inherit
         active_sku_counts: Dict[str, int] = {}
 
-        # QB lookup name: strip trailing dealer suffix from the parent name so
-        # "Absolute Services - Trey Banks" → "Absolute Services" before
-        # price override and qty index lookups.  Grouping/display uses cname.
-        qb_cname      = _strip_dealer_suffix(cname)
-        qb_norm_cname_dev = _normalize(qb_cname)   # used inside device loop
-
         for dev in devices_to_process:
             promo_code      = dev["promoCode"]       # e.g. "SWELL", "" (most devices)
             billing_plan    = dev["billingPlan"]     # e.g. "ProPlus Mode", "Base Mode" (suffix already stripped)
             serial          = dev.get("serialNumber") or ""
-            norm_cname      = qb_norm_cname_dev   # dealer-stripped for QB lookups
+            norm_cname      = _normalize(cname)
             never_activated = dev.get("neverActivated", False)
             sub_account_tag = dev.get("subAccountTag") or ""  # e.g. "Han-CS", "3rd Party Devices"
 
@@ -858,7 +768,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             rate_plan = lookup_code  # used by the rest of the loop for display
 
             # Resolve expected price
-            expected, price_source = _resolve_price(qb_cname, sku_key, ovr_index, catalog_index)
+            expected, price_source = _resolve_price(cname, sku_key, ovr_index, catalog_index)
 
             if expected is None:
                 device_rows.append({
@@ -876,7 +786,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 continue
 
             # Resolve actual QB invoiced price (customer override is the invoice truth)
-            actual_key = (qb_norm_cname_dev, sku_key)
+            actual_key = (_normalize(cname), sku_key)
             actual = ovr_index.get(actual_key)
 
             if actual is None:
@@ -937,7 +847,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             for na_dev in never_activated_devs:
                 if inherited_sku:
                     expected_na, price_source_na = _resolve_price(
-                        qb_cname, inherited_sku, ovr_index, catalog_index
+                        cname, inherited_sku, ovr_index, catalog_index
                     )
                     device_rows.append({
                         "serialNumber":  na_dev["serialNumber"],
@@ -1016,15 +926,13 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         # per-device inside the device loop above (promoCode == "HANOVER" gate).
         # No post-loop accumulation needed here.
 
-        # qb_cname / qb_norm_cname_dev were computed before the device loop above.
-        # Alias qb_norm_cname for use in the qty reconciliation section below.
-        qb_norm_cname = qb_norm_cname_dev
+        qb_norm_cname = _normalize(cname)
         qty_rows = []
         cust_qty_match = cust_qty_over = cust_qty_under = cust_qty_missing = 0
 
         # All SKUs seen either in MyAdmin mapping or in QB invoice for this customer
         all_skus = set(myadmin_by_sku.keys()) | {
-            sk for (nc, sk) in qb_qty_index.keys() if nc == qb_norm_cname
+            sk for (nc, sk) in qb_qty_index.keys() if nc == _normalize(cname)
         }
 
         # Count unmapped devices (no rate plan OR no mapping, excl. never_activated)
@@ -1035,7 +943,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
 
         for sku_key in sorted(all_skus):
             myadmin_count = myadmin_by_sku.get(sku_key, 0)
-            qb_qty        = qb_qty_index.get((qb_norm_cname, sku_key), None)
+            qb_qty        = qb_qty_index.get((_normalize(cname), sku_key), None)
 
             # Hanover-consolidated: "Geotab Service Fee (HANOVER)" and HAN_CS_CUST_SKU
             # are both invoiced under Hanover Insurance Group's QB master account —
