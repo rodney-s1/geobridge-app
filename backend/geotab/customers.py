@@ -478,10 +478,12 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
             result = await myadmin_call(
                 "GetDeviceContractsByPage",
                 {
-                    "apiKey":     session_store["user_id"],
-                    "sessionId":  session_store["session_id"],
-                    "forAccount": MYADMIN_ACCOUNT,
-                    "nextId":     next_id,
+                    "apiKey":                  session_store["user_id"],
+                    "sessionId":               session_store["session_id"],
+                    "forAccount":              MYADMIN_ACCOUNT,
+                    "nextId":                  next_id,
+                    # Required to populate firstDeviceActivationDate (First Connect Date)
+                    "includesDeviceConnectionInfo": True,
                 },
                 timeout=120.0,
             )
@@ -880,10 +882,12 @@ async def get_customer(account_id: str):
             result = await myadmin_call(
                 "GetDeviceContractsByPage",
                 {
-                    "apiKey":     session_store["user_id"],
-                    "sessionId":  session_store["session_id"],
-                    "forAccount": MYADMIN_ACCOUNT,
-                    "nextId":     0,
+                    "apiKey":                  session_store["user_id"],
+                    "sessionId":               session_store["session_id"],
+                    "forAccount":              MYADMIN_ACCOUNT,
+                    "nextId":                  0,
+                    # Required to populate firstDeviceActivationDate (First Connect Date)
+                    "includesDeviceConnectionInfo": True,
                 },
                 timeout=120.0,
             )
