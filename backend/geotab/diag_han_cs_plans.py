@@ -13,7 +13,7 @@ Shows:
 Run from project root:
     python backend/geotab/diag_han_cs_plans.py
 """
-import json, os, sys, html, collections
+import json, os, sys, html, collections, datetime, time
 
 # ── locate cache ───────────────────────────────────────────────────────────────
 _CANDIDATES = [
@@ -33,6 +33,16 @@ with open(cache_path, encoding="utf-8") as f:
     raw = json.load(f)
 
 contracts = raw.get("contracts") or []
+
+# Print cache timestamps so we can verify this file matches in-memory reconciliation data
+_now = time.time()
+for ts_key in ("fetched_at", "device_db_refreshed_at", "customer_fetched_at"):
+    ts = raw.get(ts_key)
+    if ts:
+        dt_str = datetime.datetime.fromtimestamp(ts).strftime("%Y-%m-%d %H:%M:%S")
+        age_h  = (_now - ts) / 3600
+        print(f"  {ts_key:<30s}: {dt_str}  ({age_h:.2f}h ago)")
+print()
 print(f"Total contract records: {len(contracts):,}")
 
 # ── colon-strip (mirrors reconciliation.py lines 420-421) ─────────────────────
