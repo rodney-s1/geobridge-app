@@ -540,16 +540,9 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     # QB (Service Fee (HANOVER-CS) line), not on each individual customer's invoice.
     han_cs_myadmin_total: int = 0
 
-    # [diag] Counters for gate-rejection analysis — removed after diagnosis
-    import collections as _col
-    _diag_han_cs_hanover_promo_non_go: _col.Counter = _col.Counter()   # HANOVER promo but plan != GO
-    _diag_han_cs_non_hanover_promo_go: _col.Counter = _col.Counter()   # GO plan but promo != HANOVER
-    _diag_han_cs_neither:             _col.Counter = _col.Counter()   # active Han-CS, neither condition
-    _diag_han_cs_sub_tag_passing:     _col.Counter = _col.Counter()   # sub-tagged devices that pass gate
-    # Customers assigned Han-CS via QB fallback (no {Han-CS} in MyAdmin name)
-    # Each entry: {customerName, activeDevices, myAdminBillingType}
-    _diag_han_cs_qb_fallback: _col.Counter = _col.Counter()
-    _qb_fallback_customers: list = []   # richer list for UI warning
+    # Customers assigned Han-CS via QB invoice fallback (no {Han-CS} in MyAdmin name).
+    # Surfaced in the UI as an amber warning so ops can review / add overrides.
+    _qb_fallback_customers: list = []
 
     for _pkey, cdata in company_map.items():
         cid          = cdata["customerId"]
@@ -591,11 +584,10 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 billing_type = "Hanover"
             elif _nc in qb_han_cs_names:
                 billing_type = "Han-CS"
-                # [diag] Record customers promoted to Han-CS via QB fallback
-                # (their MyAdmin name has no {Han-CS} tag so diag_han_cs_plans misses them)
+                # Record customers promoted to Han-CS via QB fallback for the UI amber warning.
+                # These customers have no {Han-CS} tag in MyAdmin and may need a billing_type_overrides.json entry.
                 if "{Han-CS}" not in cname:
                     _active_count = len([d for d in devices if not d.get("neverActivated")])
-                    _diag_han_cs_qb_fallback[cname] += _active_count
                     _qb_fallback_customers.append({
                         "customerName":    cname,
                         "activeDevices":   _active_count,
@@ -830,29 +822,6 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 else:
                     hanover_myadmin_total += 1
                     cust_hanover_count   += 1
-            else:
-                # [diag] Record why Han-CS HANOVER devices miss the gate
-                _is_han_cs_device = (
-                    billing_type == "Han-CS"
-                    or sub_account_tag.lower() == "han-cs"
-                )
-                if _is_han_cs_device and not never_activated:
-                    if promo_code == "HANOVER" and billing_plan.upper() != "GO":
-                        _diag_han_cs_hanover_promo_non_go[billing_plan] += 1
-                    elif billing_plan.upper() == "GO" and promo_code != "HANOVER":
-                        _diag_han_cs_non_hanover_promo_go[promo_code] += 1
-                    else:
-                        _diag_han_cs_neither[
-                            f"promo={promo_code!r} plan={billing_plan!r} tag={sub_account_tag!r}"
-                        ] += 1
-
-            # [diag] Sub-tagged Han-CS devices that pass the gate (should be 0 for Cameras/3rdParty)
-            if (billing_type == "Han-CS" and sub_account_tag
-                    and promo_code == "HANOVER"
-                    and not never_activated
-                    and billing_plan.upper() == "GO"):
-                _diag_han_cs_sub_tag_passing[sub_account_tag] += 1
-
             # Display label: prefer promoCode if it exists, else billingPlan
             display_plan = promo_code or billing_plan or "(none)"
 
@@ -1222,23 +1191,6 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
               f"(in qb_qty_index but not in MyAdmin company_map); "
               f"hanover_myadmin_total={hanover_myadmin_total}  "
               f"han_cs_myadmin_total={han_cs_myadmin_total}")
-        if _diag_han_cs_hanover_promo_non_go:
-            print(f"[diag] Han-CS HANOVER-promo devices EXCLUDED (billingPlan != GO): "
-                  f"{dict(_diag_han_cs_hanover_promo_non_go.most_common())}")
-        if _diag_han_cs_non_hanover_promo_go:
-            print(f"[diag] Han-CS GO-plan devices EXCLUDED (promoCode != HANOVER): "
-                  f"{dict(_diag_han_cs_non_hanover_promo_go.most_common())}")
-        if _diag_han_cs_neither:
-            print(f"[diag] Han-CS active devices EXCLUDED (neither HANOVER+GO): "
-                  f"{dict(_diag_han_cs_neither.most_common(10))}")
-        if _diag_han_cs_sub_tag_passing:
-            print(f"[diag] Han-CS sub-tagged devices PASSING gate: "
-                  f"{dict(_diag_han_cs_sub_tag_passing.most_common())}")
-        if _diag_han_cs_qb_fallback:
-            total_fallback = sum(_diag_han_cs_qb_fallback.values())
-            print(f"[diag] Han-CS via QB-fallback ({total_fallback} active devices, "
-                  f"no {{Han-CS}} in MyAdmin name): "
-                  f"{dict(_diag_han_cs_qb_fallback.most_common())}")
 
         for norm_nc, sku_entries in sorted(qb_only_names.items()):
             # Look up display name and billing type from qb_customers
