@@ -1415,6 +1415,7 @@ export default function Customers({ onDetail }) {
           </thead>
           <tbody>
             {customers.length === 0 && !loading ? (
+              /* Empty state — no data and not loading */
               <tr>
                 <td colSpan={8} className="text-center py-16 text-slate-500">
                   {error?.startsWith('not_logged_in:')
@@ -1424,7 +1425,24 @@ export default function Customers({ onDetail }) {
                       : 'Click "Sync from MyAdmin" to load customers.'}
                 </td>
               </tr>
+            ) : customers.length === 0 && loading ? (
+              /* First-ever load — no prior data to show yet */
+              <tr>
+                <td colSpan={8} className="text-center py-16">
+                  <div className="flex items-center justify-center gap-3 text-slate-400">
+                    <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                    </svg>
+                    <span className="text-sm">
+                      {isForcingRefresh ? 'Syncing from MyAdmin…' : 'Loading customers…'}
+                    </span>
+                  </div>
+                </td>
+              </tr>
             ) : (
+              /* Has data — show it; if a force-sync is running the progress banner
+                 above handles status, so rows stay fully interactive here */
               customerGroups.map(group => (
                 <ParentGroupRow
                   key={group.parentName}
@@ -1435,10 +1453,11 @@ export default function Customers({ onDetail }) {
               ))
             )}
 
-            {loading && !isForcingRefresh && (
+            {/* Non-force-refresh page loads (search/filter/paginate) show a
+                bottom spinner; force-refresh uses the top progress banner instead */}
+            {loading && !isForcingRefresh && customers.length > 0 && (
               <tr>
-                <td colSpan={8} className="text-center py-8">
-                  {/* Simple spinner for cache/filter loads (progress bar is in the top banner) */}
+                <td colSpan={8} className="text-center py-6">
                   <div className="flex items-center justify-center gap-3 text-slate-400">
                     <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
