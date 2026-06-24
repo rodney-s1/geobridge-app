@@ -1113,6 +1113,23 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             })
 
         cust_myadmin_total = len(devices)
+
+        # Hanover-consolidated devices (HANOVER+GO-gated) are billed via the
+        # Hanover Insurance Group master invoice — not on this customer's own QB
+        # invoice.  Exclude them from the customer-level MyAdmin total so the
+        # header delta only reflects devices the customer is directly billed for.
+        #
+        # cust_hanover_count  — Hanover (non-Han-CS) devices that passed the gate
+        # cust_han_cs_count   — Han-CS devices that passed the gate
+        #
+        # Note: Han-CS customers also have their HANOVER+GO-gated devices covered
+        # by HIG (on the HANOVER-CS line), so both counts are excluded here.
+        # Non-gated devices on a Han-CS account (e.g. suspended, ProPlus) still
+        # route to HAN_CS_CUST_SKU but are NOT covered by HIG — they remain in
+        # cust_myadmin_direct so any billing gap is still visible.
+        _hig_covered       = cust_hanover_count + cust_han_cs_count
+        cust_myadmin_direct = cust_myadmin_total - _hig_covered
+
         # Exclude QB-authoritative SKUs (e.g. BlueArrow Fuel Service) from the
         # customer-level QB total and delta — those SKUs are always in balance by
         # definition and should not skew the MyAdmin-vs-QB header numbers.
@@ -1133,7 +1150,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         total_no_price  += cust_no_price
         total_expected  += cust_expected
         total_actual    += cust_actual
-        total_myadmin_devices += cust_myadmin_total
+        total_myadmin_devices += cust_myadmin_direct
         total_qb_devices      += cust_qb_total
         total_qty_match       += cust_qty_match
         total_qty_over        += cust_qty_over
@@ -1157,10 +1174,12 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             "delta":             round(cust_actual - cust_expected, 2),
             "status":            cust_status,
             "devices":           device_rows,
-            # Quantity reconciliation fields
-            "myAdminTotal":      cust_myadmin_total,
+            # Quantity reconciliation fields.
+            # myAdminTotal excludes HIG-covered (HANOVER+GO-gated) devices so the
+            # delta only reflects devices billed directly on this customer's invoice.
+            "myAdminTotal":      cust_myadmin_direct,
             "qbTotal":           cust_qb_total if has_qb_data else None,
-            "qtyDelta":          (cust_myadmin_total - cust_qb_total) if has_qb_data else None,
+            "qtyDelta":          (cust_myadmin_direct - cust_qb_total) if has_qb_data else None,
             "qtyMatch":          cust_qty_match,
             "qtyUnderBilled":    cust_qty_under,
             "qtyOverBilled":     cust_qty_over,
