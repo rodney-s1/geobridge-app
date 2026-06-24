@@ -490,6 +490,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     import collections as _col
     _diag_han_cs_hanover_promo_non_go: _col.Counter = _col.Counter()   # HANOVER promo but plan != GO
     _diag_han_cs_non_hanover_promo_go: _col.Counter = _col.Counter()   # GO plan but promo != HANOVER
+    _diag_han_cs_neither:             _col.Counter = _col.Counter()   # active Han-CS, neither condition
+    _diag_han_cs_sub_tag_passing:     _col.Counter = _col.Counter()   # sub-tagged devices that pass gate
 
     for _pkey, cdata in company_map.items():
         cid          = cdata["customerId"]
@@ -760,6 +762,17 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                         _diag_han_cs_hanover_promo_non_go[billing_plan] += 1
                     elif billing_plan.upper() == "GO" and promo_code != "HANOVER":
                         _diag_han_cs_non_hanover_promo_go[promo_code] += 1
+                    else:
+                        _diag_han_cs_neither[
+                            f"promo={promo_code!r} plan={billing_plan!r} tag={sub_account_tag!r}"
+                        ] += 1
+
+            # [diag] Sub-tagged Han-CS devices that pass the gate (should be 0 for Cameras/3rdParty)
+            if (billing_type == "Han-CS" and sub_account_tag
+                    and promo_code == "HANOVER"
+                    and not never_activated
+                    and billing_plan.upper() == "GO"):
+                _diag_han_cs_sub_tag_passing[sub_account_tag] += 1
 
             # Display label: prefer promoCode if it exists, else billingPlan
             display_plan = promo_code or billing_plan or "(none)"
@@ -1136,6 +1149,12 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         if _diag_han_cs_non_hanover_promo_go:
             print(f"[diag] Han-CS GO-plan devices EXCLUDED (promoCode != HANOVER): "
                   f"{dict(_diag_han_cs_non_hanover_promo_go.most_common())}")
+        if _diag_han_cs_neither:
+            print(f"[diag] Han-CS active devices EXCLUDED (neither HANOVER+GO): "
+                  f"{dict(_diag_han_cs_neither.most_common(10))}")
+        if _diag_han_cs_sub_tag_passing:
+            print(f"[diag] Han-CS sub-tagged devices PASSING gate: "
+                  f"{dict(_diag_han_cs_sub_tag_passing.most_common())}")
 
         for norm_nc, sku_entries in sorted(qb_only_names.items()):
             # Look up display name and billing type from qb_customers
