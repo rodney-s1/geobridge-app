@@ -267,7 +267,7 @@ function DeviceRow({ device }) {
           {device.status || 'Active'}
         </span>
       </td>
-      <td className="px-4 py-2.5 text-xs text-slate-500">{device.contractStartDate || '—'}</td>
+      <td className="px-4 py-2.5 text-xs text-slate-500">{device.firstConnectDate || <span className="italic text-slate-600">Not available</span>}</td>
       <td className="px-4 py-2.5 text-xs text-slate-500">{device.contractEndDate || '—'}</td>
     </tr>
   )
@@ -394,7 +394,7 @@ function DeviceSubTable({ devices }) {
                 <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Rate Plan Code</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Database</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Start Date</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">First Connect Date</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">End Date</th>
               </tr>
             </thead>

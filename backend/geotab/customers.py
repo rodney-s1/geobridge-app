@@ -948,7 +948,10 @@ async def get_customer(account_id: str):
                 "ratePlanCode":      rate_plan_code,
                 "database":          db_name,
                 "status":            "Never Activated" if _is_never_activated else "Active",
-                "contractStartDate": _date(d.get("startDate") or ""),
+                # FirstDeviceActivationDate = "date in UTC that the device communicated
+                # for the first time" (MyAdmin API field name: firstDeviceActivationDate).
+                # Null for devices that have never connected (shown as "Not available" in UI).
+                "firstConnectDate":  _date(d.get("firstDeviceActivationDate") or ""),
                 "contractEndDate":   _date(d.get("endDate") or ""),
             })
 
