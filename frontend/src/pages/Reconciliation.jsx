@@ -236,7 +236,7 @@ function PriceBreakdownTable({ devices }) {
   )
 }
 function CustomerRow({ customer }) {
-  const [tab, setTab] = useState('qty')   // 'qty' | 'price'
+  const [tab, setTab] = useState('qty')   // 'qty' | 'price' | 'locations'
   const [expanded, setExpanded] = useState(false)
 
   const {
@@ -246,8 +246,10 @@ function CustomerRow({ customer }) {
     ok, over, under, unmapped, noPrice, neverActivated,
     expectedMonthly, actualMonthly, delta,
     status, devices, skuQtyBreakdown,
-    qbOnly,
+    qbOnly, locationNames,
   } = customer
+
+  const hasLocations = locationNames && locationNames.length > 0
 
   // Quantity status for the row badge
   const qtyMismatch = hasQbData && qtyDelta !== 0 && qtyDelta !== null
@@ -272,6 +274,11 @@ function CustomerRow({ customer }) {
         {/* Customer name */}
         <td className="px-4 py-3">
           <span className="text-sm font-medium text-slate-200">{customerName}</span>
+          {hasLocations && (
+            <span className="ml-2 text-xs bg-slate-700/60 text-slate-400 border border-slate-600/40 rounded px-1.5 py-0.5 align-middle">
+              {locationNames.length} location{locationNames.length !== 1 ? 's' : ''}
+            </span>
+          )}
           {qbOnly && (
             <span className="ml-2 text-xs bg-violet-900/50 text-violet-300 border border-violet-700/40 rounded px-1.5 py-0.5 align-middle">QB Only</span>
           )}
@@ -371,6 +378,18 @@ function CustomerRow({ customer }) {
                 >
                   💲 Price Detail ({devices?.length ?? 0} devices)
                 </button>
+                {hasLocations && (
+                  <button
+                    onClick={e => { e.stopPropagation(); setTab('locations') }}
+                    className={`px-3 py-1.5 text-xs font-medium rounded-t-lg transition-colors ${
+                      tab === 'locations'
+                        ? 'bg-slate-700 text-slate-200 border border-b-0 border-slate-600'
+                        : 'text-slate-500 hover:text-slate-300'
+                    }`}
+                  >
+                    📍 Locations ({locationNames.length})
+                  </button>
+                )}
               </div>
 
               {tab === 'qty' && (
@@ -378,6 +397,20 @@ function CustomerRow({ customer }) {
               )}
               {tab === 'price' && (
                 <PriceBreakdownTable devices={devices} />
+              )}
+              {tab === 'locations' && (
+                <div className="px-6 py-4">
+                  <p className="text-xs text-slate-500 mb-3">
+                    All locations below share one QuickBooks invoice under <span className="text-slate-300 font-medium">{customerName}</span>.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {locationNames.map(loc => (
+                      <span key={loc} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700/50 rounded text-xs text-slate-300">
+                        <span className="text-slate-500">📍</span>{loc}
+                      </span>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
           </td>

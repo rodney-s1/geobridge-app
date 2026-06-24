@@ -93,6 +93,9 @@ def _normalize(s: str) -> str:
     """Normalise a customer name for index lookups.
 
     Rules (mirrors _extract_parent):
+      • Pipe-location suffix " | Location Name" is stripped first so that
+        'College Internship Program | Berkeley' → 'college internship program'
+        and all locations merge to the same parent key.
       • If the FIRST brace token is exactly "{Han-CS}" (case-insensitive),
         it is kept as part of the name — Han-CS customers are distinct
         entities from their non-Han-CS counterparts in QB.
@@ -105,6 +108,10 @@ def _normalize(s: str) -> str:
           'Hoopaugh Grading LLC {3rd Party}'      → 'hoopaugh grading llc'
     """
     s = (s or "").strip()
+    # Strip pipe-location suffix before any other processing
+    pipe_pos = s.find(" | ")
+    if pipe_pos != -1:
+        s = s[:pipe_pos].strip()
     first_open = s.find("{")
     if first_open == -1:
         return s.lower()
@@ -132,9 +139,13 @@ def _normalize_loose(s: str) -> str:
     NOT used for primary lookups (those use _normalize).
     """
     import re
-    # First, apply the same brace-stripping logic as _normalize so we compare
-    # the same base name without any sub-account or Han-CS qualifiers.
+    # First, apply the same pipe-location and brace-stripping logic as
+    # _normalize so we compare the same base name without any location
+    # qualifier, sub-account suffix, or Han-CS qualifier.
     s = (s or "").strip()
+    pipe_pos = s.find(" | ")
+    if pipe_pos != -1:
+        s = s[:pipe_pos].strip()
     first_open = s.find("{")
     if first_open != -1:
         first_close = s.find("}", first_open)
@@ -156,21 +167,29 @@ def _extract_parent(cname: str):
     company name.
 
     MyAdmin naming convention:
-      • "Acme Corp"                         → parent='Acme Corp',      sub=''
-      • "Acme Corp {3rd Party Devices}"     → parent='Acme Corp',      sub='3rd Party Devices'
-      • "ACES Controls LLC {Han-CS}"        → parent='ACES Controls LLC {Han-CS}', sub=''
-      • "ACES Controls LLC {Han-CS} {Cameras}" → parent='ACES Controls LLC {Han-CS}', sub='Cameras'
+      • "Acme Corp"                              → parent='Acme Corp',                    sub=''
+      • "Acme Corp | Dallas"                     → parent='Acme Corp',                    sub=''
+      • "Acme Corp {3rd Party Devices}"          → parent='Acme Corp',                    sub='3rd Party Devices'
+      • "ACES Controls LLC {Han-CS}"             → parent='ACES Controls LLC {Han-CS}',   sub=''
+      • "ACES Controls LLC {Han-CS} {Cameras}"   → parent='ACES Controls LLC {Han-CS}',   sub='Cameras'
 
     Rule:
-      1. Find the first "{...}" token.
-      2. If it is "{Han-CS}" (case-insensitive), include it in the parent
+      1. Strip pipe-location suffix (" | Location") first — it is a display
+         qualifier only; all locations share one parent and one QB invoice.
+      2. Find the first "{...}" token in the (now stripped) name.
+      3. If it is "{Han-CS}" (case-insensitive), include it in the parent
          name; look for a SECOND "{...}" token for the sub-account tag.
-      3. Otherwise, everything from the first "{" onward is stripped from
+      4. Otherwise, everything from the first "{" onward is stripped from
          the parent name and the content of the first braces is the tag.
 
     Returns:
         (parent_name: str, sub_account_tag: str)
     """
+    # Step 1: strip pipe-location suffix
+    pipe_pos = cname.find(" | ")
+    if pipe_pos != -1:
+        cname = cname[:pipe_pos].strip()
+
     first_open  = cname.find("{")
     if first_open == -1:
         return cname, ""
@@ -454,11 +473,20 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 "devices":          [],
                 "subAccountIds":    set(),
                 "subAccountNames":  set(),
+                "locationNames":    set(),   # pipe-separated locations e.g. "Berkeley", "Dallas"
             }
         # Always record the sub-account cid and display name.
         company_map[parent_key]["subAccountIds"].add(cid)
         if cname != parent_name:
             company_map[parent_key]["subAccountNames"].add(cname)
+        # Track pipe-location names (e.g. "Berkeley" from "College Internship Program | Berkeley")
+        # cname is still the raw MyAdmin name here; _extract_parent already stripped
+        # the pipe suffix to get parent_name but did not modify cname itself.
+        _pipe_pos = cname.find(" | ")
+        if _pipe_pos != -1:
+            _location = cname[_pipe_pos + 3:].strip()
+            if _location:
+                company_map[parent_key]["locationNames"].add(_location)
         # Prefer the parent name (no braces) as the display name.
         if not company_map[parent_key]["customerName"] and parent_name:
             company_map[parent_key]["customerName"] = parent_name
@@ -1229,6 +1257,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             "customerName":      cname,
             "billingType":       billing_type,
             "subAccountNames":   sorted(cdata.get("subAccountNames") or []),
+            "locationNames":     sorted(cdata.get("locationNames") or []),
             "deviceCount":       len(devices),
             "ok":                cust_ok,
             "over":              cust_over,
@@ -1388,6 +1417,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 "customerName":     display_name,
                 "billingType":      bt,
                 "subAccountNames":  [],
+                "locationNames":    [],
                 "deviceCount":      hig_myadmin_total if is_hig else 0,
                 "ok":               0,
                 "over":             0,
