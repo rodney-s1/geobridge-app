@@ -1139,6 +1139,14 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         )
         has_qb_data   = any(r["qbQty"] is not None for r in qty_rows)
 
+        # Special case: a customer whose ONLY billable devices are HIG-consolidated
+        # (all HANOVER+GO-gated, nothing on a direct QB invoice) will have
+        # has_qb_data=False because hanoverConsolidated rows carry qbQty=None.
+        # But those devices ARE accounted for — on the HIG master invoice.
+        # Treat them as matched rather than "No QB Data".
+        if not has_qb_data and cust_myadmin_direct == 0 and _hig_covered > 0:
+            has_qb_data = True
+
         # -- Apply status filter -----------------------------------------------
         if status_filter and cust_status != status_filter:
             continue
