@@ -7954,5 +7954,17 @@
     "customerName": "Zwilling J A Henckles LLC",
     "skuKey": "Service Fee Geotab (HOS)",
     "price": 22.95
+  },
+  {
+    "id": "RWE Americas Services LLC|Service Fee Fleetio (Advanced)",
+    "customerName": "RWE Americas Services LLC",
+    "skuKey": "Service Fee Fleetio (Advanced)",
+    "price": 37800.0
+  },
+  {
+    "id": "Town of Fuquay-Varina|Service Fee Fleetio (Advanced)",
+    "customerName": "Town of Fuquay-Varina",
+    "skuKey": "Service Fee Fleetio (Advanced)",
+    "price": 29880.0
   }
 ]

@@ -2595,13 +2595,13 @@
     "id": "Enterprise Holdings|DM Service Fee (Enterprise)",
     "customerName": "Enterprise Holdings",
     "skuKey": "DM Service Fee (Enterprise)",
-    "qbQty": 1
+    "qbQty": 13234
   },
   {
     "id": "Enterprise Holdings|Pairing Script",
     "customerName": "Enterprise Holdings",
     "skuKey": "Pairing Script",
-    "qbQty": 1
+    "qbQty": 20843
   },
   {
     "id": "Enterprise Holdings|Hosting Fee",
@@ -2613,7 +2613,7 @@
     "id": "Envue Telematics|BlueArrow Fuel Service",
     "customerName": "Envue Telematics",
     "skuKey": "BlueArrow Fuel Service",
-    "qbQty": 1
+    "qbQty": 1809
   },
   {
     "id": "Envue Telematics|DM Service (Movement) - RS",
@@ -3165,7 +3165,7 @@
     "id": "Geotab Inc.|Pledge - Enterprise",
     "customerName": "Geotab Inc.",
     "skuKey": "Pledge - Enterprise",
-    "qbQty": 1
+    "qbQty": 1788
   },
   {
     "id": "GGC Grading and Utilities LLC|Geotab Service (GO Plan)",
@@ -3297,7 +3297,7 @@
     "id": "Gridline|BlueArrow Fuel Service",
     "customerName": "Gridline",
     "skuKey": "BlueArrow Fuel Service",
-    "qbQty": 2529
+    "qbQty": 3564
   },
   {
     "id": "GSC DIRECT LLC|Service Fee Geotab (HOS)",
@@ -3417,7 +3417,7 @@
     "id": "Hanover Insurance Group|Geotab Service Fee (HANOVER)",
     "customerName": "Hanover Insurance Group",
     "skuKey": "Geotab Service Fee (HANOVER)",
-    "qbQty": 31
+    "qbQty": 3621
   },
   {
     "id": "Hanover Insurance Group|Service Fee Geotab (Suspend)",
@@ -3435,7 +3435,7 @@
     "id": "Hanover Insurance Group|Service Fee (HANOVER-CS) Han (Service Fee Geotab (GO) - Hanover Cost Share for Ha...",
     "customerName": "Hanover Insurance Group",
     "skuKey": "Service Fee (HANOVER-CS) Han (Service Fee Geotab (GO) - Hanover Cost Share for Ha...",
-    "qbQty": 1
+    "qbQty": 1154
   },
   {
     "id": "Hanover Insurance Group|Pledge - Enterprise",
@@ -4851,7 +4851,7 @@
     "id": "MP NexLevel LLC|BlueArrow Fuel Service",
     "customerName": "MP NexLevel LLC",
     "skuKey": "BlueArrow Fuel Service",
-    "qbQty": 1
+    "qbQty": 1521
   },
   {
     "id": "Mr. Clean Maintenance Systems|Service Fee Geotab (Pro)",
@@ -5913,7 +5913,7 @@
     "id": "Reliance Home Comfort|BlueArrow Fuel Service",
     "customerName": "Reliance Home Comfort",
     "skuKey": "BlueArrow Fuel Service",
-    "qbQty": 1
+    "qbQty": 1045
   },
   {
     "id": "Restoration 1 Of Portland|Service Fee Geotab (ProPlus)",
@@ -6129,7 +6129,7 @@
     "id": "Rush Enterprises|BlueArrow Fuel Service",
     "customerName": "Rush Enterprises",
     "skuKey": "BlueArrow Fuel Service",
-    "qbQty": 1
+    "qbQty": 2013
   },
   {
     "id": "Rusty James Transports LLC|Service Fee Geotab (HOS)",
@@ -6184,6 +6184,12 @@
     "customerName": "RWE Americas Services LLC",
     "skuKey": "DM Service Fee (Movement)",
     "qbQty": 54
+  },
+  {
+    "id": "RWE Americas Services LLC|Service Fee Fleetio (Advanced)",
+    "customerName": "RWE Americas Services LLC",
+    "skuKey": "Service Fee Fleetio (Advanced)",
+    "qbQty": 1
   },
   {
     "id": "S and G Transport LLC|Service Fee Geotab (HOS)",
@@ -7078,6 +7084,12 @@
     "customerName": "Town of Cary",
     "skuKey": "GO Anywhere Plan (SWSI)",
     "qbQty": 10
+  },
+  {
+    "id": "Town of Fuquay-Varina|Service Fee Fleetio (Advanced)",
+    "customerName": "Town of Fuquay-Varina",
+    "skuKey": "Service Fee Fleetio (Advanced)",
+    "qbQty": 1
   },
   {
     "id": "Town of Fuquay Varina - ENG|Geotab Service (Proplus SW-SI2)",

@@ -2,164 +2,190 @@
   {
     "ratePlanCode": "APEXR",
     "skuKey": "Service Fee Geotab (Pro)",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 22.95,
+    "notes": "",
+    "cost": 16.0
   },
   {
     "ratePlanCode": "BUNDLE",
     "skuKey": "Geotab Service (GO BUNDLE)",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 22.95,
+    "notes": "",
+    "cost": 20.4
   },
   {
     "ratePlanCode": "BUNDLE-GO",
     "skuKey": "GO Core Bundle Plan",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 17.95,
+    "notes": "",
+    "cost": 8.0
   },
   {
     "ratePlanCode": "BUNDLE-GO-INS",
     "skuKey": "GO Core Bundle Plan w/INS",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 19.95,
+    "notes": "",
+    "cost": 10.0
   },
   {
     "ratePlanCode": "BUNDLE-GOGF",
     "skuKey": "Bundle Service (GO Focus-SB)",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 11.0,
+    "notes": "",
+    "cost": 4.0
   },
   {
     "ratePlanCode": "BUNDLE-GOGF-INS",
     "skuKey": "Bundle Service (GO Focus-SBWI)",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 15.0,
+    "notes": "",
+    "cost": 6.0
   },
   {
     "ratePlanCode": "BUNDLE-GOGFP",
     "skuKey": "Bundle Service Fee (GFP-SB)",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 15.0,
+    "notes": "",
+    "cost": 9.0
   },
   {
     "ratePlanCode": "BUNDLE-GOGFP-INS",
     "skuKey": "Bundle Service Fee (GFP-SBWI)",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 20.0,
+    "notes": "",
+    "cost": 11.0
   },
   {
     "ratePlanCode": "BUNDLE-RS21-R1",
     "skuKey": "(GO BUNDLE) Service - USA Civil",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 24.5,
+    "notes": "",
+    "cost": 18.88
   },
   {
     "ratePlanCode": "BUNDLE-RS56-R1",
     "skuKey": "(GO BUNDLE) Service - Wayne Bro",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 21.0,
+    "notes": "",
+    "cost": 15.75
   },
   {
     "ratePlanCode": "BUNDLE-RS66-R1",
     "skuKey": "(GO BUNDLE) Service - VA Green",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 20.0,
+    "notes": "",
+    "cost": 15.5
   },
   {
     "ratePlanCode": "BUNDLE-RS78-R1",
     "skuKey": "Geotab Service (GO BUNDLE)",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 22.95,
+    "notes": "",
+    "cost": 20.4
   },
   {
     "ratePlanCode": "CELU-TP-200",
     "skuKey": "DM Service Fee",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 11.0,
+    "notes": "",
+    "cost": 10.0
   },
   {
     "ratePlanCode": "CELU-TP-250",
     "skuKey": "DM Service Fee",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 11.0,
+    "notes": "",
+    "cost": 10.0
   },
   {
     "ratePlanCode": "GFP-AUX-BUNDLE",
     "skuKey": "Service (GFPlus + Aux) Bundle",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 29.0,
+    "notes": "",
+    "cost": 22.0
   },
   {
     "ratePlanCode": "GFP-BUNDLE",
     "skuKey": "Service (GO Focus Plus) Bundle",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 22.0,
+    "notes": "",
+    "cost": 15.0
   },
   {
     "ratePlanCode": "GOA-BUNDLE",
     "skuKey": "GO Anywhere Plan (Bundle)",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 12.0,
+    "notes": "",
+    "cost": 6.0
   },
   {
     "ratePlanCode": "HANOVER",
     "skuKey": "Geotab Service Fee (HANOVER)",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 15.0,
+    "notes": "",
+    "cost": 10.0
   },
   {
     "ratePlanCode": "JJKELLER",
     "skuKey": "Service Fee JJ Keller",
-    "defaultPrice": 0.0,
+    "defaultPrice": 10.95,
     "notes": ""
   },
   {
     "ratePlanCode": "NEXTLINK",
     "skuKey": "Service Fee (GO) - Nextlink",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 25.0,
+    "notes": "",
+    "cost": 20.0
   },
   {
     "ratePlanCode": "NJPA",
     "skuKey": "Geotab Service (ProPlus NJPA)",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 19.39,
+    "notes": "",
+    "cost": 14.64
   },
   {
     "ratePlanCode": "OFFROAD",
     "skuKey": "Geotab Off-Road (Pro)",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 17.0,
+    "notes": "",
+    "cost": 9.0
   },
   {
     "ratePlanCode": "OHIO-BUNDLE",
     "skuKey": "Geotab Service (GO Plan)",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 26.95,
+    "notes": "",
+    "cost": 18.4
   },
   {
     "ratePlanCode": "SAI-BUNDLE",
     "skuKey": "Sensata Service",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 20.0,
+    "notes": "",
+    "cost": 13.0
   },
   {
     "ratePlanCode": "SMARTAI-TEST",
     "skuKey": "Service (GO Focus Plus) Bundle",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 22.0,
+    "notes": "",
+    "cost": 15.0
   },
   {
     "ratePlanCode": "SURF-BND-PROMO",
     "skuKey": "SS Service Fee BUNDLE",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 20.0,
+    "notes": "",
+    "cost": 20.15
   },
   {
     "ratePlanCode": "SURF-BUNDLE",
     "skuKey": "SS Service Fee BUNDLE",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 20.0,
+    "notes": "",
+    "cost": 20.15
   },
   {
     "ratePlanCode": "SURFSIGHT US/CA",
@@ -170,115 +196,134 @@
   {
     "ratePlanCode": "SWELL",
     "skuKey": "Geotab Service (Proplus SWELL)",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 20.15,
+    "notes": "",
+    "cost": 15.4
   },
   {
     "ratePlanCode": "SWELL-CC",
     "skuKey": "Geotab Service (GO SWELL-CC)",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 16.0,
+    "notes": "",
+    "cost": 12.5
   },
   {
     "ratePlanCode": "SWELL-NOINS3",
     "skuKey": "Geotab Service (GO SW-SI3)",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 19.25,
+    "notes": "",
+    "cost": 14.5
   },
   {
     "ratePlanCode": "SWELL-NOINSTALL",
     "skuKey": "Geotab Service (GO SW-SI)",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 19.25,
+    "notes": "",
+    "cost": 14.12
   },
   {
     "ratePlanCode": "SWELL-NOINSTALL2",
     "skuKey": "Geotab Service (GO SW-SI2)",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 19.25,
+    "notes": "",
+    "cost": 14.5
   },
   {
     "ratePlanCode": "SWELL2",
     "skuKey": "Geotab Service (Proplus SW-SI2)",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 19.25,
+    "notes": "",
+    "cost": 14.5
   },
   {
     "ratePlanCode": "SWELL3",
     "skuKey": "Geotab Service (GO SWELL3)",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 19.25,
+    "notes": "",
+    "cost": 15.75
   },
   {
     "ratePlanCode": "SWELL3-CC",
     "skuKey": "Geotab Service (GO SWELL3-CC)",
-    "defaultPrice": 0.0,
-    "notes": ""
+    "defaultPrice": 16.0,
+    "notes": "",
+    "cost": 12.5
   },
   {
     "ratePlanCode": "ASSET",
     "skuKey": "Service Fee Geotab (Asset)",
     "defaultPrice": 12.0,
-    "notes": "MyAdmin billing plan - standard asset tracking tier"
+    "notes": "MyAdmin billing plan - standard asset tracking tier",
+    "cost": 6.0
   },
   {
     "ratePlanCode": "BASE MODE",
     "skuKey": "Service Fee Geotab (Base)",
     "defaultPrice": 16.95,
-    "notes": "MyAdmin billing plan - base service tier"
+    "notes": "MyAdmin billing plan - base service tier",
+    "cost": 7.0
   },
   {
     "ratePlanCode": "GO",
     "skuKey": "Geotab Service (GO Plan)",
     "defaultPrice": 26.95,
-    "notes": "MyAdmin billing plan - standard GO tier; promo codes override to specific SKU"
+    "notes": "MyAdmin billing plan - standard GO tier; promo codes override to specific SKU",
+    "cost": 18.4
   },
   {
     "ratePlanCode": "GO EXPAND",
     "skuKey": "Geotab Service (GO Focus Plus)",
-    "defaultPrice": 25.0,
-    "notes": "MyAdmin billing plan - GO Focus/camera plan; promo codes override to specific SKU"
+    "defaultPrice": 23.0,
+    "notes": "MyAdmin billing plan - GO Focus/camera plan; promo codes override to specific SKU",
+    "cost": 15.0
   },
   {
     "ratePlanCode": "PRO MODE",
     "skuKey": "Service Fee Geotab (Pro)",
     "defaultPrice": 22.95,
-    "notes": "MyAdmin billing plan - Pro service tier"
+    "notes": "MyAdmin billing plan - Pro service tier",
+    "cost": 16.0
   },
   {
     "ratePlanCode": "PROPLUS MODE",
     "skuKey": "Service Fee Geotab (ProPlus)",
     "defaultPrice": 27.95,
-    "notes": "MyAdmin billing plan - ProPlus service tier"
+    "notes": "MyAdmin billing plan - ProPlus service tier",
+    "cost": 19.0
   },
   {
     "ratePlanCode": "PROPLUS + KEYLESS",
     "skuKey": "ProPlus + Keyless",
     "defaultPrice": 39.0,
-    "notes": "MyAdmin billing plan - ProPlus with keyless entry add-on"
+    "notes": "MyAdmin billing plan - ProPlus with keyless entry add-on",
+    "cost": 29.0
   },
   {
     "ratePlanCode": "PROPLUS + WIFI",
     "skuKey": "ProPlus + Wifi",
     "defaultPrice": 37.95,
-    "notes": "MyAdmin billing plan - ProPlus with WiFi add-on"
+    "notes": "MyAdmin billing plan - ProPlus with WiFi add-on",
+    "cost": 29.0
   },
   {
     "ratePlanCode": "PROPLUS PUBLIC WORKS",
     "skuKey": "ProPlus + Public Works",
     "defaultPrice": 29.0,
-    "notes": "MyAdmin billing plan - ProPlus public works tier"
+    "notes": "MyAdmin billing plan - ProPlus public works tier",
+    "cost": 22.85
   },
   {
     "ratePlanCode": "REGULATORY MODE",
     "skuKey": "Service Fee Geotab (HOS)",
     "defaultPrice": 22.95,
-    "notes": "MyAdmin billing plan - regulatory/HOS compliance tier; defaults to HOS ($22.95); HOS V2 customers handled via customer-specific rate plan mappings"
+    "notes": "MyAdmin billing plan - regulatory/HOS compliance tier; defaults to HOS ($22.95); HOS V2 customers handled via customer-specific rate plan mappings",
+    "cost": 10.0
   },
   {
     "ratePlanCode": "SUSPEND MODE",
     "skuKey": "Service Fee Geotab (Suspend)",
     "defaultPrice": 10.0,
-    "notes": "MyAdmin billing plan - suspended/inactive device tier"
+    "notes": "MyAdmin billing plan - suspended/inactive device tier",
+    "cost": 5.0
   }
 ]
