@@ -888,7 +888,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             rate_plan = lookup_code  # used by the rest of the loop for display
 
             # Resolve expected price
-            expected, price_source = _resolve_price(cname, sku_key, ovr_index, catalog_index)
+            expected, price_source = _resolve_price(_qb_cname, sku_key, ovr_index, catalog_index)
 
             if expected is None:
                 device_rows.append({
@@ -967,7 +967,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             for na_dev in never_activated_devs:
                 if inherited_sku:
                     expected_na, price_source_na = _resolve_price(
-                        cname, inherited_sku, ovr_index, catalog_index
+                        _qb_cname, inherited_sku, ovr_index, catalog_index
                     )
                     device_rows.append({
                         "serialNumber":  na_dev["serialNumber"],
@@ -1075,11 +1075,13 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             # and devices don't appear as missing-from-QB on the individual row.
             _is_hanover_sku = (sku_key == "Geotab Service Fee (HANOVER)")
             _is_han_cs_sku  = (sku_key == HAN_CS_CUST_SKU)
-            if (_is_hanover_sku or _is_han_cs_sku) and qb_qty is None:
-                # Use the per-customer HANOVER+GO-gated count, not the raw
-                # myadmin_by_sku count.  myadmin_by_sku counts ALL Tier-5-routed
-                # devices (including non-HANOVER / non-GO plan ones), which
-                # overstates the business-correct billable count.
+            if _is_hanover_sku or _is_han_cs_sku:
+                # These SKUs are invoiced under Hanover Insurance Group's QB
+                # master account.  Whether or not the individual customer's QB
+                # export also carries a line for them, we always treat them as
+                # HIG-consolidated: use the gated MyAdmin count and mark
+                # qbAuthoritative=True so the row is excluded from cust_qb_total
+                # and the header delta.
                 _gated_count = cust_han_cs_count if _is_han_cs_sku else cust_hanover_count
                 qty_rows.append({
                     "skuKey":              sku_key,
