@@ -1226,7 +1226,7 @@ export default function Customers({ onDetail }) {
             <div className="flex items-center justify-between">
               <span className="text-xs text-slate-400">{p.message || ''}</span>
               <span className="text-xs text-slate-600">
-                First sync ~5 min · repeat syncs use 12-hour cache
+                Sync may take ~10 minutes. Auto-sync is performed every hour
               </span>
             </div>
           </div>
@@ -1265,7 +1265,7 @@ export default function Customers({ onDetail }) {
               <svg className={`w-4 h-4 ${isForcingRefresh ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
-              {isForcingRefresh ? 'Syncing… (may take ~5 min)' : 'Sync from MyAdmin'}
+              {isForcingRefresh ? 'Syncing… (may take ~10 min)' : 'Sync from MyAdmin'}
             </button>
             {fromCache && cacheAgeHours !== null && !loading && (
               <span className="text-xs text-slate-500">
