@@ -3015,7 +3015,8 @@
     "id": "Fort Myer Construction Corp|GoAnalytics",
     "customerName": "Fort Myer Construction Corp",
     "skuKey": "GoAnalytics",
-    "price": 1.0
+    "price": 1.0,
+    "mirrorOf": "SS Service Fee"
   },
   {
     "id": "Fort Myer Construction Corp|GO Anywhere Plan",
@@ -3093,7 +3094,8 @@
     "id": "G&W Equipment Inc.|GoAnalytics",
     "customerName": "G&W Equipment Inc.",
     "skuKey": "GoAnalytics",
-    "price": 1.0
+    "price": 1.0,
+    "mirrorOf": "SS Service Fee"
   },
   {
     "id": "G&W Equipment Inc.|BlueArrow Fuel Service",
@@ -4426,7 +4428,8 @@
     "id": "Long Beverage|GoAnalytics",
     "customerName": "Long Beverage",
     "skuKey": "GoAnalytics",
-    "price": 1.0
+    "price": 1.0,
+    "mirrorOf": "SS Service Fee"
   },
   {
     "id": "Long Beverage|SS Service Fee",
@@ -6046,7 +6049,8 @@
     "id": "Robertson Heating Supply Co|GoAnalytics",
     "customerName": "Robertson Heating Supply Co",
     "skuKey": "GoAnalytics",
-    "price": 1.0
+    "price": 1.0,
+    "mirrorOf": "SS Service Fee"
   },
   {
     "id": "Robertson Heating Supply Co|Predictive Coach",
@@ -7636,7 +7640,8 @@
     "id": "Virginia Green Lawn Care|GoAnalytics",
     "customerName": "Virginia Green Lawn Care",
     "skuKey": "GoAnalytics",
-    "price": 1.0
+    "price": 1.0,
+    "mirrorOf": "SS Service Fee"
   },
   {
     "id": "VizaLogix|DM Service Fee (Periodic)",

@@ -235,6 +235,94 @@ function PriceBreakdownTable({ devices }) {
     </div>
   )
 }
+
+// ─── Locations Panel ──────────────────────────────────────────────────────────
+function LocationsPanel({ locationNames, devices, customerName }) {
+  const [openLoc, setOpenLoc] = React.useState(null)
+
+  // Group devices by location; devices with no location go under ""
+  const byLocation = React.useMemo(() => {
+    const map = {}
+    ;(devices || []).forEach(d => {
+      const loc = d.location || ''
+      if (!map[loc]) map[loc] = []
+      map[loc].push(d)
+    })
+    return map
+  }, [devices])
+
+  return (
+    <div className="px-6 py-4">
+      <p className="text-xs text-slate-500 mb-4">
+        All locations share one QuickBooks invoice under{' '}
+        <span className="text-slate-300 font-medium">{customerName}</span>.
+        Click a location to see its devices.
+      </p>
+      <div className="flex flex-col gap-2">
+        {locationNames.map(loc => {
+          const locDevices = byLocation[loc] || []
+          const isOpen = openLoc === loc
+          return (
+            <div key={loc} className="border border-slate-700/50 rounded overflow-hidden">
+              {/* Location header button */}
+              <button
+                onClick={() => setOpenLoc(isOpen ? null : loc)}
+                className="w-full flex items-center justify-between px-4 py-2.5 bg-slate-800/80 hover:bg-slate-700/60 transition-colors text-left"
+              >
+                <span className="flex items-center gap-2 text-sm text-slate-200">
+                  <span className="text-slate-400">📍</span>
+                  <span className="font-medium">{loc}</span>
+                </span>
+                <span className="flex items-center gap-3">
+                  <span className="text-xs text-slate-400 font-mono">{locDevices.length} device{locDevices.length !== 1 ? 's' : ''}</span>
+                  <span className={`text-slate-500 text-xs transition-transform inline-block ${isOpen ? 'rotate-90' : ''}`}>▶</span>
+                </span>
+              </button>
+              {/* Device list */}
+              {isOpen && (
+                <div className="bg-slate-900/40 border-t border-slate-700/40">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-700/30">
+                        <th className="px-4 py-2 text-left text-slate-500 font-medium">Serial</th>
+                        <th className="px-4 py-2 text-left text-slate-500 font-medium">Rate Plan</th>
+                        <th className="px-4 py-2 text-left text-slate-500 font-medium">SKU</th>
+                        <th className="px-4 py-2 text-left text-slate-500 font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {locDevices.map((d, i) => (
+                        <tr key={i} className="border-b border-slate-700/20 hover:bg-slate-800/30">
+                          <td className="px-4 py-1.5 font-mono text-slate-300">{d.serialNumber}</td>
+                          <td className="px-4 py-1.5 text-slate-400">{d.ratePlanCode || '—'}</td>
+                          <td className="px-4 py-1.5 text-slate-400">{d.skuKey || <span className="text-amber-500/70 italic">unmapped</span>}</td>
+                          <td className="px-4 py-1.5">
+                            <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${
+                              d.status === 'ok'             ? 'bg-emerald-900/40 text-emerald-400' :
+                              d.status === 'over'           ? 'bg-blue-900/40 text-blue-400' :
+                              d.status === 'under'          ? 'bg-red-900/40 text-red-400' :
+                              d.status === 'unmapped'       ? 'bg-amber-900/40 text-amber-400' :
+                              d.status === 'never_activated'? 'bg-yellow-900/40 text-yellow-400' :
+                              d.status === 'no_price'       ? 'bg-purple-900/40 text-purple-400' :
+                              'bg-slate-700/40 text-slate-400'
+                            }`}>
+                              {d.status === 'never_activated' ? 'never activated' : d.status || '—'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function CustomerRow({ customer }) {
   const [tab, setTab] = useState('qty')   // 'qty' | 'price' | 'locations'
   const [expanded, setExpanded] = useState(false)
@@ -399,18 +487,11 @@ function CustomerRow({ customer }) {
                 <PriceBreakdownTable devices={devices} />
               )}
               {tab === 'locations' && (
-                <div className="px-6 py-4">
-                  <p className="text-xs text-slate-500 mb-3">
-                    All locations below share one QuickBooks invoice under <span className="text-slate-300 font-medium">{customerName}</span>.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {locationNames.map(loc => (
-                      <span key={loc} className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 border border-slate-700/50 rounded text-xs text-slate-300">
-                        <span className="text-slate-500">📍</span>{loc}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+                <LocationsPanel
+                  locationNames={locationNames}
+                  devices={devices}
+                  customerName={customerName}
+                />
               )}
             </div>
           </td>

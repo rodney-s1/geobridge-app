@@ -491,6 +491,9 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         if not company_map[parent_key]["customerName"] and parent_name:
             company_map[parent_key]["customerName"] = parent_name
 
+        # Extract pipe-location from raw cname for per-device location tracking
+        _dev_pipe = cname.find(" | ")
+        _dev_location = cname[_dev_pipe + 3:].strip() if _dev_pipe != -1 else ""
         company_map[parent_key]["devices"].append({
             "serialNumber":    serial,
             "promoCode":       promo_code,
@@ -504,6 +507,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             # For top-level Han-CS customers (billing_type == 'Han-CS'), Tier 5 fires
             # directly on billing_type — sub_account_tag will be empty here.
             "subAccountTag":   sub_account_tag,
+            "location":        _dev_location,   # e.g. "Charlotte", "" for non-pipe accounts
         })
 
     # -- Reverse QB Han-CS check -----------------------------------------------
@@ -675,6 +679,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             norm_cname      = _qb_cname
             never_activated = dev.get("neverActivated", False)
             sub_account_tag = dev.get("subAccountTag") or ""  # e.g. "Han-CS", "3rd Party Devices"
+            dev_location    = dev.get("location") or ""       # e.g. "Charlotte", "" for non-pipe
 
             # CUA: already filtered above.
             # Standard: never-activated devices inherit the most common active SKU —
@@ -904,6 +909,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                     "delta":         None,
                     "priceSource":   "none",
                     "status":        "unmapped",
+                    "location":      dev_location,
                 })
                 cust_unmapped += 1
                 continue
@@ -920,6 +926,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                     "delta":         None,
                     "priceSource":   "none",
                     "status":        "unmapped",
+                    "location":      dev_location,
                 })
                 cust_unmapped += 1
                 continue
@@ -940,6 +947,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                     "delta":         None,
                     "priceSource":   "none",
                     "status":        "no_price",
+                    "location":      dev_location,
                 })
                 cust_no_price += 1
                 continue
@@ -960,6 +968,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                     "delta":         None,
                     "priceSource":   price_source,
                     "status":        "not_in_qb",
+                    "location":      dev_location,
                 })
                 total_not_in_qb += 1
                 cust_expected += expected
@@ -989,6 +998,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 "delta":         delta,
                 "priceSource":   price_source,
                 "status":        status,
+            "location":      dev_location,
             })
 
         # -- Never-activated devices (Standard customers only) -----------------
@@ -1019,6 +1029,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                         "priceSource":   price_source_na,
                         "status":        "never_activated",
                         "neverActivated": True,
+                    "location":      na_dev.get("location", ""),
                     })
                     cust_never_activated += 1
                     # Count toward MyAdmin SKU total — they should appear in quantity
@@ -1037,6 +1048,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                         "priceSource":   "none",
                         "status":        "never_activated",
                         "neverActivated": True,
+                    "location":      na_dev.get("location", ""),
                     })
                     cust_never_activated += 1
 
