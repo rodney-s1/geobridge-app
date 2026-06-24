@@ -486,6 +486,11 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     # QB (Service Fee (HANOVER-CS) line), not on each individual customer's invoice.
     han_cs_myadmin_total: int = 0
 
+    # [diag] Counters for gate-rejection analysis — removed after diagnosis
+    import collections as _col
+    _diag_han_cs_hanover_promo_non_go: _col.Counter = _col.Counter()   # HANOVER promo but plan != GO
+    _diag_han_cs_non_hanover_promo_go: _col.Counter = _col.Counter()   # GO plan but promo != HANOVER
+
     for _pkey, cdata in company_map.items():
         cid          = cdata["customerId"]
         cname        = cdata["customerName"]
@@ -744,6 +749,17 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 else:
                     hanover_myadmin_total += 1
                     cust_hanover_count   += 1
+            else:
+                # [diag] Record why Han-CS HANOVER devices miss the gate
+                _is_han_cs_device = (
+                    billing_type == "Han-CS"
+                    or sub_account_tag.lower() == "han-cs"
+                )
+                if _is_han_cs_device and not never_activated:
+                    if promo_code == "HANOVER" and billing_plan.upper() != "GO":
+                        _diag_han_cs_hanover_promo_non_go[billing_plan] += 1
+                    elif billing_plan.upper() == "GO" and promo_code != "HANOVER":
+                        _diag_han_cs_non_hanover_promo_go[promo_code] += 1
 
             # Display label: prefer promoCode if it exists, else billingPlan
             display_plan = promo_code or billing_plan or "(none)"
@@ -1114,6 +1130,12 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
               f"(in qb_qty_index but not in MyAdmin company_map); "
               f"hanover_myadmin_total={hanover_myadmin_total}  "
               f"han_cs_myadmin_total={han_cs_myadmin_total}")
+        if _diag_han_cs_hanover_promo_non_go:
+            print(f"[diag] Han-CS HANOVER-promo devices EXCLUDED (billingPlan != GO): "
+                  f"{dict(_diag_han_cs_hanover_promo_non_go.most_common())}")
+        if _diag_han_cs_non_hanover_promo_go:
+            print(f"[diag] Han-CS GO-plan devices EXCLUDED (promoCode != HANOVER): "
+                  f"{dict(_diag_han_cs_non_hanover_promo_go.most_common())}")
 
         for norm_nc, sku_entries in sorted(qb_only_names.items()):
             # Look up display name and billing type from qb_customers
