@@ -187,9 +187,9 @@ def start_background_refresh() -> None:
 # We try exact match on the full key first, then on the primary segment only.
 QB_JOB_TYPE_MAP = {
     "standard":                     "Standard",
-    "cua":                          "CUA",
-    "charge upon activation":       "CUA",
-    "cua - charge upon activation": "CUA",
+    "cua":                          "Charge Upon Activation",
+    "charge upon activation":       "Charge Upon Activation",
+    "cua - charge upon activation": "Charge Upon Activation",
     "sourcewell":                   "Sourcewell",
     "hanover":                      "Hanover",
     "hanover deal":                 "Hanover",
@@ -971,8 +971,8 @@ class BillingTypeUpdate(BaseModel):
 @router.post("/customers/{account_id}/billing-type")
 async def set_billing_type(account_id: str, body: BillingTypeUpdate):
     valid = [
-        "Standard", "CUA", "Sourcewell", "Hanover", "Han-CS",
-        "Charge Upon Activation", "Check Before Sending",
+        "Standard", "Charge Upon Activation", "Sourcewell", "Hanover", "Han-CS",
+        "Check Before Sending",
         "Reseller", "In Collections", "Terminated", "Unknown",
     ]
     if body.billing_type not in valid:
