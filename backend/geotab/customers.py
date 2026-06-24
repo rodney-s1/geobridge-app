@@ -28,9 +28,10 @@ MYADMIN_ACCOUNT = "CELU01"
 
 # --- Disk persistence paths ---------------------------------------------------
 _HERE = os.path.dirname(os.path.abspath(__file__))
-QB_DATA_FILE    = os.path.join(_HERE, "qb_customers.json")
-OVERRIDES_FILE  = os.path.join(_HERE, "billing_overrides.json")
-SYNC_CACHE_FILE = os.path.join(_HERE, "myadmin_cache.json")   # persisted between restarts
+QB_DATA_FILE           = os.path.join(_HERE, "qb_customers.json")
+OVERRIDES_FILE         = os.path.join(_HERE, "billing_overrides.json")
+BILLING_TYPE_OVERRIDES_FILE = os.path.join(_HERE, "billing_type_overrides.json")
+SYNC_CACHE_FILE        = os.path.join(_HERE, "myadmin_cache.json")   # persisted between restarts
 
 def _load_json(path: str, default):
     try:
@@ -46,7 +47,11 @@ def _save_json(path: str, data) -> None:
     os.replace(tmp, path)
 
 # --- In-memory stores -- pre-loaded from disk on startup ----------------------
-billing_overrides:  Dict[str, str]  = _load_json(OVERRIDES_FILE, {})
+billing_overrides:       Dict[str, str]  = _load_json(OVERRIDES_FILE, {})
+billing_type_overrides:  Dict[str, str]  = {
+    k: v for k, v in _load_json(BILLING_TYPE_OVERRIDES_FILE, {}).items()
+    if not k.startswith("_")   # skip _comment keys
+}
 qb_customers:       Dict[str, dict] = _load_json(QB_DATA_FILE, {})
 qb_items:           List[dict]      = []
 name_to_company_id: Dict[str, str]  = {}   # normalize(name) -> companyId, built on sync

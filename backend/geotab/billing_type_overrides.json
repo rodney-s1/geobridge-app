@@ -1,0 +1,4 @@
+{
+  "_comment": "Manual billing-type overrides. Key = normalize(customerName) (lowercase, stripped). Value = billing type string. These take priority over the QB-fallback promotion logic. Use this to correct former Han-CS / Hanover customers who no longer belong to that program.",
+  "sunshine fuels and energy services": "Standard"
+}

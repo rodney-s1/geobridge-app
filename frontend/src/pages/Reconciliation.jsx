@@ -428,8 +428,9 @@ export default function Reconciliation() {
 
   useEffect(() => { fetchData() }, [])  // eslint-disable-line
 
-  const summary   = data?.summary
-  const customers = data?.customers || []
+  const summary              = data?.summary
+  const customers            = data?.customers || []
+  const qbFallbackCustomers  = data?.qbFallbackCustomers || []
 
   // Client-side filtering + sorting
   const getQtyStatus = c => !c.hasQbData ? 'no_qb_data'
@@ -558,6 +559,39 @@ export default function Reconciliation() {
               active={qtyFilter === 'no_qb_data'}
               onClick={() => setQtyFilter(f => f === 'no_qb_data' ? '' : 'no_qb_data')}
             />
+          </div>
+        </div>
+      )}
+
+      {/* ── QB Fallback Warning Banner ── */}
+      {qbFallbackCustomers.length > 0 && (
+        <div className="rounded-xl border border-amber-600/40 bg-amber-950/30 px-4 py-3">
+          <div className="flex items-start gap-3">
+            <span className="text-amber-400 text-lg mt-0.5">⚠️</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-amber-300 mb-1">
+                {qbFallbackCustomers.length === 1
+                  ? '1 customer is billed as Han-CS based on QB invoice history only'
+                  : `${qbFallbackCustomers.length} customers are billed as Han-CS based on QB invoice history only`}
+              </p>
+              <p className="text-xs text-amber-200/70 mb-2">
+                These customers have no <code className="bg-slate-800 px-1 rounded text-amber-300">{'{Han-CS}'}</code> tag
+                in MyAdmin. Their billing type was inferred from a past QB invoice line.
+                If any have left the Hanover Cost Share program, add them to{' '}
+                <code className="bg-slate-800 px-1 rounded text-amber-300">billing_type_overrides.json</code>{' '}
+                with value <code className="bg-slate-800 px-1 rounded text-amber-300">"Standard"</code>.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {qbFallbackCustomers.map((fc, i) => (
+                  <span key={i} className="inline-flex items-center gap-1.5 text-xs bg-slate-800/70
+                    border border-amber-700/30 text-amber-200 rounded-lg px-2.5 py-1">
+                    <span className="font-medium">{fc.customerName}</span>
+                    <span className="text-amber-400/60">·</span>
+                    <span className="text-amber-400/80">{fc.activeDevices} devices</span>
+                  </span>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -270,7 +270,10 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     }
     """
     # -- Import here to avoid circular imports ---------------------------------
-    from geotab.customers import _sync_cache, enrich_customer, qb_customers as _qb_customers
+    from geotab.customers import (
+        _sync_cache, enrich_customer, qb_customers as _qb_customers,
+        billing_type_overrides as _billing_type_overrides,
+    )
 
     contracts = _sync_cache.get("contracts") or []
     if not contracts:
@@ -493,7 +496,9 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     _diag_han_cs_neither:             _col.Counter = _col.Counter()   # active Han-CS, neither condition
     _diag_han_cs_sub_tag_passing:     _col.Counter = _col.Counter()   # sub-tagged devices that pass gate
     # Customers assigned Han-CS via QB fallback (no {Han-CS} in MyAdmin name)
+    # Each entry: {customerName, activeDevices, myAdminBillingType}
     _diag_han_cs_qb_fallback: _col.Counter = _col.Counter()
+    _qb_fallback_customers: list = []   # richer list for UI warning
 
     for _pkey, cdata in company_map.items():
         cid          = cdata["customerId"]
@@ -514,6 +519,13 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             if _bt and billing_type in _LOW_PRIORITY:
                 billing_type = _bt   # take any definite value over the default
 
+        # Manual billing-type overrides take highest priority — they correct
+        # former Han-CS / Hanover customers that have left the program but
+        # still appear on old QB invoices (which would trigger the QB fallback).
+        _bt_override = _billing_type_overrides.get(_normalize(cname))
+        if _bt_override:
+            billing_type = _bt_override
+
         # Fallback: if billing_type is still Unknown or Standard, check the QB
         # invoice index by customer name.  Many Hanover customers have a name
         # mismatch between MyAdmin and QB (e.g. case, punctuation, suffix
@@ -531,9 +543,17 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 # [diag] Record customers promoted to Han-CS via QB fallback
                 # (their MyAdmin name has no {Han-CS} tag so diag_han_cs_plans misses them)
                 if "{Han-CS}" not in cname:
-                    _diag_han_cs_qb_fallback[cname] += len([
-                        d for d in devices if not d.get("neverActivated")
-                    ])
+                    _active_count = len([d for d in devices if not d.get("neverActivated")])
+                    _diag_han_cs_qb_fallback[cname] += _active_count
+                    _qb_fallback_customers.append({
+                        "customerName":    cname,
+                        "activeDevices":   _active_count,
+                        "note": (
+                            "Assigned Han-CS via QB invoice history. "
+                            "If this customer is no longer in the Hanover Cost Share program, "
+                            "add them to billing_type_overrides.json with value 'Standard'."
+                        ),
+                    })
 
         is_cua       = billing_type in ("CUA", "Charge Upon Activation")
 
@@ -1335,6 +1355,10 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             "hasQbData":       total_qb_devices > 0,
         },
         "customers": result_customers,
+        # Customers whose billing type was inferred from QB invoice history
+        # (no {Han-CS} / {Hanover} tag in MyAdmin). If any of these are former
+        # program members, add them to billing_type_overrides.json.
+        "qbFallbackCustomers": _qb_fallback_customers,
     }
 
 
