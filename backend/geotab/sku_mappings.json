@@ -191,7 +191,8 @@
     "ratePlanCode": "SURFSIGHT US/CA",
     "skuKey": "SS Service Fee",
     "defaultPrice": 30.0,
-    "notes": "MyAdmin billing plan for Surfsight camera devices (External Vendor Device type). Maps to SS Camera Service Fee (1GB Data Limit). Both US and CA devices share this plan name."
+    "notes": "MyAdmin billing plan for Surfsight camera devices (External Vendor Device type). Maps to SS Camera Service Fee (1GB Data Limit). Both US and CA devices share this plan name.",
+    "cost": 21.0
   },
   {
     "ratePlanCode": "SWELL",

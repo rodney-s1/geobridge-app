@@ -7967,5 +7967,17 @@
     "customerName": "Town of Fuquay-Varina",
     "skuKey": "Service Fee Fleetio (Advanced)",
     "price": 29880.0
+  },
+  {
+    "id": "Sunshine Fuels and Energy Services|Geotab Service",
+    "customerName": "Sunshine Fuels and Energy Services",
+    "skuKey": "Geotab Service",
+    "price": 24.5
+  },
+  {
+    "id": "Sunshine Fuels and Energy Services|Geotab Service (GO Plan)",
+    "customerName": "Sunshine Fuels and Energy Services",
+    "skuKey": "Geotab Service (GO Plan)",
+    "price": 24.5
   }
 ]

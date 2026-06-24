@@ -6828,5 +6828,12 @@
     "defaultPrice": 0.0,
     "category": "Zendu Solutions",
     "desc": ""
+  },
+  {
+    "skuKey": "Geotab Service",
+    "fullPath": "Geotab Service:Geotab Service (GO Plan)",
+    "defaultPrice": 24.5,
+    "category": "Geotab Service",
+    "desc": "GO Plan"
   }
 ]
