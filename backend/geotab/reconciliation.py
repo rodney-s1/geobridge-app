@@ -474,8 +474,18 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     #   a) Former Han-CS members whose MyAdmin account was renamed/removed, OR
     #   b) Name mismatches that prevent the QB-fallback from matching them.
     # Exclude Hanover Insurance Group (the master consolidated row).
+    #
+    # IMPORTANT: QB invoice names do NOT carry the {Han-CS} suffix — they use
+    # the bare company name (e.g. "ACES Controls LLC", not "ACES Controls LLC {Han-CS}").
+    # So when building the MyAdmin Han-CS name set we must strip "{Han-CS}" before
+    # normalizing, otherwise nothing ever matches.
+    def _strip_han_cs_tag(name: str) -> str:
+        """Strip ' {Han-CS}' suffix (case-insensitive) from a customer name."""
+        import re as _re
+        return _re.sub(r'\s*\{Han-CS\}\s*', '', name, flags=_re.IGNORECASE).strip()
+
     _myadmin_han_cs_loose: set = {
-        _normalize_loose(cdata["customerName"])
+        _normalize_loose(_strip_han_cs_tag(cdata["customerName"]))
         for cdata in company_map.values()
         if "{Han-CS}" in cdata["customerName"]
            or _normalize_loose(cdata["customerName"]) in qb_han_cs_names
