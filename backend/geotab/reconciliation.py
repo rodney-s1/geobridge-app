@@ -624,11 +624,16 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         # Track SKU usage for active devices so never-activated can inherit
         active_sku_counts: Dict[str, int] = {}
 
+        # QB invoice data (ovr_index, qb_qty_index) is keyed by the bare company
+        # name — QB never carries the MyAdmin "{Han-CS}" suffix.  Strip it before
+        # normalizing so Han-CS customers match their QB invoice lines correctly.
+        _qb_cname = _normalize(_strip_han_cs_tag(cname))
+
         for dev in devices_to_process:
             promo_code      = dev["promoCode"]       # e.g. "SWELL", "" (most devices)
             billing_plan    = dev["billingPlan"]     # e.g. "ProPlus Mode", "Base Mode" (suffix already stripped)
             serial          = dev.get("serialNumber") or ""
-            norm_cname      = _normalize(cname)
+            norm_cname      = _qb_cname
             never_activated = dev.get("neverActivated", False)
             sub_account_tag = dev.get("subAccountTag") or ""  # e.g. "Han-CS", "3rd Party Devices"
 
@@ -878,7 +883,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 continue
 
             # Resolve actual QB invoiced price (customer override is the invoice truth)
-            actual_key = (_normalize(cname), sku_key)
+            actual_key = (_qb_cname, sku_key)
             actual = ovr_index.get(actual_key)
 
             if actual is None:
@@ -1018,13 +1023,14 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         # per-device inside the device loop above (promoCode == "HANOVER" gate).
         # No post-loop accumulation needed here.
 
-        qb_norm_cname = _normalize(cname)
         qty_rows = []
         cust_qty_match = cust_qty_over = cust_qty_under = cust_qty_missing = 0
 
-        # All SKUs seen either in MyAdmin mapping or in QB invoice for this customer
+        # All SKUs seen either in MyAdmin mapping or in QB invoice for this customer.
+        # Use _qb_cname (Han-CS suffix stripped) so QB lines keyed to the bare name
+        # are included even when MyAdmin carries the "{Han-CS}" suffix.
         all_skus = set(myadmin_by_sku.keys()) | {
-            sk for (nc, sk) in qb_qty_index.keys() if nc == _normalize(cname)
+            sk for (nc, sk) in qb_qty_index.keys() if nc == _qb_cname
         }
 
         # Count unmapped devices (no rate plan OR no mapping, excl. never_activated)
@@ -1035,7 +1041,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
 
         for sku_key in sorted(all_skus):
             myadmin_count = myadmin_by_sku.get(sku_key, 0)
-            qb_qty        = qb_qty_index.get((_normalize(cname), sku_key), None)
+            qb_qty        = qb_qty_index.get((_qb_cname, sku_key), None)
 
             # Hanover-consolidated: "Geotab Service Fee (HANOVER)" and HAN_CS_CUST_SKU
             # are both invoiced under Hanover Insurance Group's QB master account —
@@ -1206,7 +1212,9 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     # account won't have a matching MyAdmin cid anyway).
     if not customer_id:
         # Collect the set of normalised names already covered by company_map
-        covered_norm_names: set = {_normalize(c["customerName"]) for c in result_customers}
+        covered_norm_names: set = {
+            _normalize(_strip_han_cs_tag(c["customerName"])) for c in result_customers
+        }
 
         # Group qb_qty_index keys by customer name
         qb_only_names: Dict[str, list] = {}
