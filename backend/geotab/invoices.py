@@ -206,17 +206,14 @@ def _generate_prorated_invoice(
     Build a prorated invoice for a single customer for the given billing month.
     Returns None if the customer has no qualifying devices.
 
-    A device qualifies if:
-      - For Hanover / Han-CS: firstDeviceActivationDate falls within the billing month
-      - For CUA: activation date (see below) falls within the billing month
-      - the contract is not terminated
-      - the device has a resolvable SKU
+    A device qualifies if its activation date falls within the billing month,
+    it is not terminated, and it has a resolvable SKU.
 
-    CUA activation date rules (applied only when billingType == 'Charge Upon Activation'):
+    Activation date rules (applied to ALL billing types):
       1. Neither firstDeviceActivationDate nor billingStartDate exists
          → skip (device shows "Never Activated" in MyAdmin)
       2. firstDeviceActivationDate exists AND billingStartDate < firstDeviceActivationDate
-         → skip (device already auto-activated; covered by main recurring invoice)
+         → skip (already auto-activated; covered by main recurring invoice)
       3. firstDeviceActivationDate exists AND (no billingStartDate OR billingStartDate >= firstDeviceActivationDate)
          → qualify using firstDeviceActivationDate (normal new activation)
       4. No firstDeviceActivationDate, billingStartDate exists and falls in billing month
@@ -227,9 +224,6 @@ def _generate_prorated_invoice(
 
     # Use the normalised name for all price lookups
     cust_norm = _normalize(customer_name)
-
-    billing_type_local = customer.get("billingType", "")
-    is_cua = (billing_type_local == "Charge Upon Activation")
 
     month_start = date(billing_year, billing_month, 1)
     month_end   = date(billing_year, billing_month, _days_in_month(billing_year, billing_month))
@@ -246,58 +240,42 @@ def _generate_prorated_invoice(
         raw_fcd = (contract.get("firstDeviceActivationDate") or "")[:10]
         raw_bsd = (contract.get("billingStartDate")          or "")[:10]
 
-        if is_cua:
-            # ── CUA-specific activation date resolution ──────────────────
-            # Rule 1: neither date → skip (Never Activated)
-            if not raw_fcd and not raw_bsd:
-                continue
+        # Rule 1: neither date → skip (Never Activated)
+        if not raw_fcd and not raw_bsd:
+            continue
 
-            if raw_fcd:
-                # Parse firstDeviceActivationDate
-                try:
-                    fcd = date.fromisoformat(raw_fcd)
-                except ValueError:
-                    continue
-
-                # Rule 2: billingStartDate exists and predates firstConnectDate
-                # → already auto-activated on its own, skip
-                if raw_bsd:
-                    try:
-                        bsd = date.fromisoformat(raw_bsd)
-                    except ValueError:
-                        bsd = None
-                    if bsd and bsd < fcd:
-                        continue
-
-                # Rule 3: normal new activation — use firstDeviceActivationDate
-                activation_date     = fcd
-                raw_activation_date = raw_fcd
-
-            else:
-                # Rule 4: no firstConnectDate — use billingStartDate as activation
-                try:
-                    bsd = date.fromisoformat(raw_bsd)
-                except ValueError:
-                    continue
-                activation_date     = bsd
-                raw_activation_date = raw_bsd
-
-            # Only devices activating THIS billing month
-            if not (month_start <= activation_date <= month_end):
-                continue
-
-        else:
-            # ── Hanover / Han-CS: original logic unchanged ────────────────
-            if not raw_fcd:
-                continue
+        if raw_fcd:
             try:
                 fcd = date.fromisoformat(raw_fcd)
             except ValueError:
                 continue
-            if not (month_start <= fcd <= month_end):
-                continue
+
+            # Rule 2: billingStartDate exists and predates firstConnectDate
+            # → already auto-activated on its own, skip
+            if raw_bsd:
+                try:
+                    bsd = date.fromisoformat(raw_bsd)
+                except ValueError:
+                    bsd = None
+                if bsd and bsd < fcd:
+                    continue
+
+            # Rule 3: normal new activation — use firstDeviceActivationDate
             activation_date     = fcd
             raw_activation_date = raw_fcd
+
+        else:
+            # Rule 4: no firstConnectDate — use billingStartDate as activation
+            try:
+                bsd = date.fromisoformat(raw_bsd)
+            except ValueError:
+                continue
+            activation_date     = bsd
+            raw_activation_date = raw_bsd
+
+        # Only devices activating THIS billing month
+        if not (month_start <= activation_date <= month_end):
+            continue
 
         device       = contract.get("device") or {}
         serial       = device.get("serialNumber") or ""
