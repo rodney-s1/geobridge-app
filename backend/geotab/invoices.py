@@ -170,6 +170,13 @@ HANOVER_SKU_KEYS: set = {
     "Service Fee (HANOVER-CS) Han",
 }
 
+# Han-CS dual-SKU constants
+# Each Han-CS device generates TWO line items: one at $8 for the sub-customer
+# and one at $8 for the Hanover master invoice.
+HAN_CS_CUST_SKU = "Service Fee (HANOVER-CS) Cust"   # billed to sub-customer
+HAN_CS_HAN_SKU  = "Service Fee (HANOVER-CS) Han"    # billed to Hanover master
+HAN_CS_RATE     = 8.00                               # fixed $8 for both sides
+
 
 def _is_hanover_sku(sku_key: str) -> bool:
     """Return True if this SKU is billed to Hanover Insurance Group."""
@@ -180,7 +187,7 @@ def _is_hanover_sku(sku_key: str) -> bool:
 #  Core invoice engine                                                          #
 # --------------------------------------------------------------------------- #
 
-ELIGIBLE_BILLING_TYPES = {"Charge Upon Activation", "Hanover"}
+ELIGIBLE_BILLING_TYPES = {"Charge Upon Activation", "Hanover", "Han-CS"}
 
 
 def _generate_prorated_invoice(
@@ -279,11 +286,52 @@ def _generate_prorated_invoice(
     #   hanover_pool  — Hanover-billed SKUs  → roll up to Hanover master      #
     #   customer_pool — camera/aux SKUs      → billed directly to customer    #
     # CUA customers always go entirely into customer_pool.                    #
+    #                                                                          #
+    # For Han-CS customers, each qualifying device generates TWO entries:     #
+    #   customer_pool entry → HAN_CS_CUST_SKU @ $8                            #
+    #   hanover_pool  entry → HAN_CS_HAN_SKU  @ $8                            #
+    # Both entries are prorated from $8 (not the device's mapped rate).       #
     # ---------------------------------------------------------------------- #
     billing_type = customer.get("billingType", "")
-    if billing_type == "Hanover":
+
+    if billing_type == "Han-CS":
+        # Each device spawns two entries — one for the customer, one for Hanover
+        customer_pool: List[dict] = []
+        hanover_pool:  List[dict] = []
+        for dev in qualifying:
+            fcd = dev["firstConnectDateObj"]
+            days_active, days_in_month, factor = _prorate_factor(fcd, billing_year, billing_month)
+            # Customer-side entry
+            cust_prorated = round(HAN_CS_RATE * factor, 2)
+            customer_pool.append({
+                **dev,
+                "skuKey":         HAN_CS_CUST_SKU,
+                "monthlyRate":    HAN_CS_RATE,
+                "proratedCharge": cust_prorated,
+                "itemCode":       full_path_index.get(HAN_CS_CUST_SKU, HAN_CS_CUST_SKU),
+                "skuDesc":        sku_desc_index.get(HAN_CS_CUST_SKU, HAN_CS_CUST_SKU),
+                "priceSource":    "hancs_fixed",
+                "sectionGroup":   "hancs",
+            })
+            # Hanover-side entry
+            han_prorated = round(HAN_CS_RATE * factor, 2)
+            hanover_pool.append({
+                **dev,
+                "skuKey":         HAN_CS_HAN_SKU,
+                "monthlyRate":    HAN_CS_RATE,
+                "proratedCharge": han_prorated,
+                "itemCode":       full_path_index.get(HAN_CS_HAN_SKU, HAN_CS_HAN_SKU),
+                "skuDesc":        sku_desc_index.get(HAN_CS_HAN_SKU, HAN_CS_HAN_SKU),
+                "priceSource":    "hancs_fixed",
+                "sectionGroup":   "hancs",
+            })
+
+    elif billing_type == "Hanover":
         hanover_pool  = [d for d in qualifying if     _is_hanover_sku(d["skuKey"])]
         customer_pool = [d for d in qualifying if not _is_hanover_sku(d["skuKey"])]
+        # Tag standard Hanover pool entries with sectionGroup
+        for d in hanover_pool:
+            d["sectionGroup"] = "hanover"
     else:
         hanover_pool  = []
         customer_pool = qualifying
@@ -291,10 +339,20 @@ def _generate_prorated_invoice(
     # Build invoices for each pool, return list (0-2 items)
     results: List[dict] = []
 
+    # Determine the effective billing type for the customer-side pool
+    if billing_type == "Han-CS":
+        cust_pool_bt = "Han-CS"
+        cust_pool_id = customer_id + "__hancs_cust"
+    elif billing_type == "Hanover":
+        cust_pool_bt = "Charge Upon Activation"
+        cust_pool_id = customer_id + "__cam"
+    else:
+        cust_pool_bt = billing_type
+        cust_pool_id = customer_id
+
     for pool, pool_billing_type, pool_name, pool_id in [
-        (hanover_pool,  "Hanover",  customer_name, customer_id),
-        (customer_pool, billing_type if billing_type != "Hanover" else "Charge Upon Activation",
-         customer_name, customer_id + "__cam"),
+        (hanover_pool,  "Hanover",    customer_name, customer_id),
+        (customer_pool, cust_pool_bt, customer_name, cust_pool_id),
     ]:
         if not pool:
             continue
@@ -374,6 +432,7 @@ def _build_invoice_from_pool(
             "prorateFactor": rep["prorateFactor"],
             "serials":       serials,
             "taxable":       True,
+            "sectionGroup":  rep.get("sectionGroup", "hanover"),
         })
 
     # ---------------------------------------------------------------------- #
@@ -410,6 +469,7 @@ def _build_invoice_from_pool(
             "prorateFactor": None,
             "serials":       [],    # serials already listed in prorated section
             "taxable":       True,
+            "sectionGroup":  rep.get("sectionGroup", "hanover"),
         })
 
     prorated_total = sum(li["amount"] for li in line_items if li["type"] == "prorated")
@@ -444,18 +504,75 @@ HANOVER_MASTER_NAME = "Hanover Insurance Group"
 HANOVER_MASTER_ID   = "__hanover_master__"
 
 
+def _merge_prorated_lines(lines_by_key: Dict[tuple, List[dict]]) -> List[dict]:
+    """
+    Helper: collapse a {(skuKey, fcd): [line_items]} dict into a flat sorted
+    list, combining lines that share the same SKU+date (stacking serials, summing
+    qty and amount).
+    """
+    merged: List[dict] = []
+    for (sku_key, fcd), lines in sorted(lines_by_key.items(), key=lambda x: (x[0][1], x[0][0])):
+        if len(lines) == 1:
+            merged.append(lines[0])
+            continue
+        rep     = lines[0]
+        qty     = sum(li["quantity"] for li in lines)
+        amount  = round(sum(li["amount"] for li in lines), 2)
+        serials = [s for li in lines for s in (li.get("serials") or [])]
+        desc_lines   = rep["description"].split("\n")
+        header_lines = desc_lines[:2] if len(desc_lines) >= 2 else desc_lines
+        description  = "\n".join(header_lines) + "\n" + "\n".join(serials)
+        merged.append({
+            **rep,
+            "quantity":    qty,
+            "amount":      amount,
+            "serials":     serials,
+            "description": description,
+        })
+    return merged
+
+
+def _merge_forward_lines(fwd_by_sku: Dict[str, List[dict]]) -> List[dict]:
+    """
+    Helper: collapse a {skuKey: [forward_line_items]} dict into a flat sorted list,
+    summing quantity and recomputing amount.
+    """
+    merged: List[dict] = []
+    for sku_key, fwd_lines in sorted(fwd_by_sku.items()):
+        rep    = fwd_lines[0]
+        qty    = sum(li["quantity"] for li in fwd_lines)
+        amount = round(rep["priceEach"] * qty, 2)
+        merged.append({
+            **rep,
+            "quantity": qty,
+            "amount":   amount,
+            "serials":  [],
+        })
+    return merged
+
+
 def _merge_hanover_invoices(invoices: List[dict]) -> List[dict]:
     """
     All invoices with billingType == 'Hanover' are merged into a single
     master invoice billed to HANOVER_MASTER_NAME.  Non-Hanover invoices
     pass through unchanged.
 
-    Merging rules:
-    - All prorated line items from every sub-customer are collected as-is
-      (already grouped by skuKey+date, with serials embedded in description).
-    - Forward line items are re-aggregated by skuKey so that devices from
-      different sub-customers sharing the same SKU produce one forward line
-      (quantity = sum, amount = sum, priceEach from representative device).
+    The master invoice contains up to four ordered sections, each with its own
+    sectionGroup + type combination:
+
+      1. sectionGroup='hanover', type='prorated'  — standard HANOVER prorated
+      2. sectionGroup='hanover', type='forward'   — standard HANOVER forward
+      3. sectionGroup='hancs',   type='prorated'  — Han-CS prorated
+      4. sectionGroup='hancs',   type='forward'   — Han-CS forward
+
+    Han-CS lines originate from devices belonging to Han-CS sub-customers that
+    have been converted to HAN_CS_HAN_SKU entries by _generate_prorated_invoice().
+    They must NEVER be date-merged with standard HANOVER lines.
+
+    Merging rules (within each section group):
+    - Prorated lines are re-merged by (skuKey, firstConnectDate) across
+      sub-customers so devices activating on the same day share one row.
+    - Forward lines are re-aggregated by skuKey (qty summed).
     """
     hanover_invoices = [inv for inv in invoices if inv.get("billingType") == "Hanover"]
     other_invoices   = [inv for inv in invoices if inv.get("billingType") != "Hanover"]
@@ -463,64 +580,51 @@ def _merge_hanover_invoices(invoices: List[dict]) -> List[dict]:
     if not hanover_invoices:
         return invoices   # nothing to merge
 
-    # Use the billing month labels from the first Hanover invoice (all same)
+    # Use billing month labels from the first Hanover invoice (all same month)
     ref = hanover_invoices[0]
 
-    # ── Re-merge prorated lines by (skuKey, firstConnectDate) across all     #
-    # sub-customers.  Devices from different sub-customers that activated on  #
-    # the same day with the same SKU must share one combined line item on the #
-    # Hanover master invoice (serials stacked, qty summed, amount summed).    #
-    prot_by_key: Dict[tuple, List[dict]] = defaultdict(list)
+    # ── Bucket all line items by sectionGroup ─────────────────────────────
+    # sectionGroup defaults to 'hanover' for any line that pre-dates this field
+    prot_hanover: Dict[tuple, List[dict]] = defaultdict(list)
+    prot_hancs:   Dict[tuple, List[dict]] = defaultdict(list)
+    fwd_hanover:  Dict[str,   List[dict]] = defaultdict(list)
+    fwd_hancs:    Dict[str,   List[dict]] = defaultdict(list)
+
     for inv in hanover_invoices:
         for li in inv["lineItems"]:
+            sg  = li.get("sectionGroup", "hanover")
+            fcd = li.get("firstConnectDate") or ""
             if li["type"] == "prorated":
-                key = (li["skuKey"], li.get("firstConnectDate") or "")
-                prot_by_key[key].append(li)
+                key = (li["skuKey"], fcd)
+                if sg == "hancs":
+                    prot_hancs[key].append(li)
+                else:
+                    prot_hanover[key].append(li)
+            else:  # forward
+                if sg == "hancs":
+                    fwd_hancs[li["skuKey"]].append(li)
+                else:
+                    fwd_hanover[li["skuKey"]].append(li)
 
-    merged_prorated: List[dict] = []
-    for (sku_key, fcd), lines in sorted(prot_by_key.items(), key=lambda x: (x[0][1], x[0][0])):
-        if len(lines) == 1:
-            merged_prorated.append(lines[0])
-            continue
-        # Multiple sub-customer lines share the same SKU+date — combine them
-        rep      = lines[0]
-        qty      = sum(li["quantity"]  for li in lines)
-        amount   = round(sum(li["amount"] for li in lines), 2)
-        serials  = [s for li in lines for s in (li.get("serials") or [])]
-        # Rebuild description with all serials listed
-        connect_label = rep["description"].split("\n")[1] if "\n" in rep["description"] else ""
-        # Extract "Prorated X through Y for devices:" line from first item's description
-        desc_lines = rep["description"].split("\n")
-        header_lines = desc_lines[:2] if len(desc_lines) >= 2 else desc_lines
-        description  = "\n".join(header_lines) + "\n" + "\n".join(serials)
-        merged_prorated.append({
-            **rep,
-            "quantity":  qty,
-            "amount":    amount,
-            "serials":   serials,
-            "description": description,
-        })
+    # ── Build each section ─────────────────────────────────────────────────
+    merged_hanover_prorated = _merge_prorated_lines(prot_hanover)
+    merged_hanover_forward  = _merge_forward_lines(fwd_hanover)
+    merged_hancs_prorated   = _merge_prorated_lines(prot_hancs)
+    merged_hancs_forward    = _merge_forward_lines(fwd_hancs)
 
-    # ── Re-aggregate forward lines by skuKey ──────────────────────────────
-    fwd_by_sku: Dict[str, List[dict]] = defaultdict(list)
-    for inv in hanover_invoices:
-        for li in inv["lineItems"]:
-            if li["type"] == "forward":
-                fwd_by_sku[li["skuKey"]].append(li)
+    # Tag section groups explicitly (in case they were missing)
+    for li in merged_hanover_prorated + merged_hanover_forward:
+        li["sectionGroup"] = "hanover"
+    for li in merged_hancs_prorated + merged_hancs_forward:
+        li["sectionGroup"] = "hancs"
 
-    merged_forward: List[dict] = []
-    for sku_key, fwd_lines in sorted(fwd_by_sku.items()):
-        rep      = fwd_lines[0]
-        qty      = sum(li["quantity"] for li in fwd_lines)
-        amount   = round(rep["priceEach"] * qty, 2)
-        merged_forward.append({
-            **rep,                      # copy itemCode, skuDesc, priceEach, etc.
-            "quantity": qty,
-            "amount":   amount,
-            "serials":  [],             # already listed in prorated section
-        })
-
-    all_lines = merged_prorated + merged_forward
+    # Ordered: standard HANOVER first, then Han-CS
+    all_lines = (
+        merged_hanover_prorated
+        + merged_hanover_forward
+        + merged_hancs_prorated
+        + merged_hancs_forward
+    )
 
     prorated_total = round(sum(li["amount"] for li in all_lines if li["type"] == "prorated"), 2)
     forward_total  = round(sum(li["amount"] for li in all_lines if li["type"] == "forward"),  2)

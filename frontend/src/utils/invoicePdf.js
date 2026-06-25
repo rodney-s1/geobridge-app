@@ -12,6 +12,9 @@ const GRAY   = [100, 110, 125]  // body text grey
 const LGRAY  = [230, 232, 236]  // light grey rule / table stripe
 const WHITE  = [255, 255, 255]
 const BLACK  = [20,  20,  20]
+// Han-CS section colours (distinct from standard HANOVER)
+const HANCS_PROT_BG = [230, 240, 255]  // soft indigo for Han-CS prorated bg
+const HANCS_FWD_BG  = [235, 255, 245]  // soft teal for Han-CS forward bg
 
 // ─── Company info ─────────────────────────────────────────────────────────────
 const COMPANY = {
@@ -179,8 +182,17 @@ function buildRows(lineItems) {
 function drawLineItemsTable(doc, invoice, startY) {
   const W = doc.internal.pageSize.getWidth()
 
-  const proratedLines = invoice.lineItems.filter(li => li.type === 'prorated')
-  const forwardLines  = invoice.lineItems.filter(li => li.type === 'forward')
+  // Partition line items into up to 4 ordered sections:
+  //   1. Standard HANOVER prorated   (sectionGroup='hanover', type='prorated')
+  //   2. Standard HANOVER forward    (sectionGroup='hanover', type='forward')
+  //   3. Han-CS prorated             (sectionGroup='hancs',   type='prorated')
+  //   4. Han-CS forward              (sectionGroup='hancs',   type='forward')
+  // For non-Hanover invoices every line has sectionGroup undefined / 'hanover'
+  // and the split is simply prorated vs forward — the Han-CS buckets will be empty.
+  const hanoverProrated = invoice.lineItems.filter(li => li.type === 'prorated' && li.sectionGroup !== 'hancs')
+  const hanoverForward  = invoice.lineItems.filter(li => li.type === 'forward'  && li.sectionGroup !== 'hancs')
+  const hancsProrated   = invoice.lineItems.filter(li => li.type === 'prorated' && li.sectionGroup === 'hancs')
+  const hancsForward    = invoice.lineItems.filter(li => li.type === 'forward'  && li.sectionGroup === 'hancs')
 
   // Both sections share the same 4-column layout
   const colStyles = {
@@ -192,8 +204,30 @@ function drawLineItemsTable(doc, invoice, startY) {
   const HEAD = ['Description', 'Quantity', 'Price Each', 'Amount']
 
   const sections = []
-  if (proratedLines.length > 0) sections.push({ label: `PRORATED NEW ACTIVATIONS  ·  ${invoice.billingMonthLabel}`, rows: buildRows(proratedLines), colStyles, head: HEAD, color: [255, 245, 225] })
-  if (forwardLines.length  > 0) sections.push({ label: `FULL MONTH FORWARD  ·  ${invoice.nextMonthLabel}`,          rows: buildRows(forwardLines),  colStyles, head: HEAD, color: [235, 250, 240] })
+  if (hanoverProrated.length > 0) sections.push({
+    label:     `PRORATED NEW ACTIVATIONS  ·  ${invoice.billingMonthLabel}`,
+    rows:      buildRows(hanoverProrated),
+    colStyles, head: HEAD,
+    color:     [255, 245, 225],
+  })
+  if (hanoverForward.length > 0) sections.push({
+    label:     `FULL MONTH FORWARD  ·  ${invoice.nextMonthLabel}`,
+    rows:      buildRows(hanoverForward),
+    colStyles, head: HEAD,
+    color:     [235, 250, 240],
+  })
+  if (hancsProrated.length > 0) sections.push({
+    label:     `HAN-CS  ·  PRORATED NEW ACTIVATIONS  ·  ${invoice.billingMonthLabel}`,
+    rows:      buildRows(hancsProrated),
+    colStyles, head: HEAD,
+    color:     HANCS_PROT_BG,
+  })
+  if (hancsForward.length > 0) sections.push({
+    label:     `HAN-CS  ·  FULL MONTH FORWARD  ·  ${invoice.nextMonthLabel}`,
+    rows:      buildRows(hancsForward),
+    colStyles, head: HEAD,
+    color:     HANCS_FWD_BG,
+  })
 
   const PAGE_H      = doc.internal.pageSize.getHeight()
   const FOOTER_H    = 18   // space reserved for footer at bottom of each page
