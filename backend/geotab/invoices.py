@@ -808,12 +808,15 @@ async def get_prorated_invoices(
         if bt not in wanted_types:
             continue
 
-        # Attach billing type so _generate_prorated_invoice can include it
+        # Attach billing type so _generate_prorated_invoice can include it.
+        # Strip {Han-CS} suffix from the display name — sub-customer invoices
+        # should show "First Companies Inc." not "First Companies Inc. {Han-CS}".
+        display_name = _strip_han_cs(clean_name)
         fake_customer = {
             "userContact": {
                 "userCompany": {
                     "id":   company_id,
-                    "name": raw_name,
+                    "name": display_name,
                 }
             },
             "billingType": bt,
@@ -895,16 +898,21 @@ async def get_prorated_invoice_for_customer(
 
     from .customers import billing_type_overrides, qb_customers
 
-    raw_name = ((company_contracts[0].get("userContact") or {})
-                .get("userCompany") or {}).get("name") or ""
+    raw_name   = ((company_contracts[0].get("userContact") or {})
+                  .get("userCompany") or {}).get("name") or ""
+    clean_name = _clean_name(raw_name)
+    qb_lookup_name = _strip_han_cs(_strip_sub_account_suffix(clean_name))
+    is_han_cs  = clean_name.strip().lower().endswith("{han-cs}")
     bt = (
         billing_type_overrides.get(customer_id)
-        or (qb_customers.get(_normalize(raw_name)) or {}).get("billingType")
+        or (qb_customers.get(_normalize(qb_lookup_name)) or {}).get("billingType")
+        or ("Han-CS" if is_han_cs else None)
         or "Unknown"
     )
+    display_name = _strip_han_cs(clean_name)
 
     fake_customer = {
-        "userContact": {"userCompany": {"id": customer_id, "name": raw_name}},
+        "userContact": {"userCompany": {"id": customer_id, "name": display_name}},
         "billingType": bt,
     }
 
@@ -925,7 +933,7 @@ async def get_prorated_invoice_for_customer(
         return {
             "found":        False,
             "customerId":   customer_id,
-            "customerName": raw_name,
+            "customerName": display_name,
             "billingMonth": f"{b_year}-{b_month:02d}",
             "message":      "No devices with a first connect date in this billing month.",
         }
