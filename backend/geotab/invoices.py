@@ -366,6 +366,88 @@ def _generate_prorated_invoice(
 
 
 # --------------------------------------------------------------------------- #
+#  Hanover roll-up: merge all Hanover sub-customer invoices into one          #
+# --------------------------------------------------------------------------- #
+
+HANOVER_MASTER_NAME = "Hanover Insurance Group"
+HANOVER_MASTER_ID   = "__hanover_master__"
+
+
+def _merge_hanover_invoices(invoices: List[dict]) -> List[dict]:
+    """
+    All invoices with billingType == 'Hanover' are merged into a single
+    master invoice billed to HANOVER_MASTER_NAME.  Non-Hanover invoices
+    pass through unchanged.
+
+    Merging rules:
+    - All prorated line items from every sub-customer are collected as-is
+      (already grouped by skuKey+date, with serials embedded in description).
+    - Forward line items are re-aggregated by skuKey so that devices from
+      different sub-customers sharing the same SKU produce one forward line
+      (quantity = sum, amount = sum, priceEach from representative device).
+    """
+    hanover_invoices = [inv for inv in invoices if inv.get("billingType") == "Hanover"]
+    other_invoices   = [inv for inv in invoices if inv.get("billingType") != "Hanover"]
+
+    if not hanover_invoices:
+        return invoices   # nothing to merge
+
+    # Use the billing month labels from the first Hanover invoice (all same)
+    ref = hanover_invoices[0]
+
+    # ── Collect all prorated lines as-is ──────────────────────────────────
+    merged_prorated: List[dict] = []
+    for inv in hanover_invoices:
+        for li in inv["lineItems"]:
+            if li["type"] == "prorated":
+                merged_prorated.append(li)
+
+    # Sort prorated lines by firstConnectDate then skuKey (matches QB order)
+    merged_prorated.sort(key=lambda li: (li.get("firstConnectDate") or "", li.get("skuKey") or ""))
+
+    # ── Re-aggregate forward lines by skuKey ──────────────────────────────
+    fwd_by_sku: Dict[str, List[dict]] = defaultdict(list)
+    for inv in hanover_invoices:
+        for li in inv["lineItems"]:
+            if li["type"] == "forward":
+                fwd_by_sku[li["skuKey"]].append(li)
+
+    merged_forward: List[dict] = []
+    for sku_key, fwd_lines in sorted(fwd_by_sku.items()):
+        rep      = fwd_lines[0]
+        qty      = sum(li["quantity"] for li in fwd_lines)
+        amount   = round(rep["priceEach"] * qty, 2)
+        merged_forward.append({
+            **rep,                      # copy itemCode, skuDesc, priceEach, etc.
+            "quantity": qty,
+            "amount":   amount,
+            "serials":  [],             # already listed in prorated section
+        })
+
+    all_lines = merged_prorated + merged_forward
+
+    prorated_total = round(sum(li["amount"] for li in all_lines if li["type"] == "prorated"), 2)
+    forward_total  = round(sum(li["amount"] for li in all_lines if li["type"] == "forward"),  2)
+
+    master_invoice = {
+        "customerId":        HANOVER_MASTER_ID,
+        "customerName":      HANOVER_MASTER_NAME,
+        "billingType":       "Hanover",
+        "billingMonth":      ref["billingMonth"],
+        "billingMonthLabel": ref["billingMonthLabel"],
+        "nextMonthLabel":    ref["nextMonthLabel"],
+        "lineItems":         all_lines,
+        "proratedTotal":     prorated_total,
+        "forwardTotal":      forward_total,
+        "grandTotal":        round(prorated_total + forward_total, 2),
+        "newDeviceCount":    sum(inv["newDeviceCount"] for inv in hanover_invoices),
+        "hasPriceWarnings":  any(inv["hasPriceWarnings"] for inv in hanover_invoices),
+    }
+
+    return other_invoices + [master_invoice]
+
+
+# --------------------------------------------------------------------------- #
 #  API Routes                                                                  #
 # --------------------------------------------------------------------------- #
 
@@ -479,6 +561,9 @@ async def get_prorated_invoices(
 
         if invoice:
             invoices.append(invoice)
+
+    # Merge all Hanover sub-customer invoices into one master invoice
+    invoices = _merge_hanover_invoices(invoices)
 
     # Sort by customer name
     invoices.sort(key=lambda x: x["customerName"].lower())
