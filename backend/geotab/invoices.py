@@ -324,10 +324,7 @@ def _generate_prorated_invoice(
         serials  = [d["serialNumber"] for d in devs]
         rate     = rep["monthlyRate"]
 
-        description = (
-            f"{rep['skuDesc']} - {next_month_label} Service\n"
-            + "\n".join(serials)
-        )
+        description = f"{rep['skuDesc']} - New Activations {next_month_label} Service"
 
         line_items.append({
             "type":          "forward",
@@ -344,7 +341,7 @@ def _generate_prorated_invoice(
             "daysActive":    None,
             "daysInMonth":   None,
             "prorateFactor": None,
-            "serials":       serials,
+            "serials":       [],    # serials already listed in prorated section
             "taxable":       True,
         })
 

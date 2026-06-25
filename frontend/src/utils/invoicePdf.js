@@ -165,28 +165,14 @@ function drawSummaryBoxes(doc, invoice, startY) {
 }
 
 // ─── Build autoTable rows for one section ────────────────────────────────────
-// isProrated controls whether the Monthly Rate column is included
-function buildRows(lineItems, isProrated) {
-  return lineItems.map(li => {
-    if (isProrated) {
-      // Prorated section: Description | Quantity | Price Each | Amount  (no Monthly Rate)
-      return [
-        li.description,
-        li.quantity,
-        money(li.priceEach),
-        money(li.amount),
-      ]
-    } else {
-      // Forward section: Description | Quantity | Monthly Rate | Price Each | Amount
-      return [
-        li.description,
-        li.quantity,
-        money(li.priceEach),   // forward: monthly rate === price each
-        money(li.priceEach),
-        money(li.amount),
-      ]
-    }
-  })
+// Both sections: Description | Quantity | Price Each | Amount  (4 cols)
+function buildRows(lineItems) {
+  return lineItems.map(li => [
+    li.description,
+    li.quantity,
+    money(li.priceEach),
+    money(li.amount),
+  ])
 }
 
 // ─── Draw line items table ────────────────────────────────────────────────────
@@ -196,24 +182,18 @@ function drawLineItemsTable(doc, invoice, startY) {
   const proratedLines = invoice.lineItems.filter(li => li.type === 'prorated')
   const forwardLines  = invoice.lineItems.filter(li => li.type === 'forward')
 
-  // Column styles differ per section — prorated has 4 cols, forward has 5
-  const colStylesProrated = {
-    0: { cellWidth: 'auto' },                     // Description
-    1: { cellWidth: 18, halign: 'center' },       // Quantity
-    2: { cellWidth: 24, halign: 'right' },        // Price Each
-    3: { cellWidth: 24, halign: 'right' },        // Amount
+  // Both sections share the same 4-column layout
+  const colStyles = {
+    0: { cellWidth: 'auto' },               // Description
+    1: { cellWidth: 22, halign: 'center' }, // Quantity
+    2: { cellWidth: 28, halign: 'right' },  // Price Each
+    3: { cellWidth: 28, halign: 'right' },  // Amount
   }
-  const colStylesForward = {
-    0: { cellWidth: 'auto' },                     // Description
-    1: { cellWidth: 18, halign: 'center' },       // Quantity
-    2: { cellWidth: 24, halign: 'right' },        // Monthly Rate
-    3: { cellWidth: 24, halign: 'right' },        // Price Each
-    4: { cellWidth: 24, halign: 'right' },        // Amount
-  }
+  const HEAD = ['Description', 'Quantity', 'Price Each', 'Amount']
 
   const sections = []
-  if (proratedLines.length > 0) sections.push({ label: `PRORATED NEW ACTIVATIONS  ·  ${invoice.billingMonthLabel}`, rows: buildRows(proratedLines, true),  colStyles: colStylesProrated, head: ['Description', 'Quantity', 'Price Each', 'Amount'],               color: [255, 245, 225] })
-  if (forwardLines.length  > 0) sections.push({ label: `FULL MONTH FORWARD  ·  ${invoice.nextMonthLabel}`,          rows: buildRows(forwardLines,  false), colStyles: colStylesForward,  head: ['Description', 'Quantity', 'Monthly Rate', 'Price Each', 'Amount'], color: [235, 250, 240] })
+  if (proratedLines.length > 0) sections.push({ label: `PRORATED NEW ACTIVATIONS  ·  ${invoice.billingMonthLabel}`, rows: buildRows(proratedLines), colStyles, head: HEAD, color: [255, 245, 225] })
+  if (forwardLines.length  > 0) sections.push({ label: `FULL MONTH FORWARD  ·  ${invoice.nextMonthLabel}`,          rows: buildRows(forwardLines),  colStyles, head: HEAD, color: [235, 250, 240] })
 
   let tableEndY = startY
   for (const section of sections) {
