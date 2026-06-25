@@ -2,9 +2,9 @@ import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import LOGO_BASE64 from './logoBase64'
 
-// ─── Colours (Blue Arrow brand) ───────────────────────────────────────────────
+// ─── Colours (BlueArrow brand) ────────────────────────────────────────────────
 const NAVY   = [30,  45,  90]   // #1E2D5A  deep navy header
-const BLUE   = [52,  96, 171]   // #3460AB  Blue Arrow blue
+const BLUE   = [52,  96, 171]   // #3460AB  BlueArrow blue
 const LTBLUE = [235, 241, 251]  // #EBF1FB  light blue bg for section headers
 const AMBER  = [180, 120,  10]  // amber for prorated section header
 const GREEN  = [30,  130,  80]  // green for forward section header
@@ -18,7 +18,7 @@ const HANCS_FWD_BG  = [235, 255, 245]  // soft teal for Han-CS forward bg
 
 // ─── Company info ─────────────────────────────────────────────────────────────
 const COMPANY = {
-  name:    'Blue Arrow Telematics',
+  name:    'BlueArrow Telematics',
   addr1:   '1760 Heritage Center Drive',
   addr2:   'Suite 201',
   addr3:   'Wake Forest, NC 27587',
