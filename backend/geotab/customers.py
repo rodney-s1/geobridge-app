@@ -1009,23 +1009,32 @@ async def get_customer(account_id: str):
                 or _adp_upper == "NEVER ACTIVATED"
                 or "never" in _adp_upper
             )
+            _serial = device.get("serialNumber") or ""
+
+            # Manual billing-date override takes highest priority.
+            # If the user has set a date via the UI it shows immediately here
+            # and is also used by the invoice engine (same store).
+            _override_date = billing_date_overrides.get(_serial.strip().upper())
+
+            # Display date: override > First Connect Date > Billing Start Date > startDate
+            # Column header stays "Billing Start Date" in the UI.
+            _api_start_date = _date(
+                d.get("firstDeviceActivationDate")
+                or d.get("billingStartDate")
+                or d.get("startDate")
+                or ""
+            )
+            _display_start_date = _override_date or _api_start_date
+
             normalized.append({
-                "serialNumber":      device.get("serialNumber") or "",
+                "serialNumber":      _serial,
                 "deviceType":        (device.get("deviceType") or {}).get("name") or "",
                 "activeBillingPlan": active_billing_plan,
                 "ratePlanCode":      rate_plan_code,
                 "database":          db_name,
                 "status":            "Never Activated" if _is_never_activated else "Active",
-                # Display date: prefer First Connect Date (firstDeviceActivationDate) when
-                # it exists — it means the device has actually phoned home.  Fall back to
-                # Billing Start Date (billingStartDate / startDate) for devices that have
-                # never connected.  Column header stays "Billing Start Date" in the UI.
-                "contractStartDate": _date(
-                    d.get("firstDeviceActivationDate")
-                    or d.get("billingStartDate")
-                    or d.get("startDate")
-                    or ""
-                ),
+                "contractStartDate": _display_start_date,
+                "hasDateOverride":   _override_date is not None,
                 "firstConnectDate":  _date(d.get("firstDeviceActivationDate") or ""),
                 "contractEndDate":   _date(d.get("endDate") or ""),
             })

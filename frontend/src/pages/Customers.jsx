@@ -441,7 +441,7 @@ function BillingTypeEditor({ customer, onBillingTypeChange, stopPropagation = tr
 }
 
 // ─── Inline device sub-table (used inside both CustomerRow and SubAccountRow) ──
-function DeviceSubTable({ devices }) {
+function DeviceSubTable({ devices, onDateSaved }) {
   const [filterCode, setFilterCode] = useState(null)
 
   if (devices.length === 0) {
@@ -502,7 +502,7 @@ function DeviceSubTable({ devices }) {
             </thead>
             <tbody>
               {visibleDevices.map((d, i) => (
-                <DeviceRow key={`${d.serialNumber}-${i}`} device={d} />
+                <DeviceRow key={`${d.serialNumber}-${i}`} device={d} onDateSaved={onDateSaved} />
               ))}
             </tbody>
           </table>
@@ -967,20 +967,24 @@ function CustomerRow({ customer, onBillingTypeChange }) {
   const [devices, setDevices] = useState([])
   const [loadingDevices, setLoadingDevices] = useState(false)
 
+  const reloadDevices = async () => {
+    setLoadingDevices(true)
+    try {
+      const res = await fetch(`${API}/api/customers/${customer.id}`)
+      if (res.ok) {
+        const data = await res.json()
+        setDevices(data.devices || [])
+      }
+    } catch (e) {
+      console.error('Failed to load devices:', e)
+    } finally {
+      setLoadingDevices(false)
+    }
+  }
+
   const toggleExpand = async () => {
     if (!expanded && devices.length === 0) {
-      setLoadingDevices(true)
-      try {
-        const res = await fetch(`${API}/api/customers/${customer.id}`)
-        if (res.ok) {
-          const data = await res.json()
-          setDevices(data.devices || [])
-        }
-      } catch (e) {
-        console.error('Failed to load devices:', e)
-      } finally {
-        setLoadingDevices(false)
-      }
+      await reloadDevices()
     }
     setExpanded(!expanded)
   }
@@ -1070,7 +1074,7 @@ function CustomerRow({ customer, onBillingTypeChange }) {
 
       {/* Expanded device sub-table */}
       {expanded && (
-        <DeviceSubTable devices={devices} />
+        <DeviceSubTable devices={devices} onDateSaved={reloadDevices} />
       )}
     </>
   )
