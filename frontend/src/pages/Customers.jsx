@@ -267,7 +267,7 @@ function DeviceRow({ device }) {
           {device.status || 'Active'}
         </span>
       </td>
-      <td className="px-4 py-2.5 text-xs text-slate-500">{device.firstConnectDate || <span className="italic text-slate-600">Not available</span>}</td>
+      <td className="px-4 py-2.5 text-xs text-slate-300 font-mono">{device.contractStartDate || <span className="italic text-slate-600">Not available</span>}</td>
       <td className="px-4 py-2.5 text-xs text-slate-500">{device.contractEndDate || '—'}</td>
     </tr>
   )
@@ -368,9 +368,17 @@ function DeviceSubTable({ devices }) {
   })
 
   const allSerials      = devices.map(d => d.serialNumber).filter(Boolean)
-  const visibleDevices  = filterCode
+  const visibleDevices  = (filterCode
     ? devices.filter(d => (d.ratePlanCode || '(none)') === filterCode)
     : devices
+  ).slice().sort((a, b) => {
+    const da = a.contractStartDate || ''
+    const db = b.contractStartDate || ''
+    if (!da && !db) return 0
+    if (!da) return 1
+    if (!db) return -1
+    return db.localeCompare(da)
+  })
   const filteredSerials = visibleDevices.map(d => d.serialNumber).filter(Boolean)
 
   return (
@@ -394,7 +402,7 @@ function DeviceSubTable({ devices }) {
                 <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Rate Plan Code</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Database</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">First Connect Date</th>
+                <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Billing Start Date</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">End Date</th>
               </tr>
             </thead>

@@ -955,6 +955,9 @@ async def get_customer(account_id: str):
                 # FirstDeviceActivationDate = "date in UTC that the device communicated
                 # for the first time" (MyAdmin API field name: firstDeviceActivationDate).
                 # Null for devices that have never connected (shown as "Not available" in UI).
+                # billingStartDate = "Billing Start Date" from MyAdmin (parallel to endDate).
+                # Falls back to firstDeviceActivationDate if not present in this contract.
+                "contractStartDate": _date(d.get("billingStartDate") or d.get("startDate") or ""),
                 "firstConnectDate":  _date(d.get("firstDeviceActivationDate") or ""),
                 "contractEndDate":   _date(d.get("endDate") or ""),
             })

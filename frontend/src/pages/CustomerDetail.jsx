@@ -122,9 +122,18 @@ function DevicesTab({ customerId }) {
   devices.forEach(d => { const r = d.ratePlanCode || '(none)'; rpcCounts[r] = (rpcCounts[r] || 0) + 1 })
 
   const allSerials      = devices.map(d => d.serialNumber).filter(Boolean)
-  const visibleDevices  = filterCode
+  const visibleDevices  = (filterCode
     ? devices.filter(d => (d.ratePlanCode || '(none)') === filterCode)
     : devices
+  ).slice().sort((a, b) => {
+    // Sort by Billing Start Date descending (newest first); blank dates go last
+    const da = a.contractStartDate || ''
+    const db = b.contractStartDate || ''
+    if (!da && !db) return 0
+    if (!da) return 1
+    if (!db) return -1
+    return db.localeCompare(da)
+  })
   const filteredSerials = visibleDevices.map(d => d.serialNumber).filter(Boolean)
   const serialsToCopy   = filterCode ? filteredSerials : allSerials
   const copyLabel       = filterCode
@@ -200,7 +209,7 @@ function DevicesTab({ customerId }) {
           </colgroup>
           <thead className="bg-slate-800/60">
             <tr>
-              {['Serial', 'Device Type', 'Billing Plan', 'Rate Plan', 'Database', 'Start', 'End'].map(h => (
+              {['Serial', 'Device Type', 'Billing Plan', 'Rate Plan', 'Database', 'Billing Start Date', 'End'].map(h => (
                 <th key={h} className="px-3 py-2.5 text-left text-xs text-slate-400 font-semibold">{h}</th>
               ))}
             </tr>
@@ -217,7 +226,7 @@ function DevicesTab({ customerId }) {
                     : <span className="text-slate-600">—</span>}
                 </td>
                 <td className="px-3 py-2 text-slate-400 truncate">{d.database || '—'}</td>
-                <td className="px-3 py-2 text-slate-500 font-mono">{d.contractStartDate || '—'}</td>
+                <td className="px-3 py-2 text-slate-300 font-mono">{d.contractStartDate || '—'}</td>
                 <td className="px-3 py-2 text-slate-500 font-mono">{d.contractEndDate || '—'}</td>
               </tr>
             ))}
