@@ -530,7 +530,7 @@ export default function Invoices() {
       )}
 
       {/* ── Unbilled-check warning panel ───────────────────────────────── */}
-      {unbilled && unbilled.count > 0 && (
+      {unbilled && (unbilled.count > 0 || unbilled.autoAssigned > 0) && (
         <div className="mb-4 bg-amber-900/15 border border-amber-700/40 rounded-xl overflow-hidden">
           {/* Panel header — click to expand/collapse */}
           <button
@@ -542,14 +542,21 @@ export default function Invoices() {
                 d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
             </svg>
             <span className="text-sm font-semibold text-amber-300">
-              {unbilled.count} active device{unbilled.count !== 1 ? 's' : ''} may need a billing start date set
+              {unbilled.count > 0
+                ? `${unbilled.count} active device${unbilled.count !== 1 ? 's' : ''} may need a billing start date set`
+                : 'All active devices have a billing start date'}
             </span>
             <span className="text-xs text-amber-500 ml-1">for {fmtMonthLabel(unbilled.billingMonth)}</span>
+            {unbilled.autoAssigned > 0 && (
+              <span className="text-xs bg-green-800/40 text-green-300 border border-green-700/40 rounded px-2 py-0.5 ml-2">
+                {unbilled.autoAssigned} auto-assigned from Assignment Date
+              </span>
+            )}
             <span className={`ml-auto text-amber-500 transition-transform ${unbilledOpen ? 'rotate-90' : ''}`}>▶</span>
           </button>
 
-          {/* Collapsible body */}
-          {unbilledOpen && (
+          {/* Collapsible body — only show table if there are still devices needing action */}
+          {unbilledOpen && unbilled.count > 0 && (
             <div className="border-t border-amber-700/30 overflow-x-auto">
               <table className="w-full text-xs">
                 <thead className="bg-amber-900/20">

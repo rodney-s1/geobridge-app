@@ -40,7 +40,7 @@ from fastapi import APIRouter, HTTPException, Query
 from .reconciliation import _normalize, _resolve_price
 
 # Shared in-memory cache populated by customers.py sync
-from .customers import _sync_cache, _clean_name, _strip_han_cs, _strip_sub_account_suffix, billing_date_overrides
+from .customers import _sync_cache, _clean_name, _strip_han_cs, _strip_sub_account_suffix, billing_date_overrides, BILLING_DATE_OVERRIDES_FILE, _save_json
 
 # --------------------------------------------------------------------------- #
 #  File paths (same dir as all other geotab data files)                        #
@@ -1026,6 +1026,8 @@ async def get_unbilled_check(
     month_start = date(b_year, b_month, 1)
     month_end   = date(b_year, b_month, _days_in_month(b_year, b_month))
 
+    auto_assigned_count = 0  # track how many startDate auto-assigns happen this run
+
     # Group contracts by company (same logic as get_prorated_invoices)
     contracts_by_company: Dict[str, List[dict]] = defaultdict(list)
     for c in all_contracts:
@@ -1085,6 +1087,22 @@ async def get_unbilled_check(
             raw_fcd = _safe_date(c.get("firstDeviceActivationDate"))
             raw_bsd = override_bsd or _safe_date(c.get("billingStartDate"))
 
+            # Auto-assign startDate ("Assignment Date" in MyAdmin UI) when a device
+            # has no First Connect and no Billing Start date.  Only apply if the
+            # startDate is a valid ISO date that falls before the end of the
+            # billing month (i.e. the device was assigned before this month closed).
+            raw_sd = _safe_date(c.get("startDate"))
+            if not raw_fcd and not raw_bsd and not override_bsd and raw_sd:
+                try:
+                    sd = date.fromisoformat(raw_sd)
+                    if sd <= month_end:
+                        billing_date_overrides[serial] = raw_sd
+                        auto_assigned_count += 1
+                        has_override = True
+                        raw_bsd = raw_sd
+                except ValueError:
+                    pass  # unparseable startDate — fall through to no_date logic
+
             # Determine reason this device has no qualifying date
             reason: Optional[str] = None
 
@@ -1130,11 +1148,16 @@ async def get_unbilled_check(
                     "hasOverride":               has_override,
                 })
 
+    # Persist any startDate auto-assigns in a single write (avoids per-device I/O)
+    if auto_assigned_count:
+        _save_json(BILLING_DATE_OVERRIDES_FILE, billing_date_overrides)
+
     # Sort by company name then serial
     unbilled.sort(key=lambda x: (x["companyName"].lower(), x["serial"]))
 
     return {
-        "billingMonth": f"{b_year}-{b_month:02d}",
-        "count":        len(unbilled),
-        "devices":      unbilled,
+        "billingMonth":      f"{b_year}-{b_month:02d}",
+        "count":             len(unbilled),
+        "autoAssigned":      auto_assigned_count,
+        "devices":           unbilled,
     }
