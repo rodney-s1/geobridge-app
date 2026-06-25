@@ -569,7 +569,7 @@ export default function Invoices() {
                       </td>
                       <td className="px-3 py-2">
                         {{
-                          never_activated: <span className="text-slate-500 italic">Never activated</span>,
+                          never_activated: <span className="text-amber-400 italic">No date set</span>,
                           auto_activated:  <span className="text-blue-400">Auto-activated (BSD &lt; FCD)</span>,
                           outside_month:   <span className="text-slate-400">Date outside month</span>,
                           no_date:         <span className="text-red-400">Unparseable date</span>,

@@ -1066,6 +1066,18 @@ async def get_unbilled_check(
             dev    = c.get("device") or {}
             serial = (dev.get("serialNumber") or "").strip().upper()
 
+            # Skip devices that have never been activated (no billing plan assigned).
+            # These are undeployed units — the user only wants to see truly Active
+            # devices that are missing a date.
+            _adp_name = ((c.get("activeDevicePlan") or {}).get("name") or "").upper()
+            _is_never_activated_plan = (
+                not _adp_name
+                or _adp_name == "NEVER ACTIVATED"
+                or "NEVER" in _adp_name
+            )
+            if _is_never_activated_plan:
+                continue
+
             # Check override
             override_bsd = billing_date_overrides.get(serial)
             has_override = override_bsd is not None
