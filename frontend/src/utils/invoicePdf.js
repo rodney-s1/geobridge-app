@@ -171,14 +171,10 @@ function buildRows(lineItems) {
     // Backend already formats description as multi-line with \n:
     //   "GO Focus Plus Service Fee - New Activations\nProrated June 20 through June 30 2026 for devices:\nGE0DHCRXF95K\nGEBWURM68RBC"
     // autoTable overflow:linebreak renders each \n as a new line inside the cell.
-    const prorate = isProrated
-      ? `${li.daysActive}/${li.daysInMonth} days\n${pct(li.prorateFactor)}`
-      : 'Full Month'
     return [
       li.description,
       li.quantity,
       money(isProrated ? li.monthlyRate : li.priceEach),
-      prorate,
       money(li.priceEach),
       money(li.amount),
     ]
@@ -193,12 +189,11 @@ function drawLineItemsTable(doc, invoice, startY) {
   const forwardLines  = invoice.lineItems.filter(li => li.type === 'forward')
 
   const colStyles = {
-    0: { cellWidth: 'auto' },                     // Description (no Item Code column)
+    0: { cellWidth: 'auto' },                     // Description
     1: { cellWidth: 10, halign: 'center' },       // Qty
     2: { cellWidth: 22, halign: 'right' },        // Monthly Rate
-    3: { cellWidth: 22, halign: 'center' },       // Prorate
-    4: { cellWidth: 22, halign: 'right' },        // Price Each
-    5: { cellWidth: 22, halign: 'right' },        // Amount
+    3: { cellWidth: 22, halign: 'right' },        // Price Each
+    4: { cellWidth: 22, halign: 'right' },        // Amount
   }
 
   const sections = []
@@ -219,7 +214,7 @@ function drawLineItemsTable(doc, invoice, startY) {
     autoTable(doc, {
       startY: tableEndY,
       margin: { left: 14, right: 14 },
-      head: [['Description', 'Qty', 'Monthly Rate', 'Prorate', 'Price Each', 'Amount']],
+      head: [['Description', 'Qty', 'Monthly Rate', 'Price Each', 'Amount']],
       body: section.rows,
       columnStyles: colStyles,
       headStyles: {
