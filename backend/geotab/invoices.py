@@ -93,8 +93,8 @@ def _bill_to_address(qb_record: dict, customer_name: str = "") -> List[str]:
         line = line.strip()
         if not line:
             continue
-        # Skip Bill to 1 when it's just a repeat of the customer name
-        if i == 0 and (line.lower() == cust_bare or line.lower() == customer_name.strip().lower()):
+        # Skip Bill to 1 or Bill to 2 when it's just a repeat of the customer name
+        if i <= 1 and (line.lower() == cust_bare or line.lower() == customer_name.strip().lower()):
             continue
         lines.append(line)
     return lines
