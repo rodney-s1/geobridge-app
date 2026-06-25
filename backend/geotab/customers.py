@@ -57,7 +57,7 @@ qb_items:           List[dict]      = []
 name_to_company_id: Dict[str, str]  = {}   # normalize(name) -> companyId, built on sync
 
 # --- MyAdmin sync cache -------------------------------------------------------
-CACHE_TTL_HOURS = 1              # Contracts auto-expire after 1 h; background task refreshes silently
+CACHE_TTL_HOURS = 3              # Contracts auto-expire after 3 h; background task refreshes silently
 DEVICE_DB_REFRESH_MINUTES = 30   # Background Step-1 (device DBs only) refresh interval
 _sync_cache: Dict = _load_json(SYNC_CACHE_FILE, {})
 
