@@ -952,12 +952,16 @@ async def get_customer(account_id: str):
                 "ratePlanCode":      rate_plan_code,
                 "database":          db_name,
                 "status":            "Never Activated" if _is_never_activated else "Active",
-                # FirstDeviceActivationDate = "date in UTC that the device communicated
-                # for the first time" (MyAdmin API field name: firstDeviceActivationDate).
-                # Null for devices that have never connected (shown as "Not available" in UI).
-                # billingStartDate = "Billing Start Date" from MyAdmin (parallel to endDate).
-                # Falls back to firstDeviceActivationDate if not present in this contract.
-                "contractStartDate": _date(d.get("billingStartDate") or d.get("startDate") or ""),
+                # Display date: prefer First Connect Date (firstDeviceActivationDate) when
+                # it exists — it means the device has actually phoned home.  Fall back to
+                # Billing Start Date (billingStartDate / startDate) for devices that have
+                # never connected.  Column header stays "Billing Start Date" in the UI.
+                "contractStartDate": _date(
+                    d.get("firstDeviceActivationDate")
+                    or d.get("billingStartDate")
+                    or d.get("startDate")
+                    or ""
+                ),
                 "firstConnectDate":  _date(d.get("firstDeviceActivationDate") or ""),
                 "contractEndDate":   _date(d.get("endDate") or ""),
             })
