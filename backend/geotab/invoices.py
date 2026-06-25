@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import calendar
 import os
+import re
 from collections import defaultdict
 from datetime import date, datetime
 from typing import Dict, List, Optional, Tuple
@@ -737,6 +738,109 @@ def _merge_hanover_invoices(invoices: List[dict]) -> List[dict]:
 
 
 # --------------------------------------------------------------------------- #
+#  Same-customer merge: combine sub-account invoices (e.g. {Cameras}) into    #
+#  one invoice per base customer name                                          #
+# --------------------------------------------------------------------------- #
+
+def _base_customer_name(name: str) -> str:
+    """
+    Strip MyAdmin sub-account suffixes so we can group invoices that belong
+    to the same physical customer.
+
+    Examples
+    --------
+    "Hoopaugh Grading Company LLC {Cameras}"  → "Hoopaugh Grading Company LLC"
+    "ACES Controls LLC {Han-CS}"              → "ACES Controls LLC"
+    "City of Raleigh"                         → "City of Raleigh"
+    """
+    # Remove any {...} token at the end (handles {Cameras}, {Han-CS}, etc.)
+    cleaned = re.sub(r'\s*\{[^}]+\}\s*$', '', name).strip()
+    return cleaned or name
+
+
+def _merge_same_customer_invoices(invoices: List[dict]) -> List[dict]:
+    """
+    Group invoices that belong to the same base customer (i.e. differ only by a
+    {Cameras} / {Han-CS} / similar suffix) into one combined invoice.
+
+    Hanover invoices are never touched here — they've already been merged by
+    _merge_hanover_invoices().
+
+    Merge rules
+    -----------
+    - Line items are concatenated in sub-account order (base account first,
+      then suffixed accounts alphabetically).
+    - Totals are recomputed from the merged line items.
+    - newDeviceCount is summed.
+    - QB metadata (billToAddress, terms, qbClass, customerId) is taken from
+      whichever sub-invoice has the richest data (non-empty value wins).
+    - The merged invoice uses the base customer name (suffix stripped).
+    """
+    # Separate Hanover invoices — never touch them here
+    hanover = [inv for inv in invoices if inv.get("billingType") == "Hanover"]
+    others  = [inv for inv in invoices if inv.get("billingType") != "Hanover"]
+
+    # Group by (base_name, billingMonth) — keep insertion order
+    groups: Dict[tuple, List[dict]] = {}
+    for inv in others:
+        base = _base_customer_name(inv["customerName"])
+        key  = (base.lower(), inv.get("billingMonth", ""))
+        groups.setdefault(key, []).append(inv)
+
+    merged_others: List[dict] = []
+    for (base_lower, _bm), group in groups.items():
+        if len(group) == 1:
+            # Only one sub-account — just normalise the name if it had a suffix
+            single = group[0]
+            base   = _base_customer_name(single["customerName"])
+            if base != single["customerName"]:
+                single = {**single, "customerName": base}
+            merged_others.append(single)
+            continue
+
+        # Sort: base account (no suffix) first, then alphabetical by full name
+        group.sort(key=lambda x: (bool(re.search(r'\{[^}]+\}', x["customerName"])),
+                                   x["customerName"]))
+
+        # Concatenate all line items
+        all_lines: List[dict] = []
+        for inv in group:
+            all_lines.extend(inv.get("lineItems") or [])
+
+        prorated_total = round(sum(li["amount"] for li in all_lines if li["type"] == "prorated"), 2)
+        forward_total  = round(sum(li["amount"] for li in all_lines if li["type"] == "forward"),  2)
+
+        # Use the first invoice as the base; pick best QB metadata across group
+        ref = group[0]
+        base_name = _base_customer_name(ref["customerName"])
+
+        def _best(field: str):
+            """Return the first non-empty value for `field` across group."""
+            for inv in group:
+                v = inv.get(field)
+                if v:
+                    return v
+            return ref.get(field, "")
+
+        merged_inv = {
+            **ref,
+            "customerName":     base_name,
+            "lineItems":        all_lines,
+            "proratedTotal":    prorated_total,
+            "forwardTotal":     forward_total,
+            "grandTotal":       round(prorated_total + forward_total, 2),
+            "newDeviceCount":   sum(inv.get("newDeviceCount", 0) for inv in group),
+            "hasPriceWarnings": any(inv.get("hasPriceWarnings") for inv in group),
+            "billToAddress":    _best("billToAddress"),
+            "terms":            _best("terms"),
+            "qbClass":          _best("qbClass"),
+        }
+        merged_others.append(merged_inv)
+
+    return hanover + merged_others
+
+
+# --------------------------------------------------------------------------- #
 #  API Routes                                                                  #
 # --------------------------------------------------------------------------- #
 
@@ -910,6 +1014,9 @@ async def get_prorated_invoices(
 
     # Merge all Hanover sub-customer invoices into one master invoice
     invoices = _merge_hanover_invoices(invoices)
+
+    # Merge sub-account invoices for the same customer (e.g. {Cameras}) into one
+    invoices = _merge_same_customer_invoices(invoices)
 
     # Sort by customer name
     invoices.sort(key=lambda x: x["customerName"].lower())
