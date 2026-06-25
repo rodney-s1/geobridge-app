@@ -88,8 +88,11 @@ try:
     app = app_module.app
     print("  Registered routes:")
     for route in app.routes:
+        path = getattr(route, "path", None)
+        if path is None:
+            continue  # skip _IncludedRouter / Mount objects
         methods = getattr(route, "methods", {"?"})
-        print("    " + str(sorted(methods)) + " " + route.path)
+        print("    " + str(sorted(methods)) + " " + path)
 except Exception as e:
     import traceback
     print("  IMPORT ERROR: " + str(e))
