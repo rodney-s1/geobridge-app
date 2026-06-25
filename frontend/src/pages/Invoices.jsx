@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { exportInvoicePDF, exportAllPDF, previewInvoicePDF } from '../utils/invoicePdf'
+import { exportInvoiceIIF, exportAllIIF } from '../utils/invoiceIif'
 
 const API = 'http://127.0.0.1:8001'
 
@@ -234,7 +235,7 @@ function InvoiceDetail({ invoice, onExport }) {
             </svg>
             Preview
           </button>
-          {/* Download button */}
+          {/* Download PDF button */}
           <button
             onClick={onExport}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs transition-colors"
@@ -243,6 +244,17 @@ function InvoiceDetail({ invoice, onExport }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
             Export PDF
+          </button>
+          {/* Export IIF button */}
+          <button
+            onClick={() => exportInvoiceIIF(invoice)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-700 hover:bg-emerald-600 text-white rounded-lg text-xs transition-colors"
+            title="Export as QuickBooks IIF file — import into QB Desktop to create the invoice with AvaTax"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Export IIF
           </button>
         </div>
       </div>
@@ -491,7 +503,7 @@ export default function Invoices() {
             )}
           </button>
 
-          {/* Export all */}
+          {/* Export all PDFs */}
           {data && data.invoiceCount > 0 && (
             <button
               onClick={() => exportAllPDF(data)}
@@ -501,6 +513,19 @@ export default function Invoices() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
               Export All PDFs
+            </button>
+          )}
+          {/* Export all as single IIF file for QB Desktop import */}
+          {data && data.invoiceCount > 0 && (
+            <button
+              onClick={() => exportAllIIF(data)}
+              className="flex items-center gap-1.5 px-3 py-2 bg-emerald-800 hover:bg-emerald-700 text-emerald-100 rounded-lg text-sm transition-colors"
+              title="Export all invoices as a single IIF file — import into QuickBooks Desktop to create all invoices with AvaTax"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Export All IIF
             </button>
           )}
         </div>
