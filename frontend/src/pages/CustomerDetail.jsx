@@ -84,13 +84,19 @@ function InfoRow({ label, value, mono = false }) {
 
 // ─── Devices tab ─────────────────────────────────────────────────────────────
 function DevicesTab({ customerId }) {
-  const [devices,    setDevices]    = useState(null)
-  const [loading,    setLoading]    = useState(true)
-  const [error,      setError]      = useState(null)
-  const [filterCode, setFilterCode] = useState(null)
-  const [copied,     copy]          = useCopySerials()
+  const [devices,       setDevices]       = useState(null)
+  const [loading,       setLoading]       = useState(true)
+  const [error,         setError]         = useState(null)
+  const [filterCode,    setFilterCode]    = useState(null)
+  const [copied,        copy]             = useCopySerials()
 
-  useEffect(() => {
+  // Inline "Set date" state
+  const [setDateSerial, setSetDateSerial] = useState(null)   // serial with picker open
+  const [dateInput,     setDateInput]     = useState('')
+  const [saving,        setSaving]        = useState(false)
+  const [saveError,     setSaveError]     = useState(null)
+
+  const loadDevices = useCallback(() => {
     setLoading(true)
     fetch(`${API}/api/customers/${encodeURIComponent(customerId)}`)
       .then(r => r.ok ? r.json() : Promise.reject(r.status))
@@ -98,6 +104,64 @@ function DevicesTab({ customerId }) {
       .catch(e => setError(`Failed to load devices (${e})`))
       .finally(() => setLoading(false))
   }, [customerId])
+
+  useEffect(() => { loadDevices() }, [loadDevices])
+
+  // Open the inline date picker for a device row
+  function openSetDate(serial) {
+    setSetDateSerial(serial)
+    setDateInput('')
+    setSaveError(null)
+  }
+
+  // Save override via POST
+  async function handleSaveDate(serial) {
+    if (!dateInput) { setSaveError('Please pick a date'); return }
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const res = await fetch(
+        `${API}/api/customers/device/${encodeURIComponent(serial)}/billing-date`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ billingStartDate: dateInput }),
+        }
+      )
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.detail || `Server error (${res.status})`)
+      }
+      setSetDateSerial(null)
+      loadDevices()   // refresh the device list so the date appears
+    } catch (e) {
+      setSaveError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Clear override via DELETE
+  async function handleClearDate(serial) {
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const res = await fetch(
+        `${API}/api/customers/device/${encodeURIComponent(serial)}/billing-date`,
+        { method: 'DELETE' }
+      )
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.detail || `Server error (${res.status})`)
+      }
+      setSetDateSerial(null)
+      loadDevices()
+    } catch (e) {
+      setSaveError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
 
   if (loading) return (
     <div className="flex items-center gap-3 text-slate-400 py-12 justify-center">
@@ -199,37 +263,104 @@ function DevicesTab({ customerId }) {
       <div className="bg-slate-900/60 border border-slate-700/40 rounded-xl overflow-hidden">
         <table className="w-full table-fixed text-xs">
           <colgroup>
-            <col style={{ width: '16%' }} />
-            <col style={{ width: '20%' }} />
-            <col style={{ width: '15%' }} />
+            <col style={{ width: '14%' }} />
+            <col style={{ width: '18%' }} />
+            <col style={{ width: '14%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '14%' }} />
             <col style={{ width: '13%' }} />
-            <col style={{ width: '16%' }} />
-            <col style={{ width: '10%' }} />
-            <col style={{ width: '10%' }} />
+            <col style={{ width: '9%' }} />
+            <col style={{ width: '7%' }} />
           </colgroup>
           <thead className="bg-slate-800/60">
             <tr>
-              {['Serial', 'Device Type', 'Billing Plan', 'Rate Plan', 'Database', 'Billing Start Date', 'End'].map(h => (
+              {['Serial', 'Device Type', 'Billing Plan', 'Rate Plan', 'Database', 'Billing Start Date', 'End', ''].map(h => (
                 <th key={h} className="px-3 py-2.5 text-left text-xs text-slate-400 font-semibold">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {visibleDevices.map((d, i) => (
-              <tr key={`${d.serialNumber}-${i}`} className="border-t border-slate-700/30 hover:bg-slate-700/20">
-                <td className="px-3 py-2 font-mono text-slate-300">{d.serialNumber || '—'}</td>
-                <td className="px-3 py-2 text-slate-400">{d.deviceType || '—'}</td>
-                <td className="px-3 py-2 text-slate-400">{d.activeBillingPlan || '—'}</td>
-                <td className="px-3 py-2">
-                  {d.ratePlanCode
-                    ? <span className="bg-slate-700 text-slate-200 px-1.5 py-0.5 rounded font-mono">{d.ratePlanCode}</span>
-                    : <span className="text-slate-600">—</span>}
-                </td>
-                <td className="px-3 py-2 text-slate-400 truncate">{d.database || '—'}</td>
-                <td className="px-3 py-2 text-slate-300 font-mono">{d.contractStartDate || '—'}</td>
-                <td className="px-3 py-2 text-slate-500 font-mono">{d.contractEndDate || '—'}</td>
-              </tr>
-            ))}
+            {visibleDevices.map((d, i) => {
+              const isActive     = d.status === 'Active'
+              const needsDate    = isActive && !d.contractStartDate
+              const pickerOpen   = setDateSerial === d.serialNumber
+              return (
+                <React.Fragment key={`${d.serialNumber}-${i}`}>
+                  <tr className="border-t border-slate-700/30 hover:bg-slate-700/20">
+                    <td className="px-3 py-2 font-mono text-slate-300">{d.serialNumber || '—'}</td>
+                    <td className="px-3 py-2 text-slate-400">{d.deviceType || '—'}</td>
+                    <td className="px-3 py-2 text-slate-400">{d.activeBillingPlan || '—'}</td>
+                    <td className="px-3 py-2">
+                      {d.ratePlanCode
+                        ? <span className="bg-slate-700 text-slate-200 px-1.5 py-0.5 rounded font-mono">{d.ratePlanCode}</span>
+                        : <span className="text-slate-600">—</span>}
+                    </td>
+                    <td className="px-3 py-2 text-slate-400 truncate">{d.database || '—'}</td>
+                    <td className="px-3 py-2 font-mono">
+                      {d.contractStartDate
+                        ? <span className="text-slate-300">{d.contractStartDate}</span>
+                        : <span className="text-slate-600 italic">not set</span>}
+                    </td>
+                    <td className="px-3 py-2 text-slate-500 font-mono">{d.contractEndDate || '—'}</td>
+                    <td className="px-3 py-2">
+                      {needsDate && (
+                        <button
+                          onClick={() => pickerOpen ? setSetDateSerial(null) : openSetDate(d.serialNumber)}
+                          title="Set manual billing start date"
+                          className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                            pickerOpen
+                              ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
+                              : 'bg-amber-500/15 text-amber-400 border border-amber-500/30 hover:bg-amber-500/25'
+                          }`}
+                        >
+                          Set date
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+
+                  {/* Inline date picker row */}
+                  {pickerOpen && (
+                    <tr className="bg-amber-900/10 border-t border-amber-700/20">
+                      <td colSpan={8} className="px-4 py-3">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="text-xs text-amber-400 font-medium">
+                            Manual billing start date for {d.serialNumber}:
+                          </span>
+                          <input
+                            type="date"
+                            value={dateInput}
+                            onChange={e => setDateInput(e.target.value)}
+                            className="px-2 py-1 bg-slate-800 border border-slate-600 text-slate-200 rounded text-xs
+                                       focus:outline-none focus:border-amber-500"
+                          />
+                          <button
+                            onClick={() => handleSaveDate(d.serialNumber)}
+                            disabled={saving || !dateInput}
+                            className="px-3 py-1 bg-amber-600 hover:bg-amber-500 disabled:opacity-50
+                                       text-white rounded text-xs font-medium transition-colors"
+                          >
+                            {saving ? 'Saving…' : 'Save'}
+                          </button>
+                          <button
+                            onClick={() => setSetDateSerial(null)}
+                            className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          {saveError && (
+                            <span className="text-xs text-red-400">{saveError}</span>
+                          )}
+                          <span className="ml-auto text-xs text-slate-500 italic">
+                            Override takes priority over MyAdmin dates for invoice generation.
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              )
+            })}
           </tbody>
         </table>
       </div>

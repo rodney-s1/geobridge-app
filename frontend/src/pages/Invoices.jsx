@@ -369,6 +369,8 @@ export default function Invoices() {
   const [error,        setError]        = useState(null)
   const [selectedId,   setSelectedId]   = useState(null)
   const [search,       setSearch]       = useState('')
+  const [unbilled,     setUnbilled]     = useState(null)         // unbilled-check results
+  const [unbilledOpen, setUnbilledOpen] = useState(true)         // panel collapsed state
 
   // Auto-generate on mount with current month
   useEffect(() => { generate() }, [])   // eslint-disable-line react-hooks/exhaustive-deps
@@ -379,6 +381,7 @@ export default function Invoices() {
     setLoading(true)
     setError(null)
     setSelectedId(null)
+    setUnbilled(null)
     try {
       const params = new URLSearchParams({ month: m })
       if (bt) params.set('billing_type', bt)
@@ -390,6 +393,18 @@ export default function Invoices() {
       const json = await res.json()
       setData(json)
       if (json.invoices?.length > 0) setSelectedId(json.invoices[0].customerId)
+      // Parallel: fetch unbilled-check for same month
+      try {
+        const uRes = await fetch(`${API}/api/invoices/unbilled-check?month=${m}`)
+        if (uRes.ok) {
+          const uJson = await uRes.json()
+          setUnbilled(uJson)
+        } else {
+          setUnbilled(null)
+        }
+      } catch (_) {
+        setUnbilled(null)
+      }
     } catch (e) {
       setError(e.message)
     } finally {
@@ -511,6 +526,68 @@ export default function Invoices() {
           <div className="text-slate-400 ml-auto">
             Total: <span className="text-slate-100 font-bold font-mono text-base">{fmt$(data.grandTotal)}</span>
           </div>
+        </div>
+      )}
+
+      {/* ── Unbilled-check warning panel ───────────────────────────────── */}
+      {unbilled && unbilled.count > 0 && (
+        <div className="mb-4 bg-amber-900/15 border border-amber-700/40 rounded-xl overflow-hidden">
+          {/* Panel header — click to expand/collapse */}
+          <button
+            className="w-full flex items-center gap-3 px-4 py-3 hover:bg-amber-800/10 transition-colors text-left"
+            onClick={() => setUnbilledOpen(o => !o)}
+          >
+            <svg className="w-4 h-4 text-amber-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+            </svg>
+            <span className="text-sm font-semibold text-amber-300">
+              {unbilled.count} active device{unbilled.count !== 1 ? 's' : ''} with no qualifying billing date
+            </span>
+            <span className="text-xs text-amber-500 ml-1">for {fmtMonthLabel(unbilled.billingMonth)}</span>
+            <span className={`ml-auto text-amber-500 transition-transform ${unbilledOpen ? 'rotate-90' : ''}`}>▶</span>
+          </button>
+
+          {/* Collapsible body */}
+          {unbilledOpen && (
+            <div className="border-t border-amber-700/30 overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead className="bg-amber-900/20">
+                  <tr>
+                    {['Serial', 'Customer', 'Billing Type', 'Reason', 'First Connect', 'Billing Start', 'Override?'].map(h => (
+                      <th key={h} className="px-3 py-2 text-left text-amber-400/80 font-semibold">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {unbilled.devices.map((d, i) => (
+                    <tr key={`${d.serial}-${i}`} className="border-t border-amber-700/20 hover:bg-amber-900/10">
+                      <td className="px-3 py-2 font-mono text-slate-300">{d.serial || '—'}</td>
+                      <td className="px-3 py-2 text-slate-400">{d.companyName}</td>
+                      <td className="px-3 py-2">
+                        <span className="bg-slate-700/60 text-slate-300 px-1.5 py-0.5 rounded text-xs">{d.billingType}</span>
+                      </td>
+                      <td className="px-3 py-2">
+                        {{
+                          never_activated: <span className="text-slate-500 italic">Never activated</span>,
+                          auto_activated:  <span className="text-blue-400">Auto-activated (BSD &lt; FCD)</span>,
+                          outside_month:   <span className="text-slate-400">Date outside month</span>,
+                          no_date:         <span className="text-red-400">Unparseable date</span>,
+                        }[d.reason] || <span className="text-slate-500">{d.reason}</span>}
+                      </td>
+                      <td className="px-3 py-2 font-mono text-slate-500">{d.firstDeviceActivationDate || '—'}</td>
+                      <td className="px-3 py-2 font-mono text-slate-500">{d.billingStartDate || '—'}</td>
+                      <td className="px-3 py-2">
+                        {d.hasOverride
+                          ? <span className="text-amber-400 font-medium">✓ Override</span>
+                          : <span className="text-slate-600">—</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
 

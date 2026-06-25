@@ -31,6 +31,7 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 QB_DATA_FILE           = os.path.join(_HERE, "qb_customers.json")
 OVERRIDES_FILE         = os.path.join(_HERE, "billing_overrides.json")
 BILLING_TYPE_OVERRIDES_FILE = os.path.join(_HERE, "billing_type_overrides.json")
+BILLING_DATE_OVERRIDES_FILE = os.path.join(_HERE, "billing_date_overrides.json")
 SYNC_CACHE_FILE        = os.path.join(_HERE, "myadmin_cache.json")   # persisted between restarts
 
 def _load_json(path: str, default):
@@ -52,6 +53,9 @@ billing_type_overrides:  Dict[str, str]  = {
     k: v for k, v in _load_json(BILLING_TYPE_OVERRIDES_FILE, {}).items()
     if not k.startswith("_")   # skip _comment keys
 }
+# Manual billing start date overrides: {"SERIAL": "YYYY-MM-DD"}
+# Written by POST /api/customers/device/{serial}/billing-date
+billing_date_overrides:  Dict[str, str]  = _load_json(BILLING_DATE_OVERRIDES_FILE, {})
 qb_customers:       Dict[str, dict] = _load_json(QB_DATA_FILE, {})
 qb_items:           List[dict]      = []
 name_to_company_id: Dict[str, str]  = {}   # normalize(name) -> companyId, built on sync
@@ -1060,3 +1064,110 @@ async def set_billing_type(account_id: str, body: BillingTypeUpdate):
 @router.get("/customers/{account_id}/devices")
 async def get_customer_devices(account_id: str):
     return await get_customer(account_id)
+
+
+# =============================================================================
+#  DEBUG: raw contract dump
+# =============================================================================
+
+@router.get("/debug/contract/{serial}")
+async def debug_contract(serial: str):
+    """
+    Return the raw cached contract record(s) for a given serial number.
+    Useful for diagnosing missing date fields or billing type issues.
+    No auth check — local dev/desktop use only.
+    """
+    contracts: List[dict] = _sync_cache.get("contracts") or []
+    if not contracts:
+        raise HTTPException(status_code=503, detail="No contract data cached. Run a MyAdmin sync first.")
+
+    # Match on device.serialNumber (case-insensitive)
+    serial_upper = serial.strip().upper()
+    matches = []
+    for c in contracts:
+        dev = (c.get("device") or {})
+        if (dev.get("serialNumber") or "").upper() == serial_upper:
+            matches.append(c)
+
+    if not matches:
+        raise HTTPException(status_code=404, detail=f"No cached contract found for serial '{serial}'")
+
+    # Return raw data plus a convenience summary of the key date fields
+    summaries = []
+    for c in matches:
+        uc      = c.get("userContact") or {}
+        company = (uc.get("userCompany") or {})
+        dev     = c.get("device") or {}
+        summaries.append({
+            "serial":                      dev.get("serialNumber"),
+            "companyId":                   company.get("id"),
+            "companyName":                 company.get("name"),
+            "isTerminated":                c.get("isTerminated"),
+            "billingStartDate":            c.get("billingStartDate"),
+            "firstDeviceActivationDate":   c.get("firstDeviceActivationDate"),
+            "endDate":                     c.get("endDate"),
+            "promoCode":                   c.get("promoCode"),
+            "activeDevicePlan":            (c.get("activeDevicePlan") or {}).get("name"),
+        })
+
+    return {
+        "serial":    serial,
+        "count":     len(matches),
+        "summaries": summaries,
+        "raw":       matches,
+    }
+
+
+# =============================================================================
+#  Manual billing-date overrides  (per-device)
+# =============================================================================
+
+class BillingDateOverride(BaseModel):
+    billingStartDate: str   # "YYYY-MM-DD"
+
+
+@router.post("/customers/device/{serial}/billing-date")
+async def set_device_billing_date(serial: str, body: BillingDateOverride):
+    """
+    Manually set (or replace) the billing start date for a device serial.
+    Stored in billing_date_overrides.json as {"SERIAL": "YYYY-MM-DD"}.
+    This date takes priority over the MyAdmin API dates in invoice generation.
+    """
+    from datetime import date as _date_cls
+    # Validate date format
+    try:
+        _date_cls.fromisoformat(body.billingStartDate)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="billingStartDate must be YYYY-MM-DD")
+
+    key = serial.strip().upper()
+    billing_date_overrides[key] = body.billingStartDate
+    _save_json(BILLING_DATE_OVERRIDES_FILE, billing_date_overrides)
+    return {"success": True, "serial": key, "billingStartDate": body.billingStartDate}
+
+
+@router.delete("/customers/device/{serial}/billing-date")
+async def delete_device_billing_date(serial: str):
+    """
+    Remove the manual billing start date override for a device serial.
+    After deletion the invoice engine falls back to MyAdmin API dates.
+    """
+    key = serial.strip().upper()
+    if key not in billing_date_overrides:
+        raise HTTPException(status_code=404, detail=f"No billing date override found for serial '{serial}'")
+
+    del billing_date_overrides[key]
+    _save_json(BILLING_DATE_OVERRIDES_FILE, billing_date_overrides)
+    return {"success": True, "serial": key, "cleared": True}
+
+
+@router.get("/customers/device/{serial}/billing-date")
+async def get_device_billing_date(serial: str):
+    """Return the current manual billing date override for a serial (if any)."""
+    key = serial.strip().upper()
+    override = billing_date_overrides.get(key)
+    return {
+        "serial":             key,
+        "hasOverride":        override is not None,
+        "billingStartDate":   override,
+    }

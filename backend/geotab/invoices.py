@@ -40,7 +40,7 @@ from fastapi import APIRouter, HTTPException, Query
 from .reconciliation import _normalize, _resolve_price
 
 # Shared in-memory cache populated by customers.py sync
-from .customers import _sync_cache, _clean_name, _strip_han_cs, _strip_sub_account_suffix
+from .customers import _sync_cache, _clean_name, _strip_han_cs, _strip_sub_account_suffix, billing_date_overrides
 
 # --------------------------------------------------------------------------- #
 #  File paths (same dir as all other geotab data files)                        #
@@ -248,8 +248,16 @@ def _generate_prorated_invoice(
         if contract.get("isTerminated"):
             continue
 
+        # ── Manual billing-date override (highest priority) ────────────────
+        # If the user has set a date for this serial via the UI, use it as
+        # billingStartDate and bypass the API dates entirely.
+        device_serial_raw = (contract.get("device") or {}).get("serialNumber") or ""
+        override_bsd = billing_date_overrides.get(device_serial_raw.strip().upper())
+
         raw_fcd = _safe_date(contract.get("firstDeviceActivationDate"))
-        raw_bsd = _safe_date(contract.get("billingStartDate"))
+        # If override present it replaces billingStartDate; firstConnectDate
+        # from the API is preserved so Rule 2 still applies.
+        raw_bsd = override_bsd or _safe_date(contract.get("billingStartDate"))
 
         # Rule 1: neither date → skip (Never Activated)
         if not raw_fcd and not raw_bsd:
@@ -950,3 +958,171 @@ async def get_prorated_invoice_for_customer(
         }
 
     return {"found": True, **invoice}
+
+
+# --------------------------------------------------------------------------- #
+#  Unbilled-check: active devices with no qualifying date for the given month  #
+# --------------------------------------------------------------------------- #
+
+@router.get("/invoices/unbilled-check")
+async def get_unbilled_check(
+    month: str = Query(
+        default="",
+        description="Billing month as YYYY-MM (defaults to current month)",
+    ),
+):
+    """
+    Pre-flight scan: returns all active, non-terminated devices belonging to
+    ELIGIBLE_BILLING_TYPES customers that have NO qualifying activation date
+    for the given month.
+
+    A device is "unbilled" for this month if it satisfies ANY of:
+      - Neither firstDeviceActivationDate nor billingStartDate is set (Never Activated)
+      - billingStartDate < firstDeviceActivationDate (auto-activated; skipped by engine)
+      - The resolved activation date falls outside the billing month
+
+    The override store (billing_date_overrides) is respected so that if the
+    user has already set a date the device will NOT appear in this list.
+
+    Response shape:
+    {
+      "billingMonth": "YYYY-MM",
+      "count": N,
+      "devices": [
+        {
+          "serial": "...",
+          "companyId": "...",
+          "companyName": "...",
+          "billingType": "...",
+          "reason": "never_activated" | "auto_activated" | "outside_month" | "no_date",
+          "firstDeviceActivationDate": "YYYY-MM-DD" | "",
+          "billingStartDate": "YYYY-MM-DD" | "",
+          "hasOverride": bool
+        }, ...
+      ]
+    }
+    """
+    if month:
+        try:
+            parsed  = datetime.strptime(month, "%Y-%m")
+            b_year  = parsed.year
+            b_month = parsed.month
+        except ValueError:
+            raise HTTPException(status_code=400, detail="month must be YYYY-MM")
+    else:
+        today   = date.today()
+        b_year  = today.year
+        b_month = today.month
+
+    all_contracts: List[dict] = _sync_cache.get("contracts") or []
+    if not all_contracts:
+        raise HTTPException(
+            status_code=503,
+            detail="No contract data cached. Please run a MyAdmin sync first.",
+        )
+
+    from .customers import billing_type_overrides, qb_customers
+
+    month_start = date(b_year, b_month, 1)
+    month_end   = date(b_year, b_month, _days_in_month(b_year, b_month))
+
+    # Group contracts by company (same logic as get_prorated_invoices)
+    contracts_by_company: Dict[str, List[dict]] = defaultdict(list)
+    for c in all_contracts:
+        uc      = c.get("userContact") or {}
+        company = uc.get("userCompany") or {}
+        cid     = str(company.get("id") or "")
+        if cid:
+            contracts_by_company[cid].append(c)
+
+    unbilled: List[dict] = []
+
+    for company_id, company_contracts in contracts_by_company.items():
+        if not company_contracts:
+            continue
+
+        # Resolve billing type (same priority chain as get_prorated_invoices)
+        raw_name   = ((company_contracts[0].get("userContact") or {})
+                      .get("userCompany") or {}).get("name") or ""
+        clean_name = _clean_name(raw_name)
+        qb_lookup_name = _strip_han_cs(_strip_sub_account_suffix(clean_name))
+        is_han_cs  = clean_name.strip().lower().endswith("{han-cs}")
+        bt = (
+            billing_type_overrides.get(company_id)
+            or (qb_customers.get(_normalize(qb_lookup_name)) or {}).get("billingType")
+            or ("Han-CS" if is_han_cs else None)
+            or "Unknown"
+        )
+
+        if bt not in ELIGIBLE_BILLING_TYPES:
+            continue
+
+        display_name = _strip_han_cs(clean_name)
+
+        for c in company_contracts:
+            if c.get("isTerminated"):
+                continue
+
+            dev    = c.get("device") or {}
+            serial = (dev.get("serialNumber") or "").strip().upper()
+
+            # Check override
+            override_bsd = billing_date_overrides.get(serial)
+            has_override = override_bsd is not None
+
+            raw_fcd = _safe_date(c.get("firstDeviceActivationDate"))
+            raw_bsd = override_bsd or _safe_date(c.get("billingStartDate"))
+
+            # Determine reason this device has no qualifying date
+            reason: Optional[str] = None
+
+            if not raw_fcd and not raw_bsd:
+                reason = "never_activated"
+            elif raw_fcd and raw_bsd:
+                try:
+                    fcd = date.fromisoformat(raw_fcd)
+                    bsd = date.fromisoformat(raw_bsd)
+                    if bsd < fcd:
+                        reason = "auto_activated"
+                    else:
+                        # Rule 3: use fcd
+                        if not (month_start <= fcd <= month_end):
+                            reason = "outside_month"
+                except ValueError:
+                    reason = "no_date"
+            elif raw_fcd:
+                try:
+                    fcd = date.fromisoformat(raw_fcd)
+                    if not (month_start <= fcd <= month_end):
+                        reason = "outside_month"
+                except ValueError:
+                    reason = "no_date"
+            else:
+                # Rule 4: only bsd
+                try:
+                    bsd = date.fromisoformat(raw_bsd)
+                    if not (month_start <= bsd <= month_end):
+                        reason = "outside_month"
+                except ValueError:
+                    reason = "no_date"
+
+            if reason is not None:
+                unbilled.append({
+                    "serial":                    serial or dev.get("serialNumber") or "",
+                    "companyId":                 company_id,
+                    "companyName":               display_name,
+                    "billingType":               bt,
+                    "reason":                    reason,
+                    "firstDeviceActivationDate": raw_fcd,
+                    "billingStartDate":          raw_bsd,
+                    "hasOverride":               has_override,
+                })
+
+    # Sort by company name then serial
+    unbilled.sort(key=lambda x: (x["companyName"].lower(), x["serial"]))
+
+    return {
+        "billingMonth": f"{b_year}-{b_month:02d}",
+        "count":        len(unbilled),
+        "devices":      unbilled,
+    }
