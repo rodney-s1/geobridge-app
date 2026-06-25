@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { exportInvoicePDF, exportAllPDF, previewInvoicePDF } from '../utils/invoicePdf'
 import { exportInvoiceIIF, exportAllIIF } from '../utils/invoiceIif'
 
@@ -36,6 +36,22 @@ function fmtMonthLabel(ym) {
 // CSV helpers kept for future QB export — PDF is now the primary export
 
 // ─── Line item row in the invoice detail ─────────────────────────────────────
+function SkuDivider({ label }) {
+  return (
+    <tr className="border-b border-slate-700/30">
+      <td colSpan={7} className="px-3 py-1 bg-slate-800/50">
+        <div className="flex items-center gap-2">
+          <div className="h-px flex-1 bg-slate-600/50" />
+          <span className="text-xs text-slate-500 font-mono whitespace-nowrap truncate max-w-[320px]" title={label}>
+            {label}
+          </span>
+          <div className="h-px flex-1 bg-slate-600/50" />
+        </div>
+      </td>
+    </tr>
+  )
+}
+
 function LineItemRow({ li, idx }) {
   const [expanded, setExpanded] = useState(false)
   const isProrated = li.type === 'prorated'
@@ -290,7 +306,7 @@ function InvoiceDetail({ invoice, onExport }) {
             </tr>
           </thead>
           <tbody>
-            {/* Prorated lines */}
+            {/* Prorated lines — with SKU-change dividers */}
             {proratedLines.length > 0 && (
               <tr className="bg-amber-500/5">
                 <td colSpan={7} className="px-3 py-1.5 text-xs font-semibold text-amber-400/70 uppercase tracking-wider">
@@ -299,10 +315,15 @@ function InvoiceDetail({ invoice, onExport }) {
               </tr>
             )}
             {proratedLines.map((li, i) => (
-              <LineItemRow key={`p-${i}`} li={li} idx={i} />
+              <React.Fragment key={`p-${i}`}>
+                {i > 0 && proratedLines[i - 1].skuKey !== li.skuKey && (
+                  <SkuDivider label={li.skuKey} />
+                )}
+                <LineItemRow li={li} idx={i} />
+              </React.Fragment>
             ))}
 
-            {/* Forward lines */}
+            {/* Forward lines — with SKU-change dividers */}
             {forwardLines.length > 0 && (
               <tr className="bg-green-500/5">
                 <td colSpan={7} className="px-3 py-1.5 text-xs font-semibold text-green-400/70 uppercase tracking-wider">
@@ -311,7 +332,12 @@ function InvoiceDetail({ invoice, onExport }) {
               </tr>
             )}
             {forwardLines.map((li, i) => (
-              <LineItemRow key={`f-${i}`} li={li} idx={i} />
+              <React.Fragment key={`f-${i}`}>
+                {i > 0 && forwardLines[i - 1].skuKey !== li.skuKey && (
+                  <SkuDivider label={li.skuKey} />
+                )}
+                <LineItemRow li={li} idx={i} />
+              </React.Fragment>
             ))}
           </tbody>
         </table>

@@ -326,5 +326,26 @@
     "defaultPrice": 10.0,
     "notes": "MyAdmin billing plan - suspended/inactive device tier",
     "cost": 5.0
-  }
+  },
+
+  {"ratePlanCode": "Ford Premium: Live",           "skuKey": "Geotab Ford (Premium (OEM))",           "defaultPrice": 17.75, "notes": "MyAdmin activeDevicePlan - Ford OEM Premium"},
+  {"ratePlanCode": "Ford Premium V2: Live",         "skuKey": "Geotab Ford (Premium (OEM) V2)",         "defaultPrice": 26.95, "notes": "MyAdmin activeDevicePlan - Ford OEM Premium V2"},
+  {"ratePlanCode": "Ford Premium SW3: Live",        "skuKey": "Geotab Ford (Premium (OEM)) SW3",        "defaultPrice": 17.75, "notes": "MyAdmin activeDevicePlan - Ford OEM Premium SW3 (self-install)"},
+  {"ratePlanCode": "Ford Regulatory: Live",         "skuKey": "Geotab Ford (Premium (OEM))",            "defaultPrice": 17.75, "notes": "MyAdmin activeDevicePlan - Ford OEM Regulatory tier"},
+  {"ratePlanCode": "GM Premium: Live",              "skuKey": "Geotab GM (Premium (OEM))",              "defaultPrice": 21.95, "notes": "MyAdmin activeDevicePlan - GM OEM Premium"},
+  {"ratePlanCode": "GM Premium SW3: Live",          "skuKey": "Geotab GM (Premium (OEM)) SW3",          "defaultPrice": 17.75, "notes": "MyAdmin activeDevicePlan - GM OEM Premium SW3 (self-install)"},
+  {"ratePlanCode": "GM Regulatory: Live",           "skuKey": "Geotab GM (Premium (OEM))",              "defaultPrice": 21.95, "notes": "MyAdmin activeDevicePlan - GM OEM Regulatory tier"},
+  {"ratePlanCode": "Volvo Premium: Live",           "skuKey": "Geotab Volvo (Premium (OEM))",           "defaultPrice": 24.95, "notes": "MyAdmin activeDevicePlan - Volvo OEM Premium"},
+  {"ratePlanCode": "Volvo Regulatory: Live",        "skuKey": "Geotab Volvo (Regulatory (OEM))",        "defaultPrice": 22.95, "notes": "MyAdmin activeDevicePlan - Volvo OEM Regulatory/HOS"},
+  {"ratePlanCode": "Mack Premium: Live",            "skuKey": "Geotab Mack (Premium (OEM))",            "defaultPrice": 24.95, "notes": "MyAdmin activeDevicePlan - Mack OEM Premium"},
+  {"ratePlanCode": "Mack Regulatory: Live",         "skuKey": "Geotab Mack (Regulatory (OEM))",         "defaultPrice": 19.95, "notes": "MyAdmin activeDevicePlan - Mack OEM Regulatory"},
+  {"ratePlanCode": "Navistar Premium: Live",        "skuKey": "Geotab Navistar (Premium (OEM))",        "defaultPrice": 24.95, "notes": "MyAdmin activeDevicePlan - Navistar/International OEM Premium"},
+  {"ratePlanCode": "Freightliner Premium: Live",    "skuKey": "Freightliner (OEM)",                     "defaultPrice": 24.95, "notes": "MyAdmin activeDevicePlan - Freightliner OEM"},
+  {"ratePlanCode": "Stellantis Premium: Live",      "skuKey": "Stellantis Premium (OEM)",               "defaultPrice": 24.95, "notes": "MyAdmin activeDevicePlan - Stellantis OEM (RAM/Dodge/Jeep/Chrysler)"},
+  {"ratePlanCode": "Mercedes Premium: Live",        "skuKey": "Geotab Mercedes (MBCON Premium)",        "defaultPrice": 25.50, "notes": "MyAdmin activeDevicePlan - Mercedes MBCON OEM Premium"},
+  {"ratePlanCode": "Cat AEMP: Live",                "skuKey": "CAT AEMP (OEM)",                         "defaultPrice": 7.50,  "notes": "MyAdmin activeDevicePlan - Caterpillar AEMP OEM"},
+  {"ratePlanCode": "Cat AEMP Support: Live",        "skuKey": "CAT AEMP + Support (OEM)",               "defaultPrice": 9.50,  "notes": "MyAdmin activeDevicePlan - Caterpillar AEMP + Support OEM"},
+  {"ratePlanCode": "John Deere AEMP: Live",         "skuKey": "John Deere AEMP (OEM)",                  "defaultPrice": 5.00,  "notes": "MyAdmin activeDevicePlan - John Deere AEMP OEM"},
+  {"ratePlanCode": "John Deere AEMP Support: Live", "skuKey": "John Deere AEMP + Support (OEM)",        "defaultPrice": 9.50,  "notes": "MyAdmin activeDevicePlan - John Deere AEMP + Support OEM"},
+  {"ratePlanCode": "Komatsu AEMP: Live",            "skuKey": "Komatsu AEMP (OEM)",                     "defaultPrice": 5.00,  "notes": "MyAdmin activeDevicePlan - Komatsu AEMP OEM"}
 ]
