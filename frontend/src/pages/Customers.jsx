@@ -1096,7 +1096,8 @@ export default function Customers({ onDetail }) {
   const [searchInput, setSearchInput] = useState('')
   const debounceRef = useRef(null)
   const [importingQb, setImportingQb] = useState(false)
-  const [importMsg, setImportMsg] = useState('')
+  const [importMsg,    setImportMsg]    = useState('')
+  const [importCols,   setImportCols]   = useState(null)  // CSV columns from last import
   const [qbSummary, setQbSummary] = useState(null)
   const [syncProgress, setSyncProgress] = useState(null)   // SSE progress data
   const sseRef = useRef(null)   // holds the EventSource so we can close it
@@ -1276,7 +1277,14 @@ export default function Customers({ onDetail }) {
         throw new Error(body.detail || `Server error (HTTP ${res.status})`)
       }
       const data = await res.json()
-      setImportMsg(`✓ ${data.message}`)
+      // Check whether the CSV had recognisable billing address columns
+      const cols = data.csvColumns || []
+      setImportCols(cols)
+      const addrCol = cols.find(c => /billing.*address|bill.*addr/i.test(c))
+      const addrNote = addrCol
+        ? ` · Address column detected: "${addrCol}"`
+        : ` · ⚠ No billing address columns found in CSV — addresses will not appear on invoices`
+      setImportMsg(`✓ ${data.message}${addrNote}`)
       // Refresh customer list and summary
       fetchCustomers(1, true)
       const sum = await fetch(`${API}/api/customers/qb-data/summary`)

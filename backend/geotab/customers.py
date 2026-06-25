@@ -854,6 +854,9 @@ async def import_qb_customers(file: UploadFile = File(...)):
     if not rows:
         raise HTTPException(status_code=400, detail="CSV file is empty")
 
+    # Capture the actual column headers so we can return them for debugging
+    csv_columns = list(rows[0].keys()) if rows else []
+
     imported  = 0
     skipped   = 0
     protected = 0
@@ -931,6 +934,8 @@ async def import_qb_customers(file: UploadFile = File(...)):
         imported += 1
 
     _save_json(QB_DATA_FILE, qb_customers)
+    # Persist the column list so the debug endpoint can report it later
+    _save_json(os.path.join(_HERE, "qb_last_import_columns.json"), csv_columns)
     print(f"[import-qb] Saved {len(qb_customers)} QB customers to {QB_DATA_FILE}")
 
     msg = f"{imported} customers imported, {skipped} skipped"
@@ -938,15 +943,43 @@ async def import_qb_customers(file: UploadFile = File(...)):
         msg += f", {protected} GeoBridge billing overrides preserved"
 
     return {
-        "success":   True,
-        "message":   msg,
-        "imported":  imported,
-        "skipped":   skipped,
-        "protected": protected,
-        "total":     len(qb_customers),
+        "success":    True,
+        "message":    msg,
+        "imported":   imported,
+        "skipped":    skipped,
+        "protected":  protected,
+        "total":      len(qb_customers),
+        "csvColumns": csv_columns,   # actual column names seen in this CSV — useful for debugging address mapping
     }
 
 
+
+
+
+# --- GET /api/debug/qb-columns — show CSV columns from last QB import ---------
+@router.get("/debug/qb-columns")
+async def debug_qb_columns():
+    """Return the column headers that were present in the most recently imported QB CSV."""
+    cols = _load_json(os.path.join(_HERE, "qb_last_import_columns.json"), None)
+    if cols is None:
+        raise HTTPException(status_code=404, detail="No QB import has been performed yet, or column log is missing.")
+    return {"csvColumns": cols, "count": len(cols)}
+
+
+# --- GET /api/debug/qb-customer/{name} — inspect stored QB record -------------
+@router.get("/debug/qb-customer/{name}")
+async def debug_qb_customer(name: str):
+    """Return the stored QB customer record for a given name (fuzzy-normalised lookup)."""
+    from .customers import _normalize as _n
+    key = _n(name)
+    record = qb_customers.get(key)
+    if record is None:
+        # Try partial match
+        matches = {k: v for k, v in qb_customers.items() if name.lower() in k}
+        if not matches:
+            raise HTTPException(status_code=404, detail=f"No QB record found for '{name}'. Normalised key tried: '{key}'")
+        return {"partialMatches": matches}
+    return {"key": key, "record": record}
 
 
 # --- GET /api/customers/{account_id} ------------------------------------------
