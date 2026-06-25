@@ -19,8 +19,9 @@ const HANCS_FWD_BG  = [235, 255, 245]  // soft teal for Han-CS forward bg
 // ─── Company info ─────────────────────────────────────────────────────────────
 const COMPANY = {
   name:    'Blue Arrow Telematics',
-  addr1:   '',           // add street if desired
-  addr2:   '',           // city, state, zip
+  addr1:   '1760 Heritage Center Drive',
+  addr2:   'Suite 201',
+  addr3:   'Wake Forest, NC 27587',
   phone:   '',
   email:   '',
   website: 'bluearrowtelematics.com',
@@ -80,6 +81,7 @@ function drawHeader(doc, invoice) {
   doc.setTextColor(...GRAY)
   if (COMPANY.addr1) { doc.text(COMPANY.addr1, 14, y); y += 4.5 }
   if (COMPANY.addr2) { doc.text(COMPANY.addr2, 14, y); y += 4.5 }
+  if (COMPANY.addr3) { doc.text(COMPANY.addr3, 14, y); y += 4.5 }
   if (COMPANY.phone) { doc.text(`Tel: ${COMPANY.phone}`,  14, y); y += 4.5 }
   if (COMPANY.email) { doc.text(`Email: ${COMPANY.email}`, 14, y); y += 4.5 }
   if (COMPANY.website) { doc.text(COMPANY.website, 14, y) }
@@ -111,8 +113,9 @@ function drawHeader(doc, invoice) {
     my += 7.5
   }
 
-  // "BILL TO" block
-  const billY = 76
+  // "BILL TO" block — position depends on how many company address lines we drew
+  // With 3 address lines the company block ends around y=56; push Bill To to y=80
+  const billY = 82
   doc.setFillColor(...NAVY)
   doc.rect(14, billY, 36, 5.5, 'F')
   doc.setFont('helvetica', 'bold')
@@ -125,17 +128,29 @@ function drawHeader(doc, invoice) {
   doc.setTextColor(...NAVY)
   doc.text(invoice.customerName, 14, billY + 12)
 
+  // Address lines from QB (if available), otherwise fallback to Attention line
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
   doc.setTextColor(...GRAY)
-  doc.text('Attention: Accounts Payable', 14, billY + 18)
+  const addrLines = invoice.billToAddress || []
+  let billTextY = billY + 20
+  if (addrLines.length > 0) {
+    for (const line of addrLines) {
+      doc.text(line, 14, billTextY)
+      billTextY += 5
+    }
+  } else {
+    doc.text('Attention: Accounts Payable', 14, billTextY)
+    billTextY += 5
+  }
 
   // Horizontal rule
+  const ruleY = Math.max(billTextY + 4, billY + 26)
   doc.setDrawColor(...LGRAY)
   doc.setLineWidth(0.4)
-  doc.line(14, billY + 24, W - 14, billY + 24)
+  doc.line(14, ruleY, W - 14, ruleY)
 
-  return billY + 28   // return Y position for content start
+  return ruleY + 4   // return Y position for content start
 }
 
 // ─── Draw summary stat boxes ──────────────────────────────────────────────────

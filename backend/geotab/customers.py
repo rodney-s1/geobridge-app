@@ -908,6 +908,25 @@ async def import_qb_customers(file: UploadFile = File(...)):
             "jobType":     job_type,
             "terms":       terms,
             "balance":     balance,
+            # Billing address fields — read from QB CSV export if present
+            "billAddr1":   (
+                row.get("Billing Address Line 1") or row.get("Bill Addr1")
+                or row.get("Billing Street") or ""
+            ),
+            "billAddr2":   (
+                row.get("Billing Address Line 2") or row.get("Bill Addr2") or ""
+            ),
+            "billCity":    (
+                row.get("Billing Address City") or row.get("Bill City") or ""
+            ),
+            "billState":   (
+                row.get("Billing Address State/Province") or row.get("Bill State")
+                or row.get("Billing State") or ""
+            ),
+            "billZip":     (
+                row.get("Billing Address Postal Code") or row.get("Bill Zip")
+                or row.get("Billing Zip") or ""
+            ),
         }
         imported += 1
 

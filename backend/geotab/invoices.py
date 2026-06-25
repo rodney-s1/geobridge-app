@@ -66,6 +66,27 @@ def _days_in_month(year: int, month: int) -> int:
     return calendar.monthrange(year, month)[1]
 
 
+def _bill_to_address(qb_record: dict) -> List[str]:
+    """Return a list of non-empty address lines for the Bill To block on a PDF invoice.
+    Falls back to an empty list when no address data is stored."""
+    if not qb_record:
+        return []
+    lines: List[str] = []
+    if qb_record.get("billAddr1"):
+        lines.append(qb_record["billAddr1"])
+    if qb_record.get("billAddr2"):
+        lines.append(qb_record["billAddr2"])
+    city  = qb_record.get("billCity",  "")
+    state = qb_record.get("billState", "")
+    zip_  = qb_record.get("billZip",   "")
+    city_line = ", ".join(filter(None, [city, state]))
+    if zip_:
+        city_line = f"{city_line} {zip_}".strip() if city_line else zip_
+    if city_line:
+        lines.append(city_line)
+    return lines
+
+
 def _safe_date(raw) -> str:
     """
     Slice an ISO datetime string to yyyy-mm-dd and return empty string for:
@@ -855,11 +876,17 @@ async def get_prorated_invoices(
         )
 
         if invoice is not None:
+            # Attach billing address from QB customer record
+            qb_rec = qb_customers.get(_normalize(qb_lookup_name)) or {}
+            addr   = _bill_to_address(qb_rec)
             # _generate_prorated_invoice may return a list when a Hanover
             # customer also has camera devices (two separate invoices)
             if isinstance(invoice, list):
+                for inv in invoice:
+                    inv["billToAddress"] = addr
                 invoices.extend(invoice)
             else:
+                invoice["billToAddress"] = addr
                 invoices.append(invoice)
 
     # Merge all Hanover sub-customer invoices into one master invoice
@@ -956,6 +983,10 @@ async def get_prorated_invoice_for_customer(
             "billingMonth": f"{b_year}-{b_month:02d}",
             "message":      "No devices with a first connect date in this billing month.",
         }
+
+    # Attach billing address from QB customer record
+    qb_rec = qb_customers.get(_normalize(qb_lookup_name)) or {}
+    invoice["billToAddress"] = _bill_to_address(qb_rec)
 
     return {"found": True, **invoice}
 
