@@ -533,7 +533,19 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
 
     _set_progress(pct=85, message="Grouping by company...")
 
+    # Build a deviceId → db_name lookup from Step 1 results so we can attach
+    # a database name even when we encounter a device via the contracts pass.
+    device_id_to_db: Dict[str, str] = {}
+    for rec in all_device_dbs:
+        dev_id  = str(rec.get("DeviceId") or rec.get("deviceId") or "")
+        db_name = rec.get("DatabaseName") or rec.get("databaseName") or ""
+        if dev_id and db_name:
+            device_id_to_db[dev_id] = db_name
+
     company_map: Dict[str, dict] = {}
+
+    # ── Pass 1: iterate device-DB records (Step 1 data) ───────────────────
+    # Covers all devices that are currently in an active Geotab database.
     for rec in all_device_dbs:
         dev_id   = str(rec.get("DeviceId") or rec.get("deviceId") or "")
         db_name  = rec.get("DatabaseName") or rec.get("databaseName") or ""
@@ -565,12 +577,56 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
         if not terminated:
             company_map[key]["activeDevices"] += 1
 
+    # ── Pass 2: iterate contracts (Step 2 data) ───────────────────────────
+    # Catches companies whose devices exist in MyAdmin contracts but did NOT
+    # appear in the device-DB records (e.g. sub-accounts whose devices haven't
+    # been assigned to a Geotab database yet, or are missing from Step 1).
+    # We only add/update entries here — we never reduce counts set by Pass 1.
+    for c in all_contracts:
+        device   = c.get("device") or {}
+        dev_id   = str(device.get("id") or "")
+        uc       = c.get("userContact") or {}
+        company  = uc.get("userCompany") or {}
+        company_id   = str(company.get("id") or "")
+        company_name = _clean_name(company.get("name") or "")
+        terminated   = bool(c.get("isTerminated"))
+
+        key = company_id
+        if not key:
+            continue
+
+        if key not in company_map:
+            # Company entirely missing from Pass 1 — add it now
+            db_name = device_id_to_db.get(dev_id) or ""
+            company_map[key] = {
+                "companyId":       company_id,
+                "customerName":    company_name,
+                "primaryDatabase": db_name,
+                "activeDevices":   0,
+                "totalDevices":    0,
+            }
+
+        # Fill in missing name / db if Pass 1 left them blank
+        if not company_map[key]["customerName"] and company_name:
+            company_map[key]["customerName"] = company_name
+        if not company_map[key]["primaryDatabase"] and dev_id:
+            db = device_id_to_db.get(dev_id) or ""
+            if db:
+                company_map[key]["primaryDatabase"] = db
+
+        # Only count devices NOT already counted in Pass 1
+        # (i.e. devices whose dev_id was NOT in device_id_to_db)
+        if dev_id and dev_id not in device_id_to_db:
+            company_map[key]["totalDevices"] += 1
+            if not terminated:
+                company_map[key]["activeDevices"] += 1
+
     raw = [
         v for v in company_map.values()
         if v["activeDevices"] > 0
         and not v["customerName"].startswith("* Terminated")
     ]
-    _print(f"[sync] {len(all_device_dbs)} device-db records -> "
+    _print(f"[sync] {len(all_device_dbs)} device-db records + {len(all_contracts)} contracts -> "
            f"{len(company_map)} companies -> {len(raw)} with active devices")
 
     # -- Rebuild name -> companyId lookup -------------------------------------
