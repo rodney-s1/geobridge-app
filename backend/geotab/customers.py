@@ -911,25 +911,14 @@ async def import_qb_customers(file: UploadFile = File(...)):
             "jobType":     job_type,
             "terms":       terms,
             "balance":     balance,
-            # Billing address fields — read from QB CSV export if present
-            "billAddr1":   (
-                row.get("Billing Address Line 1") or row.get("Bill Addr1")
-                or row.get("Billing Street") or ""
-            ),
-            "billAddr2":   (
-                row.get("Billing Address Line 2") or row.get("Bill Addr2") or ""
-            ),
-            "billCity":    (
-                row.get("Billing Address City") or row.get("Bill City") or ""
-            ),
-            "billState":   (
-                row.get("Billing Address State/Province") or row.get("Bill State")
-                or row.get("Billing State") or ""
-            ),
-            "billZip":     (
-                row.get("Billing Address Postal Code") or row.get("Bill Zip")
-                or row.get("Billing Zip") or ""
-            ),
+            # QB exports address as free-form lines in columns "Bill to 1"–"Bill to 5".
+            # Store all five as-is; the PDF renderer skips line 1 when it
+            # duplicates the customer name (QB always repeats it there).
+            "billTo1":     row.get("Bill to 1", "").strip(),
+            "billTo2":     row.get("Bill to 2", "").strip(),
+            "billTo3":     row.get("Bill to 3", "").strip(),
+            "billTo4":     row.get("Bill to 4", "").strip(),
+            "billTo5":     row.get("Bill to 5", "").strip(),
         }
         imported += 1
 

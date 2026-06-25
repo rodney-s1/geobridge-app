@@ -1280,7 +1280,7 @@ export default function Customers({ onDetail }) {
       // Check whether the CSV had recognisable billing address columns
       const cols = data.csvColumns || []
       setImportCols(cols)
-      const addrCol = cols.find(c => /billing.*address|bill.*addr/i.test(c))
+      const addrCol = cols.find(c => /^Bill to \d$/i.test(c) || /billing.*address|bill.*addr/i.test(c))
       const addrNote = addrCol
         ? ` · Address column detected: "${addrCol}"`
         : ` · ⚠ No billing address columns found in CSV — addresses will not appear on invoices`

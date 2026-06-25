@@ -66,24 +66,37 @@ def _days_in_month(year: int, month: int) -> int:
     return calendar.monthrange(year, month)[1]
 
 
-def _bill_to_address(qb_record: dict) -> List[str]:
-    """Return a list of non-empty address lines for the Bill To block on a PDF invoice.
-    Falls back to an empty list when no address data is stored."""
+def _bill_to_address(qb_record: dict, customer_name: str = "") -> List[str]:
+    """Return address lines for the Bill To block from a QB customer record.
+
+    QB exports free-form address lines in columns 'Bill to 1'–'Bill to 5'.
+    Bill to 1 is typically the company name repeated — skip it when it
+    matches the invoice customer name (already shown in bold above the block).
+    Only return non-empty lines after that filter.
+    """
     if not qb_record:
         return []
+
+    raw_lines = [
+        qb_record.get("billTo1", ""),
+        qb_record.get("billTo2", ""),
+        qb_record.get("billTo3", ""),
+        qb_record.get("billTo4", ""),
+        qb_record.get("billTo5", ""),
+    ]
+
+    # Normalise customer name for comparison (strip sub-account suffix after ":")
+    cust_bare = customer_name.split(":")[-1].strip().lower()
+
     lines: List[str] = []
-    if qb_record.get("billAddr1"):
-        lines.append(qb_record["billAddr1"])
-    if qb_record.get("billAddr2"):
-        lines.append(qb_record["billAddr2"])
-    city  = qb_record.get("billCity",  "")
-    state = qb_record.get("billState", "")
-    zip_  = qb_record.get("billZip",   "")
-    city_line = ", ".join(filter(None, [city, state]))
-    if zip_:
-        city_line = f"{city_line} {zip_}".strip() if city_line else zip_
-    if city_line:
-        lines.append(city_line)
+    for i, line in enumerate(raw_lines):
+        line = line.strip()
+        if not line:
+            continue
+        # Skip Bill to 1 when it's just a repeat of the customer name
+        if i == 0 and (line.lower() == cust_bare or line.lower() == customer_name.strip().lower()):
+            continue
+        lines.append(line)
     return lines
 
 
@@ -878,7 +891,7 @@ async def get_prorated_invoices(
         if invoice is not None:
             # Attach billing address from QB customer record
             qb_rec = qb_customers.get(_normalize(qb_lookup_name)) or {}
-            addr   = _bill_to_address(qb_rec)
+            addr   = _bill_to_address(qb_rec, display_name)
             # _generate_prorated_invoice may return a list when a Hanover
             # customer also has camera devices (two separate invoices)
             if isinstance(invoice, list):
@@ -986,7 +999,7 @@ async def get_prorated_invoice_for_customer(
 
     # Attach billing address from QB customer record
     qb_rec = qb_customers.get(_normalize(qb_lookup_name)) or {}
-    invoice["billToAddress"] = _bill_to_address(qb_rec)
+    invoice["billToAddress"] = _bill_to_address(qb_rec, display_name)
 
     return {"found": True, **invoice}
 
