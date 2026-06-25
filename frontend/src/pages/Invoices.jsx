@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { exportInvoicePDF, exportAllPDF } from '../utils/invoicePdf'
 
 const API = 'http://127.0.0.1:8001'
 
@@ -31,59 +32,7 @@ function fmtMonthLabel(ym) {
   return new Date(y, m - 1, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' })
 }
 
-// ─── Export helpers ───────────────────────────────────────────────────────────
-function exportInvoiceCSV(invoice) {
-  const rows = [
-    ['ITEM CODE', 'DESCRIPTION', 'QUANTITY', 'PRICE EACH', 'AMOUNT', 'TYPE', 'DAYS ACTIVE', 'DAYS IN MONTH', 'PRORATE %', 'TAX'],
-  ]
-  for (const li of invoice.lineItems) {
-    rows.push([
-      li.itemCode,
-      li.description.replace(/\n/g, ' | '),
-      li.quantity,
-      li.priceEach,
-      li.amount,
-      li.type === 'prorated' ? 'Prorated' : 'Full Month Forward',
-      li.daysActive ?? '',
-      li.daysInMonth ?? '',
-      li.prorateFactor != null ? (li.prorateFactor * 100).toFixed(1) + '%' : '',
-      'Tax',
-    ])
-  }
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
-  const blob = new Blob([csv], { type: 'text/csv' })
-  const url  = URL.createObjectURL(blob)
-  const a    = document.createElement('a')
-  a.href     = url
-  a.download = `invoice_${invoice.customerName.replace(/[^a-z0-9]/gi, '_')}_${invoice.billingMonth}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
-}
-
-function exportAllCSV(data) {
-  const rows = [
-    ['CUSTOMER', 'BILLING TYPE', 'BILLING MONTH', 'NEW DEVICES', 'PRORATED TOTAL', 'FORWARD TOTAL', 'GRAND TOTAL'],
-  ]
-  for (const inv of data.invoices) {
-    rows.push([
-      inv.customerName,
-      inv.billingType,
-      inv.billingMonthLabel,
-      inv.newDeviceCount,
-      inv.proratedTotal,
-      inv.forwardTotal,
-      inv.grandTotal,
-    ])
-  }
-  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
-  const blob = new Blob([csv], { type: 'text/csv' })
-  const url  = URL.createObjectURL(blob)
-  const a    = document.createElement('a')
-  a.href     = url
-  a.download = `prorated_invoices_${data.billingMonth}.csv`
-  a.click()
-  URL.revokeObjectURL(url)
-}
+// CSV helpers kept for future QB export — PDF is now the primary export
 
 // ─── Line item row in the invoice detail ─────────────────────────────────────
 function LineItemRow({ li, idx }) {
@@ -201,7 +150,7 @@ function InvoiceDetail({ invoice, onExport }) {
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Export CSV
+            Export PDF
           </button>
         </div>
       </div>
@@ -438,13 +387,13 @@ export default function Invoices() {
           {/* Export all */}
           {data && data.invoiceCount > 0 && (
             <button
-              onClick={() => exportAllCSV(data)}
+              onClick={() => exportAllPDF(data)}
               className="flex items-center gap-1.5 px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-sm transition-colors"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
-              Export All
+              Export All PDFs
             </button>
           )}
         </div>
@@ -561,7 +510,7 @@ export default function Invoices() {
             {selectedInvoice ? (
               <InvoiceDetail
                 invoice={selectedInvoice}
-                onExport={() => exportInvoiceCSV(selectedInvoice)}
+                onExport={() => exportInvoicePDF(selectedInvoice)}
               />
             ) : (
               <div className="h-full flex items-center justify-center text-slate-500 text-sm">
