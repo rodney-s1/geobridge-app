@@ -81,20 +81,20 @@ function drawHeader(doc, invoice) {
   if (COMPANY.email) { doc.text(`Email: ${COMPANY.email}`, 14, y); y += 4.5 }
   if (COMPANY.website) { doc.text(COMPANY.website, 14, y) }
 
-  // Invoice meta box (right side)
+  // Invoice meta box (right side) — 3 rows, no Invoice Type
+  // Billing Period = nextMonthLabel because we bill one month in advance
   const boxX = W - 90
   const boxW = 76
   doc.setFillColor(...LTBLUE)
-  doc.roundedRect(boxX, 32, boxW, 36, 2, 2, 'F')
+  doc.roundedRect(boxX, 32, boxW, 28, 2, 2, 'F')
   doc.setDrawColor(...BLUE)
   doc.setLineWidth(0.3)
-  doc.roundedRect(boxX, 32, boxW, 36, 2, 2, 'S')
+  doc.roundedRect(boxX, 32, boxW, 28, 2, 2, 'S')
 
   const metaRows = [
-    ['Invoice #:',    invoiceNumber(invoice.billingMonth, invoice.customerId)],
-    ['Date Issued:',  todayStr()],
-    ['Billing Period:', invoice.billingMonthLabel],
-    ['Invoice Type:',  invoice.billingType],
+    ['Invoice #:',      invoiceNumber(invoice.billingMonth, invoice.customerId)],
+    ['Date Issued:',    todayStr()],
+    ['Billing Period:', invoice.nextMonthLabel],
   ]
   let my = 38
   for (const [label, val] of metaRows) {
@@ -168,16 +168,14 @@ function drawSummaryBoxes(doc, invoice, startY) {
 function buildRows(lineItems) {
   return lineItems.map(li => {
     const isProrated = li.type === 'prorated'
-    const desc = li.description.split('\n')[0]   // first line only in table
-    const serials = li.serials.length > 0
-      ? li.serials.join(', ')
-      : ''
+    // Backend already formats description as multi-line with \n:
+    //   "GO Focus Plus Service Fee - New Activations\nProrated June 20 through June 30 2026 for devices:\nGE0DHCRXF95K\nGEBWURM68RBC"
+    // autoTable overflow:linebreak renders each \n as a new line inside the cell.
     const prorate = isProrated
       ? `${li.daysActive}/${li.daysInMonth} days\n${pct(li.prorateFactor)}`
       : 'Full Month'
     return [
-      li.itemCode,
-      desc + (serials ? `\n${serials}` : ''),
+      li.description,
       li.quantity,
       money(isProrated ? li.monthlyRate : li.priceEach),
       prorate,
@@ -195,13 +193,12 @@ function drawLineItemsTable(doc, invoice, startY) {
   const forwardLines  = invoice.lineItems.filter(li => li.type === 'forward')
 
   const colStyles = {
-    0: { cellWidth: 30, fontStyle: 'normal' },   // Item Code
-    1: { cellWidth: 'auto' },                     // Description
-    2: { cellWidth: 10, halign: 'center' },       // Qty
-    3: { cellWidth: 20, halign: 'right' },        // Monthly Rate
-    4: { cellWidth: 22, halign: 'center' },       // Prorate
-    5: { cellWidth: 20, halign: 'right' },        // Price Each
-    6: { cellWidth: 22, halign: 'right' },        // Amount
+    0: { cellWidth: 'auto' },                     // Description (no Item Code column)
+    1: { cellWidth: 10, halign: 'center' },       // Qty
+    2: { cellWidth: 22, halign: 'right' },        // Monthly Rate
+    3: { cellWidth: 22, halign: 'center' },       // Prorate
+    4: { cellWidth: 22, halign: 'right' },        // Price Each
+    5: { cellWidth: 22, halign: 'right' },        // Amount
   }
 
   const sections = []
@@ -222,7 +219,7 @@ function drawLineItemsTable(doc, invoice, startY) {
     autoTable(doc, {
       startY: tableEndY,
       margin: { left: 14, right: 14 },
-      head: [['Item Code', 'Description', 'Qty', 'Monthly Rate', 'Prorate', 'Price Each', 'Amount']],
+      head: [['Description', 'Qty', 'Monthly Rate', 'Prorate', 'Price Each', 'Amount']],
       body: section.rows,
       columnStyles: colStyles,
       headStyles: {
