@@ -207,15 +207,29 @@ def _generate_prorated_invoice(
     Returns None if the customer has no qualifying devices.
 
     A device qualifies if:
-      - firstDeviceActivationDate falls within billing_year/billing_month
+      - For Hanover / Han-CS: firstDeviceActivationDate falls within the billing month
+      - For CUA: activation date (see below) falls within the billing month
       - the contract is not terminated
       - the device has a resolvable SKU
+
+    CUA activation date rules (applied only when billingType == 'Charge Upon Activation'):
+      1. Neither firstDeviceActivationDate nor billingStartDate exists
+         → skip (device shows "Never Activated" in MyAdmin)
+      2. firstDeviceActivationDate exists AND billingStartDate < firstDeviceActivationDate
+         → skip (device already auto-activated; covered by main recurring invoice)
+      3. firstDeviceActivationDate exists AND (no billingStartDate OR billingStartDate >= firstDeviceActivationDate)
+         → qualify using firstDeviceActivationDate (normal new activation)
+      4. No firstDeviceActivationDate, billingStartDate exists and falls in billing month
+         → qualify using billingStartDate as the activation date
     """
     customer_id   = str((customer.get("userContact") or {}).get("userCompany", {}).get("id") or "")
     customer_name = (customer.get("userContact") or {}).get("userCompany", {}).get("name") or ""
 
     # Use the normalised name for all price lookups
     cust_norm = _normalize(customer_name)
+
+    billing_type_local = customer.get("billingType", "")
+    is_cua = (billing_type_local == "Charge Upon Activation")
 
     month_start = date(billing_year, billing_month, 1)
     month_end   = date(billing_year, billing_month, _days_in_month(billing_year, billing_month))
@@ -230,16 +244,60 @@ def _generate_prorated_invoice(
             continue
 
         raw_fcd = (contract.get("firstDeviceActivationDate") or "")[:10]
-        if not raw_fcd:
-            continue
-        try:
-            fcd = date.fromisoformat(raw_fcd)
-        except ValueError:
-            continue
+        raw_bsd = (contract.get("billingStartDate")          or "")[:10]
 
-        # Only devices that first connected THIS billing month
-        if not (month_start <= fcd <= month_end):
-            continue
+        if is_cua:
+            # ── CUA-specific activation date resolution ──────────────────
+            # Rule 1: neither date → skip (Never Activated)
+            if not raw_fcd and not raw_bsd:
+                continue
+
+            if raw_fcd:
+                # Parse firstDeviceActivationDate
+                try:
+                    fcd = date.fromisoformat(raw_fcd)
+                except ValueError:
+                    continue
+
+                # Rule 2: billingStartDate exists and predates firstConnectDate
+                # → already auto-activated on its own, skip
+                if raw_bsd:
+                    try:
+                        bsd = date.fromisoformat(raw_bsd)
+                    except ValueError:
+                        bsd = None
+                    if bsd and bsd < fcd:
+                        continue
+
+                # Rule 3: normal new activation — use firstDeviceActivationDate
+                activation_date     = fcd
+                raw_activation_date = raw_fcd
+
+            else:
+                # Rule 4: no firstConnectDate — use billingStartDate as activation
+                try:
+                    bsd = date.fromisoformat(raw_bsd)
+                except ValueError:
+                    continue
+                activation_date     = bsd
+                raw_activation_date = raw_bsd
+
+            # Only devices activating THIS billing month
+            if not (month_start <= activation_date <= month_end):
+                continue
+
+        else:
+            # ── Hanover / Han-CS: original logic unchanged ────────────────
+            if not raw_fcd:
+                continue
+            try:
+                fcd = date.fromisoformat(raw_fcd)
+            except ValueError:
+                continue
+            if not (month_start <= fcd <= month_end):
+                continue
+            activation_date     = fcd
+            raw_activation_date = raw_fcd
 
         device       = contract.get("device") or {}
         serial       = device.get("serialNumber") or ""
@@ -259,23 +317,23 @@ def _generate_prorated_invoice(
         if not monthly_rate:
             monthly_rate = 0.0
 
-        days_active, days_in_month, factor = _prorate_factor(fcd, billing_year, billing_month)
+        days_active, days_in_month, factor = _prorate_factor(activation_date, billing_year, billing_month)
         prorated_charge = round(monthly_rate * factor, 2)
 
         qualifying.append({
-            "serialNumber":    serial,
-            "ratePlanCode":    rate_plan,
-            "skuKey":          sku_key,
-            "monthlyRate":     monthly_rate,
-            "priceSource":     price_source,
-            "firstConnectDate":raw_fcd,
-            "firstConnectDateObj": fcd,
-            "daysInMonth":     days_in_month,
-            "daysActive":      days_active,
-            "prorateFactor":   factor,
-            "proratedCharge":  prorated_charge,
-            "itemCode":        full_path_index.get(sku_key, sku_key),
-            "skuDesc":         sku_desc_index.get(sku_key, sku_key),
+            "serialNumber":        serial,
+            "ratePlanCode":        rate_plan,
+            "skuKey":              sku_key,
+            "monthlyRate":         monthly_rate,
+            "priceSource":         price_source,
+            "firstConnectDate":    raw_activation_date,
+            "firstConnectDateObj": activation_date,
+            "daysInMonth":         days_in_month,
+            "daysActive":          days_active,
+            "prorateFactor":       factor,
+            "proratedCharge":      prorated_charge,
+            "itemCode":            full_path_index.get(sku_key, sku_key),
+            "skuDesc":             sku_desc_index.get(sku_key, sku_key),
         })
 
     if not qualifying:
