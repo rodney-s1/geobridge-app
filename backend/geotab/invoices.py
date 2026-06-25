@@ -1106,7 +1106,7 @@ async def get_unbilled_check(
                 except ValueError:
                     reason = "no_date"
 
-            if reason is not None:
+            if reason in ("never_activated", "no_date"):
                 unbilled.append({
                     "serial":                    serial or dev.get("serialNumber") or "",
                     "companyId":                 company_id,

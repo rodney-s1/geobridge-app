@@ -542,7 +542,7 @@ export default function Invoices() {
                 d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
             </svg>
             <span className="text-sm font-semibold text-amber-300">
-              {unbilled.count} active device{unbilled.count !== 1 ? 's' : ''} with no qualifying billing date
+              {unbilled.count} active device{unbilled.count !== 1 ? 's' : ''} may need a billing start date set
             </span>
             <span className="text-xs text-amber-500 ml-1">for {fmtMonthLabel(unbilled.billingMonth)}</span>
             <span className={`ml-auto text-amber-500 transition-transform ${unbilledOpen ? 'rotate-90' : ''}`}>▶</span>
