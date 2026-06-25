@@ -160,6 +160,23 @@ def _resolve_sku(customer_norm: str, rate_plan_code: str,
 
 
 # --------------------------------------------------------------------------- #
+#  Hanover SKU detection                                                       #
+# --------------------------------------------------------------------------- #
+
+# SKU keys that are billed to Hanover Insurance Group rather than the customer.
+# Cameras / Aux bundles are NEVER included here — those stay with the customer.
+HANOVER_SKU_KEYS: set = {
+    "Geotab Service Fee (HANOVER)",
+    "Service Fee (HANOVER-CS) Han",
+}
+
+
+def _is_hanover_sku(sku_key: str) -> bool:
+    """Return True if this SKU is billed to Hanover Insurance Group."""
+    return sku_key in HANOVER_SKU_KEYS
+
+
+# --------------------------------------------------------------------------- #
 #  Core invoice engine                                                          #
 # --------------------------------------------------------------------------- #
 
@@ -258,6 +275,56 @@ def _generate_prorated_invoice(
         return None
 
     # ---------------------------------------------------------------------- #
+    # For Hanover customers, split devices into two pools:                    #
+    #   hanover_pool  — Hanover-billed SKUs  → roll up to Hanover master      #
+    #   customer_pool — camera/aux SKUs      → billed directly to customer    #
+    # CUA customers always go entirely into customer_pool.                    #
+    # ---------------------------------------------------------------------- #
+    billing_type = customer.get("billingType", "")
+    if billing_type == "Hanover":
+        hanover_pool  = [d for d in qualifying if     _is_hanover_sku(d["skuKey"])]
+        customer_pool = [d for d in qualifying if not _is_hanover_sku(d["skuKey"])]
+    else:
+        hanover_pool  = []
+        customer_pool = qualifying
+
+    # Build invoices for each pool, return list (0-2 items)
+    results: List[dict] = []
+
+    for pool, pool_billing_type, pool_name, pool_id in [
+        (hanover_pool,  "Hanover",  customer_name, customer_id),
+        (customer_pool, billing_type if billing_type != "Hanover" else "Charge Upon Activation",
+         customer_name, customer_id + "__cam"),
+    ]:
+        if not pool:
+            continue
+        inv = _build_invoice_from_pool(
+            pool, pool_billing_type, pool_name, pool_id,
+            billing_year, billing_month, customer
+        )
+        if inv:
+            results.append(inv)
+
+    if not results:
+        return None
+    if len(results) == 1:
+        return results[0]
+    # Return a sentinel list — caller must handle
+    return results  # type: ignore
+
+
+def _build_invoice_from_pool(
+    qualifying: List[dict],
+    billing_type: str,
+    customer_name: str,
+    customer_id: str,
+    billing_year: int,
+    billing_month: int,
+    customer: dict,
+) -> Optional[dict]:
+    """Build a single prorated invoice dict from a pool of qualifying devices."""
+
+    # ---------------------------------------------------------------------- #
     # Group devices by (skuKey, firstConnectDate) — one QB line item per group #
     # ---------------------------------------------------------------------- #
     groups: Dict[tuple, List[dict]] = defaultdict(list)
@@ -352,7 +419,7 @@ def _generate_prorated_invoice(
     return {
         "customerId":       customer_id,
         "customerName":     customer_name,
-        "billingType":      customer.get("billingType", ""),
+        "billingType":      billing_type,
         "billingMonth":     f"{billing_year}-{billing_month:02d}",
         "billingMonthLabel":month_label,
         "nextMonthLabel":   next_month_label,
@@ -363,6 +430,10 @@ def _generate_prorated_invoice(
         "newDeviceCount":   len(qualifying),
         "hasPriceWarnings": any(d["monthlyRate"] == 0 or d["skuKey"] == "UNMAPPED" for d in qualifying),
     }
+
+
+# keep a reference so callers can check type
+_INVOICE_LIST_TYPE = list
 
 
 # --------------------------------------------------------------------------- #
@@ -559,8 +630,13 @@ async def get_prorated_invoices(
             sku_desc_index  = sku_desc_index,
         )
 
-        if invoice:
-            invoices.append(invoice)
+        if invoice is not None:
+            # _generate_prorated_invoice may return a list when a Hanover
+            # customer also has camera devices (two separate invoices)
+            if isinstance(invoice, list):
+                invoices.extend(invoice)
+            else:
+                invoices.append(invoice)
 
     # Merge all Hanover sub-customer invoices into one master invoice
     invoices = _merge_hanover_invoices(invoices)
