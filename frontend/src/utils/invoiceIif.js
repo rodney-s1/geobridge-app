@@ -81,8 +81,10 @@ function invoiceNumber(billingMonth, customerId) {
   return `INV-${ym}-${num}`
 }
 
-// ─── Accounts Receivable account name (must match QB exactly) ─────────────────
-const AR_ACCOUNT = 'Accounts Receivable'
+// ─── Accounts Receivable account name (must match QB chart of accounts exactly) ─
+// QB Desktop shows it as "11000 · Accounts Receivable" — the · separator is
+// the standard QB sub-account delimiter and must be included verbatim.
+const AR_ACCOUNT = '11000 · Accounts Receivable'
 
 // ─── Build IIF content for a single invoice ───────────────────────────────────
 function buildInvoiceBlock(invoice) {
@@ -90,7 +92,8 @@ function buildInvoiceBlock(invoice) {
   const txDate   = today()
   const due      = dueDate(invoice.terms || '')
   const custName = esc(invoice.customerName)
-  const memo     = esc(`GeoBridge • ${invoice.billingMonthLabel} activation billing`)
+  const memo     = ''  // QB memo left blank — matches manual invoice workflow
+  const qbClass  = esc(invoice.qbClass || '')
 
   // Address lines for the TRNS record (QB uses ADDR1–ADDR5)
   const addr = invoice.billToAddress || []
@@ -106,10 +109,10 @@ function buildInvoiceBlock(invoice) {
     txDate,        // DATE
     AR_ACCOUNT,    // ACCNT
     custName,      // NAME
-    '',            // CLASS
+    qbClass,       // CLASS  — QB state class (e.g. "NC") from QB customer record
     grandTotal,    // AMOUNT  (positive = receivable)
     docNum,        // DOCNUM
-    memo,          // MEMO
+    memo,          // MEMO  (blank)
     'N',           // CLEAR
     'Y',           // TOPRINT
     'Y',           // TAXABLE  — tells AvaTax to evaluate the whole invoice
@@ -142,10 +145,10 @@ function buildInvoiceBlock(invoice) {
       txDate,        // DATE
       AR_ACCOUNT,    // ACCNT  (QB resolves to income account via item mapping)
       custName,      // NAME
-      '',            // CLASS
+      qbClass,       // CLASS  — same state class as the TRNS row
       amt,           // AMOUNT  (negative = credit to income)
       docNum,        // DOCNUM
-      lineMemo,      // MEMO
+      memo,          // MEMO  (blank)
       'N',           // CLEAR
       qty,           // QNTY
       price,         // PRICE

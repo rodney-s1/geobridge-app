@@ -878,6 +878,7 @@ async def import_qb_customers(file: UploadFile = File(...)):
             or row.get("Account #") or row.get("Acct No") or ""
         )
         terms       = row.get("Terms") or row.get("Payment Terms") or ""
+        qb_class    = row.get("Class") or row.get("QB Class") or ""
         balance_str = (
             row.get("Balance Total") or row.get("Balance")
             or row.get("Current Balance") or "0"
@@ -910,6 +911,7 @@ async def import_qb_customers(file: UploadFile = File(...)):
             "billingType": preserved_billing,
             "jobType":     job_type,
             "terms":       terms,
+            "qbClass":     qb_class,
             "balance":     balance,
             # QB exports address as free-form lines in columns "Bill to 1"–"Bill to 5".
             # Store all five as-is; the PDF renderer skips line 1 when it

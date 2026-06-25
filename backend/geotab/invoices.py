@@ -890,19 +890,22 @@ async def get_prorated_invoices(
 
         if invoice is not None:
             # Attach billing address + terms from QB customer record
-            qb_rec = qb_customers.get(_normalize(qb_lookup_name)) or {}
-            addr   = _bill_to_address(qb_rec, display_name)
-            terms  = qb_rec.get("terms", "")
+            qb_rec  = qb_customers.get(_normalize(qb_lookup_name)) or {}
+            addr    = _bill_to_address(qb_rec, display_name)
+            terms   = qb_rec.get("terms", "")
+            qbClass = qb_rec.get("qbClass", "")
             # _generate_prorated_invoice may return a list when a Hanover
             # customer also has camera devices (two separate invoices)
             if isinstance(invoice, list):
                 for inv in invoice:
                     inv["billToAddress"] = addr
                     inv["terms"]         = terms
+                    inv["qbClass"]       = qbClass
                 invoices.extend(invoice)
             else:
                 invoice["billToAddress"] = addr
                 invoice["terms"]         = terms
+                invoice["qbClass"]       = qbClass
                 invoices.append(invoice)
 
     # Merge all Hanover sub-customer invoices into one master invoice
@@ -1000,10 +1003,11 @@ async def get_prorated_invoice_for_customer(
             "message":      "No devices with a first connect date in this billing month.",
         }
 
-    # Attach billing address + terms from QB customer record
+    # Attach billing address + terms + QB class from QB customer record
     qb_rec = qb_customers.get(_normalize(qb_lookup_name)) or {}
     invoice["billToAddress"] = _bill_to_address(qb_rec, display_name)
     invoice["terms"]         = qb_rec.get("terms", "")
+    invoice["qbClass"]       = qb_rec.get("qbClass", "")
 
     return {"found": True, **invoice}
 
