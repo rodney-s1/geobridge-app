@@ -5,7 +5,9 @@ const { spawn } = require('child_process')
 let mainWindow
 let backendProcess
 
-const isDev = process.env.APP_ENV === 'development' || !app.isPackaged
+// isDev: true only when explicitly requested via APP_ENV=development
+// Running `npm start` (unpackaged) should still load the built dist/
+const isDev = process.env.APP_ENV === 'development'
 
 function startPythonBackend() {
   const backendPath = path.join(__dirname, '../backend')
@@ -67,8 +69,8 @@ function createWindow() {
 
 app.whenReady().then(() => {
   if (!isDev) {
-    // In production (packaged app), Electron owns the backend process.
-    // In dev mode, concurrently already started it — don't spawn a second one.
+    // In dev mode (APP_ENV=development), concurrently already started the backend.
+    // In all other cases (npm start or packaged), Electron owns the backend process.
     startPythonBackend()
   }
   // In dev the backend is already running; give it a moment then open the window.
