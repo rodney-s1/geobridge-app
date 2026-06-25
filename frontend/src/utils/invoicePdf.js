@@ -195,16 +195,33 @@ function drawLineItemsTable(doc, invoice, startY) {
   if (proratedLines.length > 0) sections.push({ label: `PRORATED NEW ACTIVATIONS  ·  ${invoice.billingMonthLabel}`, rows: buildRows(proratedLines), colStyles, head: HEAD, color: [255, 245, 225] })
   if (forwardLines.length  > 0) sections.push({ label: `FULL MONTH FORWARD  ·  ${invoice.nextMonthLabel}`,          rows: buildRows(forwardLines),  colStyles, head: HEAD, color: [235, 250, 240] })
 
+  const PAGE_H      = doc.internal.pageSize.getHeight()
+  const FOOTER_H    = 18   // space reserved for footer at bottom of each page
+  const LABEL_H     = 6    // height of the coloured section label bar
+  const HEAD_H      = 10   // approximate height of the table header row
+  // Minimum space needed before starting a new section (label + header + 1 row)
+  const MIN_SECTION = LABEL_H + HEAD_H + 14
+
   let tableEndY = startY
   for (const section of sections) {
+    // ── Orphan guard: if there isn't enough room for label + header + one   ──
+    // ── row on this page, push to the next page before drawing the label.  ──
+    const spaceLeft = PAGE_H - FOOTER_H - tableEndY
+    if (spaceLeft < MIN_SECTION) {
+      doc.addPage()
+      drawPageHeader(doc, invoice)
+      drawPageFooter(doc, doc.internal.getNumberOfPages())
+      tableEndY = 18  // top margin after continuation header
+    }
+
     // Section label bar
     doc.setFillColor(section.color[0], section.color[1], section.color[2])
-    doc.rect(14, tableEndY, W - 28, 6, 'F')
+    doc.rect(14, tableEndY, W - 28, LABEL_H, 'F')
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(7)
     doc.setTextColor(...GRAY)
     doc.text(section.label, 16, tableEndY + 4.2)
-    tableEndY += 6
+    tableEndY += LABEL_H
 
     autoTable(doc, {
       startY: tableEndY,
@@ -212,6 +229,8 @@ function drawLineItemsTable(doc, invoice, startY) {
       head: [section.head],
       body: section.rows,
       columnStyles: section.colStyles,
+      // Never split a data row across pages
+      rowPageBreak: 'avoid',
       headStyles: {
         fillColor: NAVY,
         textColor: WHITE,
@@ -234,7 +253,7 @@ function drawLineItemsTable(doc, invoice, startY) {
         overflow: 'linebreak',
       },
       didDrawPage: (data) => {
-        // Re-draw header on continuation pages
+        // Re-draw continuation header on pages after the first
         if (data.pageNumber > 1) {
           drawPageHeader(doc, invoice)
         }

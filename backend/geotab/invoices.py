@@ -466,15 +466,40 @@ def _merge_hanover_invoices(invoices: List[dict]) -> List[dict]:
     # Use the billing month labels from the first Hanover invoice (all same)
     ref = hanover_invoices[0]
 
-    # ── Collect all prorated lines as-is ──────────────────────────────────
-    merged_prorated: List[dict] = []
+    # ── Re-merge prorated lines by (skuKey, firstConnectDate) across all     #
+    # sub-customers.  Devices from different sub-customers that activated on  #
+    # the same day with the same SKU must share one combined line item on the #
+    # Hanover master invoice (serials stacked, qty summed, amount summed).    #
+    prot_by_key: Dict[tuple, List[dict]] = defaultdict(list)
     for inv in hanover_invoices:
         for li in inv["lineItems"]:
             if li["type"] == "prorated":
-                merged_prorated.append(li)
+                key = (li["skuKey"], li.get("firstConnectDate") or "")
+                prot_by_key[key].append(li)
 
-    # Sort prorated lines by firstConnectDate then skuKey (matches QB order)
-    merged_prorated.sort(key=lambda li: (li.get("firstConnectDate") or "", li.get("skuKey") or ""))
+    merged_prorated: List[dict] = []
+    for (sku_key, fcd), lines in sorted(prot_by_key.items(), key=lambda x: (x[0][1], x[0][0])):
+        if len(lines) == 1:
+            merged_prorated.append(lines[0])
+            continue
+        # Multiple sub-customer lines share the same SKU+date — combine them
+        rep      = lines[0]
+        qty      = sum(li["quantity"]  for li in lines)
+        amount   = round(sum(li["amount"] for li in lines), 2)
+        serials  = [s for li in lines for s in (li.get("serials") or [])]
+        # Rebuild description with all serials listed
+        connect_label = rep["description"].split("\n")[1] if "\n" in rep["description"] else ""
+        # Extract "Prorated X through Y for devices:" line from first item's description
+        desc_lines = rep["description"].split("\n")
+        header_lines = desc_lines[:2] if len(desc_lines) >= 2 else desc_lines
+        description  = "\n".join(header_lines) + "\n" + "\n".join(serials)
+        merged_prorated.append({
+            **rep,
+            "quantity":  qty,
+            "amount":    amount,
+            "serials":   serials,
+            "description": description,
+        })
 
     # ── Re-aggregate forward lines by skuKey ──────────────────────────────
     fwd_by_sku: Dict[str, List[dict]] = defaultdict(list)
