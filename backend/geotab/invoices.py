@@ -87,12 +87,13 @@ def _month_label(year: int, month: int) -> str:
 def _month_last_day_label(year: int, month: int) -> str:
     """Returns e.g. 'June 30 2026'"""
     dim = _days_in_month(year, month)
-    return date(year, month, dim).strftime("%B %-d %Y")
+    d = date(year, month, dim)
+    return f"{d.strftime('%B')} {d.day} {year}"
 
 
 def _connect_day_label(d: date) -> str:
     """Returns e.g. 'June 18'"""
-    return d.strftime("%B %-d")
+    return f"{d.strftime('%B')} {d.day}"
 
 
 # --------------------------------------------------------------------------- #
