@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { exportInvoicePDF, exportAllPDF } from '../utils/invoicePdf'
+import { exportInvoicePDF, exportAllPDF, previewInvoicePDF } from '../utils/invoicePdf'
 
 const API = 'http://127.0.0.1:8001'
 
@@ -123,14 +123,94 @@ function LineItemRow({ li, idx }) {
   )
 }
 
+// ─── PDF Preview Modal ────────────────────────────────────────────────────────
+function PdfPreviewModal({ invoice, onClose, onDownload }) {
+  const [blobUrl, setBlobUrl] = useState(null)
+
+  useEffect(() => {
+    const url = previewInvoicePDF(invoice)
+    setBlobUrl(url)
+    return () => URL.revokeObjectURL(url)   // cleanup on unmount
+  }, [invoice])
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="relative bg-slate-900 border border-slate-700 rounded-xl shadow-2xl flex flex-col"
+        style={{ width: '52rem', height: '90vh' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Modal header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 flex-shrink-0">
+          <div>
+            <span className="text-sm font-semibold text-slate-100">{invoice.customerName}</span>
+            <span className="text-xs text-slate-400 ml-2">· Invoice Preview</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onDownload}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs transition-colors"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Download PDF
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 text-slate-400 hover:text-slate-100 hover:bg-slate-700 rounded-lg transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* PDF iframe */}
+        <div className="flex-1 min-h-0 p-2">
+          {blobUrl ? (
+            <iframe
+              src={blobUrl}
+              className="w-full h-full rounded-lg border border-slate-700"
+              title="Invoice Preview"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-slate-400 gap-3">
+              <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+              </svg>
+              Generating preview…
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Invoice detail panel ─────────────────────────────────────────────────────
 function InvoiceDetail({ invoice, onExport }) {
+  const [showPreview, setShowPreview] = useState(false)
   const proratedLines = invoice.lineItems.filter(li => li.type === 'prorated')
   const forwardLines  = invoice.lineItems.filter(li => li.type === 'forward')
   const btColor = BT_COLORS[invoice.billingType] || 'bg-slate-700/40 text-slate-400 border border-slate-600/30'
 
   return (
     <div className="flex flex-col h-full">
+      {/* PDF Preview Modal */}
+      {showPreview && (
+        <PdfPreviewModal
+          invoice={invoice}
+          onClose={() => setShowPreview(false)}
+          onDownload={() => { onExport(); setShowPreview(false) }}
+        />
+      )}
+
       {/* Invoice header */}
       <div className="flex items-start justify-between mb-4 pb-4 border-b border-slate-700/50">
         <div>
@@ -143,9 +223,21 @@ function InvoiceDetail({ invoice, onExport }) {
           </div>
         </div>
         <div className="flex gap-2">
+          {/* Preview button */}
+          <button
+            onClick={() => setShowPreview(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-xs transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            Preview
+          </button>
+          {/* Download button */}
           <button
             onClick={onExport}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg text-xs transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs transition-colors"
           >
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />

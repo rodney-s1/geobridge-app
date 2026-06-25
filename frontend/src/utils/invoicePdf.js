@@ -342,19 +342,29 @@ function drawPageFooter(doc, pageNum) {
   doc.text('Confidential — For billing purposes only', W / 2, H - 7, { align: 'center' })
 }
 
-// ─── Main export function ─────────────────────────────────────────────────────
-export function exportInvoicePDF(invoice) {
+// ─── Shared build function ────────────────────────────────────────────────────
+function buildDoc(invoice) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' })
-
-  // Page 1
-  const contentStartY  = drawHeader(doc, invoice)
-  const afterSummaryY  = drawSummaryBoxes(doc, invoice, contentStartY)
-  const afterTableY    = drawLineItemsTable(doc, invoice, afterSummaryY + 2)
+  const contentStartY = drawHeader(doc, invoice)
+  const afterSummaryY = drawSummaryBoxes(doc, invoice, contentStartY)
+  const afterTableY   = drawLineItemsTable(doc, invoice, afterSummaryY + 2)
   drawTotals(doc, invoice, afterTableY)
   drawPageFooter(doc, 1)
+  return doc
+}
 
+// ─── Download PDF ─────────────────────────────────────────────────────────────
+export function exportInvoicePDF(invoice) {
+  const doc      = buildDoc(invoice)
   const safeName = invoice.customerName.replace(/[^a-z0-9]/gi, '_')
   doc.save(`Invoice_${safeName}_${invoice.billingMonth}.pdf`)
+}
+
+// ─── Preview PDF — returns a blob URL for display in an iframe ───────────────
+export function previewInvoicePDF(invoice) {
+  const doc  = buildDoc(invoice)
+  const blob = doc.output('blob')
+  return URL.createObjectURL(blob)
 }
 
 // ─── Export ALL invoices as separate PDFs (zip via browser) ──────────────────
