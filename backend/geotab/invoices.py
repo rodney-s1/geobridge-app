@@ -348,13 +348,19 @@ def _generate_prorated_invoice(
         rate_plan    = (contract.get("promoCode") or "").upper()
         billing_plan = (contract.get("activeDevicePlan") or {}).get("name") or ""
 
-        # Resolve SKU
-        sku_key = _resolve_sku(cust_norm, rate_plan, mapping_index, cust_map_index)
-        if not sku_key:
-            # Try billing plan name as fallback
-            sku_key = _resolve_sku(cust_norm, billing_plan, mapping_index, cust_map_index)
-        if not sku_key:
-            sku_key = "UNMAPPED"
+        # Resolve SKU — priority order:
+        #   1. Customer-specific mapping on billing_plan (activeDevicePlan.name)
+        #      — catches OEM plans like "Ford Premium: Live" before the generic
+        #        promoCode "PRO MODE" masks them
+        #   2. Global mapping on billing_plan (e.g. OEM plan names → OEM SKUs)
+        #   3. Customer-specific mapping on promoCode
+        #   4. Global mapping on promoCode (e.g. "PRO MODE" → Service Fee Geotab (Pro))
+        #   5. UNMAPPED fallback
+        sku_key = (
+            _resolve_sku(cust_norm, billing_plan, mapping_index, cust_map_index)
+            or _resolve_sku(cust_norm, rate_plan,   mapping_index, cust_map_index)
+            or "UNMAPPED"
+        )
 
         # Skip categories that are never prorated here (e.g. Digital Matter —
         # those devices are billed through the DM billing system, not GeoBridge)
