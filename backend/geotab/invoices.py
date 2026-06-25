@@ -628,6 +628,28 @@ async def get_prorated_invoices(
             or "Unknown"
         )
 
+        # ── Safety net: even if the customer isn't labelled Hanover, promote ──
+        # ── them to Hanover if ANY contract activating this month carries the ──
+        # ── HANOVER promo code — so we never silently drop these devices.     ──
+        if bt not in ELIGIBLE_BILLING_TYPES:
+            month_start = date(b_year, b_month, 1)
+            month_end   = date(b_year, b_month, _days_in_month(b_year, b_month))
+            for c in company_contracts:
+                if c.get("isTerminated"):
+                    continue
+                raw_fcd = (c.get("firstDeviceActivationDate") or "")[:10]
+                if not raw_fcd:
+                    continue
+                try:
+                    fcd = date.fromisoformat(raw_fcd)
+                except ValueError:
+                    continue
+                if month_start <= fcd <= month_end:
+                    promo = (c.get("promoCode") or "").upper()
+                    if promo == "HANOVER":
+                        bt = "Hanover"
+                        break
+
         if bt not in wanted_types:
             continue
 
