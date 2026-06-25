@@ -155,6 +155,7 @@ def _build_indices():
       cust_map_index : (norm_customerName, ratePlanCode_upper) -> skuKey
       full_path_index: skuKey -> fullPath  (QB item code format)
       sku_desc_index : skuKey -> desc  (human label for description)
+      category_index : skuKey -> category  (used to exclude non-billable categories)
     """
     catalog  = _load_json(os.path.join(_HERE, "sku_catalog.json"), [])
     mappings = _load_json(os.path.join(_HERE, "sku_mappings.json"), [])
@@ -173,6 +174,10 @@ def _build_indices():
         s["skuKey"]: s.get("desc") or s["skuKey"]
         for s in catalog
     }
+    category_index: Dict[str, str] = {
+        s["skuKey"]: s.get("category") or ""
+        for s in catalog
+    }
     ovr_index: Dict[tuple, float] = {
         (_normalize(o["customerName"]), o["skuKey"]): float(o.get("price") or 0)
         for o in overrides
@@ -186,7 +191,7 @@ def _build_indices():
         for m in cust_maps
     }
 
-    return catalog_index, ovr_index, mapping_index, cust_map_index, full_path_index, sku_desc_index
+    return catalog_index, ovr_index, mapping_index, cust_map_index, full_path_index, sku_desc_index, category_index
 
 
 def _resolve_sku(customer_norm: str, rate_plan_code: str,
@@ -236,6 +241,12 @@ def _is_hanover_sku(sku_key: str) -> bool:
 ELIGIBLE_BILLING_TYPES = {"Charge Upon Activation", "Hanover", "Han-CS"}
 
 
+# SKU categories that are never billed on prorated invoices.
+# Digital Matter devices are billed separately by the DM billing system;
+# including them here would double-bill the customer.
+EXCLUDED_CATEGORIES = {"Digital Matter Service", "Digital Matter Equipment"}
+
+
 def _generate_prorated_invoice(
     customer: dict,
     contracts: List[dict],
@@ -247,6 +258,7 @@ def _generate_prorated_invoice(
     cust_map_index: dict,
     full_path_index: dict,
     sku_desc_index: dict,
+    category_index: dict,
 ) -> Optional[dict]:
     """
     Build a prorated invoice for a single customer for the given billing month.
@@ -343,6 +355,12 @@ def _generate_prorated_invoice(
             sku_key = _resolve_sku(cust_norm, billing_plan, mapping_index, cust_map_index)
         if not sku_key:
             sku_key = "UNMAPPED"
+
+        # Skip categories that are never prorated here (e.g. Digital Matter —
+        # those devices are billed through the DM billing system, not GeoBridge)
+        sku_category = category_index.get(sku_key, "")
+        if sku_category in EXCLUDED_CATEGORIES:
+            continue
 
         # Resolve monthly rate
         monthly_rate, price_source = _resolve_price(cust_norm, sku_key, ovr_index, catalog_index)
@@ -904,7 +922,8 @@ async def get_prorated_invoices(
 
     # Load lookup indices (built fresh each request — fast, files are small)
     (catalog_index, ovr_index, mapping_index,
-     cust_map_index, full_path_index, sku_desc_index) = _build_indices()
+     cust_map_index, full_path_index, sku_desc_index,
+     category_index) = _build_indices()
 
     # Import billing_type lookup from customers module
     from .customers import billing_type_overrides, qb_customers
@@ -990,6 +1009,7 @@ async def get_prorated_invoices(
             cust_map_index  = cust_map_index,
             full_path_index = full_path_index,
             sku_desc_index  = sku_desc_index,
+            category_index  = category_index,
         )
 
         if invoice is not None:
@@ -1066,7 +1086,8 @@ async def get_prorated_invoice_for_customer(
         raise HTTPException(status_code=404, detail=f"No contracts found for customer {customer_id}")
 
     (catalog_index, ovr_index, mapping_index,
-     cust_map_index, full_path_index, sku_desc_index) = _build_indices()
+     cust_map_index, full_path_index, sku_desc_index,
+     category_index) = _build_indices()
 
     from .customers import billing_type_overrides, qb_customers
 
@@ -1099,6 +1120,7 @@ async def get_prorated_invoice_for_customer(
         cust_map_index  = cust_map_index,
         full_path_index = full_path_index,
         sku_desc_index  = sku_desc_index,
+        category_index  = category_index,
     )
 
     if not invoice:
