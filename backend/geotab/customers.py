@@ -989,8 +989,12 @@ async def get_customer(account_id: str):
             db_name = ldd.get("databaseName") or device_db_map.get(dev_id) or ""
 
             # -- Dates: trim ISO datetime to yyyy-mm-dd ------------------------
+            # Guard against .NET DateTime.MinValue sentinel "0001-01-01T00:00:00"
+            # which MyAdmin returns for fields that have no date set.  Treat any
+            # date starting with "0001" as empty so it doesn't pollute the UI.
             def _date(raw: str) -> str:
-                return (raw or "")[:10]
+                s = (raw or "")[:10]
+                return "" if s.startswith("0001") else s
 
             # Determine activation status.  Terminated contracts are already
             # filtered out above, so the only remaining distinction is whether

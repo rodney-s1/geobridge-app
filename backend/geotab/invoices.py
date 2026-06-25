@@ -66,6 +66,17 @@ def _days_in_month(year: int, month: int) -> int:
     return calendar.monthrange(year, month)[1]
 
 
+def _safe_date(raw) -> str:
+    """
+    Slice an ISO datetime string to yyyy-mm-dd and return empty string for:
+      - None / empty
+      - .NET DateTime.MinValue sentinel "0001-01-01..." that MyAdmin returns
+        when a date field has no value set.
+    """
+    s = (raw or "")[:10]
+    return "" if (not s or s.startswith("0001")) else s
+
+
 def _prorate_factor(first_connect: date, billing_year: int, billing_month: int) -> Tuple[int, int, float]:
     """
     Returns (days_active, days_in_month, factor).
@@ -237,8 +248,8 @@ def _generate_prorated_invoice(
         if contract.get("isTerminated"):
             continue
 
-        raw_fcd = (contract.get("firstDeviceActivationDate") or "")[:10]
-        raw_bsd = (contract.get("billingStartDate")          or "")[:10]
+        raw_fcd = _safe_date(contract.get("firstDeviceActivationDate"))
+        raw_bsd = _safe_date(contract.get("billingStartDate"))
 
         # Rule 1: neither date → skip (Never Activated)
         if not raw_fcd and not raw_bsd:
@@ -792,7 +803,7 @@ async def get_prorated_invoices(
             for c in company_contracts:
                 if c.get("isTerminated"):
                     continue
-                raw_fcd = (c.get("firstDeviceActivationDate") or "")[:10]
+                raw_fcd = _safe_date(c.get("firstDeviceActivationDate"))
                 if not raw_fcd:
                     continue
                 try:
