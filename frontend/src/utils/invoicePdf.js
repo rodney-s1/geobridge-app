@@ -230,7 +230,9 @@ function drawLineItemsTable(doc, invoice, startY) {
   })
 
   const PAGE_H      = doc.internal.pageSize.getHeight()
-  const FOOTER_H    = 18   // space reserved for footer at bottom of each page
+  // Footer occupies the bottom 16 mm (rule at H-14, text at H-7).
+  // FOOTER_H is the margin autoTable must leave clear on every page.
+  const FOOTER_H    = 20   // generous — keeps last table row above footer rule
   const LABEL_H     = 6    // height of the coloured section label bar
   const HEAD_H      = 10   // approximate height of the table header row
   // Minimum space needed before starting a new section (label + header + 1 row)
@@ -259,7 +261,9 @@ function drawLineItemsTable(doc, invoice, startY) {
 
     autoTable(doc, {
       startY: tableEndY,
-      margin: { left: 14, right: 14 },
+      // bottom margin tells autoTable to start a new page before encroaching
+      // on the footer zone — this is the primary fix for the overlap bug
+      margin: { left: 14, right: 14, bottom: FOOTER_H },
       head: [section.head],
       body: section.rows,
       columnStyles: section.colStyles,
@@ -388,10 +392,26 @@ function drawPageFooter(doc, pageNum) {
 // ─── Shared build function ────────────────────────────────────────────────────
 function buildDoc(invoice) {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' })
+  const PAGE_H = doc.internal.pageSize.getHeight()
+  const FOOTER_H = 20   // must match the value used in drawLineItemsTable
+
   const contentStartY = drawHeader(doc, invoice)
   const afterSummaryY = drawSummaryBoxes(doc, invoice, contentStartY)
   const afterTableY   = drawLineItemsTable(doc, invoice, afterSummaryY + 2)
-  drawTotals(doc, invoice, afterTableY)
+
+  // The totals block is ~40 mm tall (2 subtitle rows + grand total box + notes).
+  // If it won't fit above the footer, push it to a fresh page.
+  const TOTALS_H = 50
+  let totalsY = afterTableY
+  if (PAGE_H - FOOTER_H - totalsY < TOTALS_H) {
+    doc.addPage()
+    drawPageHeader(doc, invoice)
+    drawPageFooter(doc, doc.internal.getNumberOfPages())
+    totalsY = 18
+  }
+
+  drawTotals(doc, invoice, totalsY)
+  // Footer on page 1 is drawn here; subsequent pages are handled by didDrawPage
   drawPageFooter(doc, 1)
   return doc
 }
