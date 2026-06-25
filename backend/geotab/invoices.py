@@ -40,7 +40,7 @@ from fastapi import APIRouter, HTTPException, Query
 from .reconciliation import _normalize, _resolve_price
 
 # Shared in-memory cache populated by customers.py sync
-from .customers import _sync_cache
+from .customers import _sync_cache, _clean_name, _strip_han_cs, _strip_sub_account_suffix
 
 # --------------------------------------------------------------------------- #
 #  File paths (same dir as all other geotab data files)                        #
@@ -758,19 +758,34 @@ async def get_prorated_invoices(
         if not company_contracts:
             continue
 
-        # Derive billing type — priority: manual override → QB record → Unknown
+        # Derive billing type — mirrors enrich_customer() priority chain:
+        # (helpers _clean_name, _strip_han_cs, _strip_sub_account_suffix imported at module top)
+        #   1. Manual override
+        #   2. QB record — looked up via the same suffix-stripped name that
+        #      enrich_customer() uses, so Han-CS and sub-account names resolve
+        #      to their parent QB entry correctly
+        #   3. {Han-CS} suffix in the MyAdmin name → "Han-CS"
+        #   4. Unknown
         raw_name = ((company_contracts[0].get("userContact") or {})
                     .get("userCompany") or {}).get("name") or ""
+        clean_name = _clean_name(raw_name)
+
+        # Strip suffixes exactly as enrich_customer() does
+        qb_lookup_name = _strip_han_cs(_strip_sub_account_suffix(clean_name))
+        is_han_cs = clean_name.strip().lower().endswith("{han-cs}")
 
         bt = (
             billing_type_overrides.get(company_id)
-            or (qb_customers.get(_normalize(raw_name)) or {}).get("billingType")
+            or (qb_customers.get(_normalize(qb_lookup_name)) or {}).get("billingType")
+            or ("Han-CS" if is_han_cs else None)
             or "Unknown"
         )
 
         # ── Safety net: even if the customer isn't labelled Hanover, promote ──
         # ── them to Hanover if ANY contract activating this month carries the ──
         # ── HANOVER promo code — so we never silently drop these devices.     ──
+        # ── Han-CS customers are deliberately excluded: their name already    ──
+        # ── resolved to "Han-CS" above and must never be promoted to "Hanover"──
         if bt not in ELIGIBLE_BILLING_TYPES:
             month_start = date(b_year, b_month, 1)
             month_end   = date(b_year, b_month, _days_in_month(b_year, b_month))
