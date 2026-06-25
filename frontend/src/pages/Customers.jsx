@@ -248,28 +248,121 @@ function RpcBreakdownRow({ rpcCounts, totalDevices, colSpan = 8, indent = 'pl-14
 }
 
 // ─── Device row inside expanded customer ─────────────────────────────────────
-function DeviceRow({ device }) {
+function DeviceRow({ device, onDateSaved }) {
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [dateInput,  setDateInput]  = useState('')
+  const [saving,     setSaving]     = useState(false)
+  const [saveError,  setSaveError]  = useState(null)
+
+  const isActive  = device.status === 'Active'
+  const needsDate = isActive && !device.contractStartDate
+
+  async function handleSave() {
+    if (!dateInput) { setSaveError('Please pick a date'); return }
+    setSaving(true)
+    setSaveError(null)
+    try {
+      const res = await fetch(
+        `${API}/api/customers/device/${encodeURIComponent(device.serialNumber)}/billing-date`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ billingStartDate: dateInput }),
+        }
+      )
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.detail || `Server error (${res.status})`)
+      }
+      setPickerOpen(false)
+      if (onDateSaved) onDateSaved()
+    } catch (e) {
+      setSaveError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
-    <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
-      <td className="pl-14 pr-4 py-2.5">
-        <span className="font-mono text-xs text-slate-300">{device.serialNumber || '—'}</span>
-      </td>
-      <td className="px-4 py-2.5 text-xs text-slate-400">{device.deviceType || '—'}</td>
-      <td className="px-4 py-2.5 text-xs text-slate-400">{device.activeBillingPlan || '—'}</td>
-      <td className="px-4 py-2.5 text-xs text-slate-400 font-mono">{device.ratePlanCode || '—'}</td>
-      <td className="px-4 py-2.5 text-xs text-slate-400">{device.database || '—'}</td>
-      <td className="px-4 py-2.5 text-xs">
-        <span className={`px-2 py-0.5 rounded text-xs ${
-          device.status === 'Active'
-            ? 'bg-green-500/15 text-green-400'
-            : 'bg-gray-500/15 text-gray-400'
-        }`}>
-          {device.status || 'Active'}
-        </span>
-      </td>
-      <td className="px-4 py-2.5 text-xs text-slate-300 font-mono">{device.contractStartDate || <span className="italic text-slate-600">Not available</span>}</td>
-      <td className="px-4 py-2.5 text-xs text-slate-500">{device.contractEndDate || '—'}</td>
-    </tr>
+    <React.Fragment>
+      <tr className="border-b border-white/5 hover:bg-white/5 transition-colors">
+        <td className="pl-14 pr-4 py-2.5">
+          <span className="font-mono text-xs text-slate-300">{device.serialNumber || '—'}</span>
+        </td>
+        <td className="px-4 py-2.5 text-xs text-slate-400">{device.deviceType || '—'}</td>
+        <td className="px-4 py-2.5 text-xs text-slate-400">{device.activeBillingPlan || '—'}</td>
+        <td className="px-4 py-2.5 text-xs text-slate-400 font-mono">{device.ratePlanCode || '—'}</td>
+        <td className="px-4 py-2.5 text-xs text-slate-400">{device.database || '—'}</td>
+        <td className="px-4 py-2.5 text-xs">
+          <span className={`px-2 py-0.5 rounded text-xs ${
+            device.status === 'Active'
+              ? 'bg-green-500/15 text-green-400'
+              : 'bg-gray-500/15 text-gray-400'
+          }`}>
+            {device.status || 'Active'}
+          </span>
+        </td>
+        <td className="px-4 py-2.5 text-xs font-mono">
+          {device.contractStartDate
+            ? <span className="text-slate-300">{device.contractStartDate}</span>
+            : <span className="italic text-slate-600">Not available</span>}
+        </td>
+        <td className="px-4 py-2.5 text-xs text-slate-500">{device.contractEndDate || '—'}</td>
+        <td className="px-4 py-2.5 text-xs">
+          {needsDate && (
+            <button
+              onClick={() => { setPickerOpen(o => !o); setSaveError(null); setDateInput('') }}
+              title="Set manual billing start date"
+              className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                pickerOpen
+                  ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
+                  : 'bg-amber-500/15 text-amber-400 border border-amber-500/30 hover:bg-amber-500/25'
+              }`}
+            >
+              Set date
+            </button>
+          )}
+        </td>
+      </tr>
+
+      {/* Inline date picker row */}
+      {pickerOpen && (
+        <tr className="bg-amber-900/10 border-b border-amber-700/20">
+          <td colSpan={9} className="pl-14 pr-4 py-3">
+            <div className="flex items-center gap-3 flex-wrap">
+              <span className="text-xs text-amber-400 font-medium">
+                Manual billing start date for {device.serialNumber}:
+              </span>
+              <input
+                type="date"
+                value={dateInput}
+                onChange={e => setDateInput(e.target.value)}
+                className="px-2 py-1 bg-slate-800 border border-slate-600 text-slate-200 rounded text-xs
+                           focus:outline-none focus:border-amber-500"
+              />
+              <button
+                onClick={handleSave}
+                disabled={saving || !dateInput}
+                className="px-3 py-1 bg-amber-600 hover:bg-amber-500 disabled:opacity-50
+                           text-white rounded text-xs font-medium transition-colors"
+              >
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+              <button
+                onClick={() => setPickerOpen(false)}
+                className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs transition-colors"
+              >
+                Cancel
+              </button>
+              {saveError && <span className="text-xs text-red-400">{saveError}</span>}
+              <span className="ml-auto text-xs text-slate-500 italic">
+                Override takes priority over MyAdmin dates for invoice generation.
+              </span>
+            </div>
+          </td>
+        </tr>
+      )}
+    </React.Fragment>
   )
 }
 
@@ -404,6 +497,7 @@ function DeviceSubTable({ devices }) {
                 <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Billing Start Date</th>
                 <th className="px-4 py-2 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">End Date</th>
+                <th className="px-4 py-2"></th>
               </tr>
             </thead>
             <tbody>
