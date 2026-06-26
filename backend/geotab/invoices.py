@@ -294,13 +294,22 @@ def _is_dm_serial(serial: str) -> bool:
     return s.startswith(DM_SERIAL_PREFIXES)
 
 
-# Serial-prefix → SKU fallback for OEM and Geotab hardware.
+# Serial-prefix → SKU fallback for OEM hardware ONLY.
 # Used as a last resort when neither activeDevicePlan.name nor promoCode
 # resolves to a known SKU (e.g. plan name variant not yet in sku_mappings.json).
 # Ordered longest-prefix first within each manufacturer so startswith() matches
 # the most specific prefix before a shorter one.
 #
-# OEM manufacturers (user-provided prefix list):
+# This table covers OEM manufacturers ONLY — where the serial prefix uniquely
+# identifies both the hardware type AND the correct billing SKU regardless of
+# what plan MyAdmin shows.
+#
+# Geotab hardware (GA, G9, G8, G7, X1, X2, B1, B2, GE, GF, etc.) is
+# intentionally NOT listed here — those devices can be on any service plan
+# (Pro, ProPlus, Asset, Suspend, GO Focus Plus, etc.) and must resolve via
+# billing_plan / promoCode exclusively.
+#
+# OEM manufacturers:
 #   Ford        DW          → Geotab Ford (Premium (OEM))
 #   GM          CO          → Geotab GM (Premium (OEM))
 #   Mack        DY          → Geotab Mack (Premium (OEM))
@@ -308,18 +317,10 @@ def _is_dm_serial(serial: str) -> bool:
 #   CAT         D5, DS      → CAT AEMP (OEM)
 #   John Deere  DM          → John Deere AEMP (OEM)
 #   Komatsu     JL          → Komatsu AEMP (OEM)
-#   Hitachi     P8          → (no catalog entry yet — falls through to UNMAPPED)
 #   CalAmp      C3          → Service Fee CalAmp (Asset)
-#
-# Geotab hardware:
-#   GO Device   GA, G9, G8, G7, X1, X2  → Service Fee Geotab (Pro)  (standard PRO plan)
-#   GoAnywhere  B1, B2                   → Service Fee Geotab (Pro)
-#   GO Focus+   GE               → Geotab Service (GO Focus Plus)
-#   GO Focus    GF               → Geotab Service (GO Focus)
-#
-# NOTE: DM prefixes are already excluded before this table is consulted.
+#   Hitachi     P8          → (no catalog entry yet — falls through to UNMAPPED)
 _SERIAL_PREFIX_SKU: list = [
-    # OEM — check longer/more-specific prefixes first
+    # Longer/more-specific prefixes first
     ("DS", "CAT AEMP (OEM)"),
     ("D5", "CAT AEMP (OEM)"),
     ("DM", "John Deere AEMP (OEM)"),
@@ -329,24 +330,17 @@ _SERIAL_PREFIX_SKU: list = [
     ("CO", "Geotab GM (Premium (OEM))"),
     ("JL", "Komatsu AEMP (OEM)"),
     ("C3", "Service Fee CalAmp (Asset)"),
-    # Geotab hardware
-    ("GA", "Service Fee Geotab (Pro)"),
-    ("G9", "Service Fee Geotab (Pro)"),
-    ("G8", "Service Fee Geotab (Pro)"),
-    ("G7", "Service Fee Geotab (Pro)"),
-    ("X1", "Service Fee Geotab (Pro)"),
-    ("X2", "Service Fee Geotab (Pro)"),
-    ("B1", "Service Fee Geotab (Pro)"),
-    ("B2", "Service Fee Geotab (Pro)"),
-    ("GE", "Geotab Service (GO Focus Plus)"),
-    ("GF", "Geotab Service (GO Focus)"),
 ]
 
 def _sku_from_serial(serial: str) -> Optional[str]:
     """
-    Return a best-guess skuKey based on serial number prefix, or None if
-    the prefix is not recognised.  Only consulted when both billing_plan and
-    promoCode fail to resolve — this is a safety net, not the primary path.
+    Return a best-guess skuKey based on serial number prefix for OEM hardware,
+    or None if the prefix is not in the OEM table.
+
+    This is ONLY for OEM devices whose serial prefix uniquely identifies the
+    correct billing SKU (e.g. DW=Ford, CO=GM).  Geotab hardware (X1, X2,
+    GA, G9, etc.) is intentionally excluded — those devices can be on any
+    service plan and must resolve via billing_plan/promoCode.
     """
     s = (serial or "").strip().upper()
     for prefix, sku_key in _SERIAL_PREFIX_SKU:
