@@ -392,13 +392,14 @@ def _generate_prorated_invoice(
 
     Activation date rules (applied to ALL billing types):
       1. Neither firstDeviceActivationDate nor billingStartDate exists
-         → skip (device shows "Never Activated" in MyAdmin)
+         a. startDate ("Assignment Date") exists → use it as billingStartDate (→ Rule 4)
+         b. startDate also absent → skip (device shows "Never Activated" in MyAdmin)
       2. firstDeviceActivationDate exists AND billingStartDate < firstDeviceActivationDate
          → skip (already auto-activated; covered by main recurring invoice)
       3. firstDeviceActivationDate exists AND (no billingStartDate OR billingStartDate >= firstDeviceActivationDate)
          → qualify using firstDeviceActivationDate (normal new activation)
-      4. No firstDeviceActivationDate, billingStartDate exists and falls in billing month
-         → qualify using billingStartDate as the activation date
+      4. No firstDeviceActivationDate, billingStartDate (or startDate fallback) exists
+         and falls in billing month → qualify using that date as the activation date
     """
     customer_id   = str((customer.get("userContact") or {}).get("userCompany", {}).get("id") or "")
     customer_name = (customer.get("userContact") or {}).get("userCompany", {}).get("name") or ""
@@ -429,9 +430,15 @@ def _generate_prorated_invoice(
         # from the API is preserved so Rule 2 still applies.
         raw_bsd = override_bsd or _safe_date(contract.get("billingStartDate"))
 
-        # Rule 1: neither date → skip (Never Activated)
+        # Rule 1a: neither date → try startDate ("Assignment Date" in MyAdmin)
+        # as a last-resort activation date for active devices that have no
+        # firstDeviceActivationDate and no billingStartDate.
         if not raw_fcd and not raw_bsd:
-            continue
+            raw_sd = _safe_date(contract.get("startDate"))
+            if raw_sd:
+                raw_bsd = raw_sd   # treat it exactly like billingStartDate (Rule 4 below)
+            else:
+                continue           # Rule 1b: truly no date at all → skip (Never Activated)
 
         if raw_fcd:
             try:
