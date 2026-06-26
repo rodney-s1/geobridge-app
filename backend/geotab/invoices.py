@@ -312,8 +312,8 @@ def _is_dm_serial(serial: str) -> bool:
 #   CalAmp      C3          → Service Fee CalAmp (Asset)
 #
 # Geotab hardware:
-#   GO Device   GA, G9, G8, G7  → Service Fee Geotab (Pro)  (standard PRO plan)
-#   GoAnywhere  B1, B2           → Service Fee Geotab (Pro)
+#   GO Device   GA, G9, G8, G7, X1, X2  → Service Fee Geotab (Pro)  (standard PRO plan)
+#   GoAnywhere  B1, B2                   → Service Fee Geotab (Pro)
 #   GO Focus+   GE               → Geotab Service (GO Focus Plus)
 #   GO Focus    GF               → Geotab Service (GO Focus)
 #
@@ -334,6 +334,8 @@ _SERIAL_PREFIX_SKU: list = [
     ("G9", "Service Fee Geotab (Pro)"),
     ("G8", "Service Fee Geotab (Pro)"),
     ("G7", "Service Fee Geotab (Pro)"),
+    ("X1", "Service Fee Geotab (Pro)"),
+    ("X2", "Service Fee Geotab (Pro)"),
     ("B1", "Service Fee Geotab (Pro)"),
     ("B2", "Service Fee Geotab (Pro)"),
     ("GE", "Geotab Service (GO Focus Plus)"),
