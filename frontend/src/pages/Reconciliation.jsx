@@ -755,9 +755,19 @@ export default function Reconciliation() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Search customers…"
-              className="w-full pl-8 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-xl
+              className="w-full pl-8 pr-8 py-2 bg-slate-800 border border-slate-700 rounded-xl
                 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500"
             />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500
+                  hover:text-slate-200 transition-colors leading-none"
+                title="Clear search"
+              >
+                ✕
+              </button>
+            )}
           </div>
 
           {/* Sort dropdown */}
