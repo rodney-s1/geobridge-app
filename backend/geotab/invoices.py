@@ -482,18 +482,20 @@ def _generate_prorated_invoice(
         #      DW/CO/DY/D8/etc. devices are always billed to their OEM SKU
         #      regardless of what billing_plan or promoCode MyAdmin shows.
         #      OEM devices routinely carry "PRO MODE" as their promoCode which
-        #      would incorrectly win if we checked billing_plan first.
-        #   2. Customer-specific mapping on billing_plan (activeDevicePlan.name)
-        #      — catches named OEM plans like "Ford Premium: Live" for any
-        #        prefix-ambiguous devices, and all non-OEM plan overrides
-        #   3. Global mapping on billing_plan
-        #   4. Customer-specific mapping on promoCode
-        #   5. Global mapping on promoCode (e.g. "PRO MODE" → Pro, "GO" → GO Plan)
+        #      would incorrectly win before serial prefix if not checked first.
+        #   2. Customer-specific mapping on promoCode (ratePlanCode)
+        #      — the promoCode is always the specific billing signal, e.g.
+        #        GFP-BUNDLE → Service (GO Focus Plus) Bundle for cameras
+        #   3. Global mapping on promoCode (e.g. "PRO MODE" → Pro, "GO" → GO Plan)
+        #   4. Customer-specific mapping on billing_plan (activeDevicePlan.name)
+        #      — fallback for devices whose promoCode is unmapped (BASE, HOS,
+        #        SUSPEND, etc.); billing_plan carries the plan name in those cases
+        #   5. Global mapping on billing_plan
         #   6. UNMAPPED fallback
         sku_key = (
             _sku_from_serial(serial)
+            or _resolve_sku(cust_norm, rate_plan,    mapping_index, cust_map_index)
             or _resolve_sku(cust_norm, billing_plan, mapping_index, cust_map_index)
-            or _resolve_sku(cust_norm, rate_plan,   mapping_index, cust_map_index)
             or "UNMAPPED"
         )
 
