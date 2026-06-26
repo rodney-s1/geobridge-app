@@ -477,6 +477,11 @@ def _generate_prorated_invoice(
         if _is_dm_serial(serial):
             continue
 
+        # Hard-exclude PILOT devices — any rate plan code containing "PILOT"
+        # means the customer is trialling those devices and must not be billed.
+        if "PILOT" in rate_plan:
+            continue
+
         # Resolve SKU — priority order:
         #   1. Serial-prefix OEM check (HIGHEST for OEM hardware)
         #      DW/CO/DY/D8/etc. devices are always billed to their OEM SKU
