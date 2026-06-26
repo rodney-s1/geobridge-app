@@ -279,6 +279,20 @@ ELIGIBLE_BILLING_TYPES = {"Charge Upon Activation", "Hanover", "Han-CS"}
 # including them here would double-bill the customer.
 EXCLUDED_CATEGORIES = {"Digital Matter Service", "Digital Matter Equipment"}
 
+# Serial number prefixes that identify Digital Matter hardware.
+# These devices must NEVER appear on prorated invoices regardless of what
+# SKU/plan they resolve to.  DM serials can slip through the category filter
+# when their activeDevicePlan is "PRO MODE" (resolves to Service Fee Geotab (Pro),
+# a non-DM category) rather than a recognised DM plan name.
+DM_SERIAL_PREFIXES: tuple = (
+    "CN", "JQ", "HN", "C1", "CL", "DC", "CY", "EG", "EK", "OE", "OB", "OF", "OG",
+)
+
+def _is_dm_serial(serial: str) -> bool:
+    """Return True if the serial number belongs to a Digital Matter device."""
+    s = (serial or "").strip().upper()
+    return s.startswith(DM_SERIAL_PREFIXES)
+
 
 def _generate_prorated_invoice(
     customer: dict,
@@ -381,6 +395,12 @@ def _generate_prorated_invoice(
         serial       = device.get("serialNumber") or ""
         rate_plan    = (contract.get("promoCode") or "").upper()
         billing_plan = (contract.get("activeDevicePlan") or {}).get("name") or ""
+
+        # Hard-exclude Digital Matter devices by serial prefix — these are billed
+        # through the DM billing system and must never appear on prorated invoices,
+        # even if their plan resolves to a non-DM SKU (e.g. "PRO MODE").
+        if _is_dm_serial(serial):
+            continue
 
         # Resolve SKU — priority order:
         #   1. Customer-specific mapping on billing_plan (activeDevicePlan.name)
