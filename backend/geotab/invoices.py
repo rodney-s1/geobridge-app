@@ -294,6 +294,65 @@ def _is_dm_serial(serial: str) -> bool:
     return s.startswith(DM_SERIAL_PREFIXES)
 
 
+# Serial-prefix → SKU fallback for OEM and Geotab hardware.
+# Used as a last resort when neither activeDevicePlan.name nor promoCode
+# resolves to a known SKU (e.g. plan name variant not yet in sku_mappings.json).
+# Ordered longest-prefix first within each manufacturer so startswith() matches
+# the most specific prefix before a shorter one.
+#
+# OEM manufacturers (user-provided prefix list):
+#   Ford        DW          → Geotab Ford (Premium (OEM))
+#   GM          CO          → Geotab GM (Premium (OEM))
+#   Mack        DY          → Geotab Mack (Premium (OEM))
+#   Volvo       D8          → Geotab Volvo (Premium (OEM))
+#   CAT         D5, DS      → CAT AEMP (OEM)
+#   John Deere  DM          → John Deere AEMP (OEM)
+#   Komatsu     JL          → Komatsu AEMP (OEM)
+#   Hitachi     P8          → (no catalog entry yet — falls through to UNMAPPED)
+#   CalAmp      C3          → Service Fee CalAmp (Asset)
+#
+# Geotab hardware:
+#   GO Device   GA, G9, G8, G7  → Service Fee Geotab (Pro)  (standard PRO plan)
+#   GoAnywhere  B1, B2           → Service Fee Geotab (Pro)
+#   GO Focus+   GE               → Geotab Service (GO Focus Plus)
+#   GO Focus    GF               → Geotab Service (GO Focus)
+#
+# NOTE: DM prefixes are already excluded before this table is consulted.
+_SERIAL_PREFIX_SKU: list = [
+    # OEM — check longer/more-specific prefixes first
+    ("DS", "CAT AEMP (OEM)"),
+    ("D5", "CAT AEMP (OEM)"),
+    ("DM", "John Deere AEMP (OEM)"),
+    ("DW", "Geotab Ford (Premium (OEM))"),
+    ("DY", "Geotab Mack (Premium (OEM))"),
+    ("D8", "Geotab Volvo (Premium (OEM))"),
+    ("CO", "Geotab GM (Premium (OEM))"),
+    ("JL", "Komatsu AEMP (OEM)"),
+    ("C3", "Service Fee CalAmp (Asset)"),
+    # Geotab hardware
+    ("GA", "Service Fee Geotab (Pro)"),
+    ("G9", "Service Fee Geotab (Pro)"),
+    ("G8", "Service Fee Geotab (Pro)"),
+    ("G7", "Service Fee Geotab (Pro)"),
+    ("B1", "Service Fee Geotab (Pro)"),
+    ("B2", "Service Fee Geotab (Pro)"),
+    ("GE", "Geotab Service (GO Focus Plus)"),
+    ("GF", "Geotab Service (GO Focus)"),
+]
+
+def _sku_from_serial(serial: str) -> Optional[str]:
+    """
+    Return a best-guess skuKey based on serial number prefix, or None if
+    the prefix is not recognised.  Only consulted when both billing_plan and
+    promoCode fail to resolve — this is a safety net, not the primary path.
+    """
+    s = (serial or "").strip().upper()
+    for prefix, sku_key in _SERIAL_PREFIX_SKU:
+        if s.startswith(prefix):
+            return sku_key
+    return None
+
+
 def _generate_prorated_invoice(
     customer: dict,
     contracts: List[dict],
@@ -409,10 +468,12 @@ def _generate_prorated_invoice(
         #   2. Global mapping on billing_plan (e.g. OEM plan names → OEM SKUs)
         #   3. Customer-specific mapping on promoCode
         #   4. Global mapping on promoCode (e.g. "PRO MODE" → Service Fee Geotab (Pro))
-        #   5. UNMAPPED fallback
+        #   5. Serial-prefix fallback (OEM/Geotab hardware type from serial)
+        #   6. UNMAPPED fallback
         sku_key = (
             _resolve_sku(cust_norm, billing_plan, mapping_index, cust_map_index)
             or _resolve_sku(cust_norm, rate_plan,   mapping_index, cust_map_index)
+            or _sku_from_serial(serial)
             or "UNMAPPED"
         )
 
@@ -892,10 +953,28 @@ def _merge_same_customer_invoices(invoices: List[dict]) -> List[dict]:
         group.sort(key=lambda x: (bool(re.search(r'\{[^}]+\}', x["customerName"])),
                                    x["customerName"]))
 
-        # Concatenate all line items
-        all_lines: List[dict] = []
+        # Concatenate all line items, then re-merge to collapse duplicate
+        # prorated (same skuKey+date) and forward (same skuKey) lines that
+        # originated from different sub-accounts (e.g. base + {Cameras}).
+        raw_lines: List[dict] = []
         for inv in group:
-            all_lines.extend(inv.get("lineItems") or [])
+            raw_lines.extend(inv.get("lineItems") or [])
+
+        # Re-merge prorated lines by (skuKey, firstConnectDate)
+        prot_by_key: Dict[tuple, List[dict]] = defaultdict(list)
+        for li in raw_lines:
+            if li["type"] == "prorated":
+                prot_by_key[(li["skuKey"], li.get("firstConnectDate") or "")].append(li)
+        merged_prorated = _merge_prorated_lines(prot_by_key)
+
+        # Re-merge forward lines by skuKey
+        fwd_by_sku: Dict[str, List[dict]] = defaultdict(list)
+        for li in raw_lines:
+            if li["type"] == "forward":
+                fwd_by_sku[li["skuKey"]].append(li)
+        merged_forward = _merge_forward_lines(fwd_by_sku)
+
+        all_lines = merged_prorated + merged_forward
 
         prorated_total = round(sum(li["amount"] for li in all_lines if li["type"] == "prorated"), 2)
         forward_total  = round(sum(li["amount"] for li in all_lines if li["type"] == "forward"),  2)
