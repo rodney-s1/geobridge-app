@@ -323,15 +323,14 @@ def enrich_customer(customer: dict) -> dict:
     qb_lookup_name = _strip_han_cs(_strip_sub_account_suffix(company_name))
     qb = qb_customers.get(normalize(qb_lookup_name)) or {}
 
-    # Display name: prefer QB name (for non-Han-CS customers QB name is canonical);
-    # for Han-CS customers keep the full MyAdmin name with '{Han-CS}' as part of
-    # the identity so the Customers page shows it as a distinct entry.
+    # Display name: always use the original MyAdmin company_name so that
+    # sub-account suffixes ({Cameras}, {3rd Party Devices}, etc.) are preserved.
+    # Previously we used qb.get("name") here for non-Han-CS customers, which
+    # silently stripped those suffixes — the QB parent record's name has no
+    # suffix, so all sub-accounts collapsed to the same display name and the
+    # frontend couldn't group them correctly under their parent.
     is_han_cs_customer = company_name.strip().lower().endswith(_HAN_CS_SUFFIX_LOWER)
-    display_name = (
-        company_name  # keep full name including {Han-CS}
-        if is_han_cs_customer
-        else (qb.get("name") or company_name or f"Company {company_id}")
-    )
+    display_name = company_name or qb.get("name") or f"Company {company_id}"
     cid = company_id or normalize(company_name)
 
     # Billing type priority:
