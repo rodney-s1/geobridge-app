@@ -1190,9 +1190,16 @@ async def get_prorated_invoices(
             continue
 
         # Attach billing type so _generate_prorated_invoice can include it.
-        # Strip {Han-CS} suffix from the display name — sub-customer invoices
-        # should show "First Companies Inc." not "First Companies Inc. {Han-CS}".
-        display_name = _strip_han_cs(clean_name)
+        # Build display name from _after_sub (already has the second brace suffix
+        # stripped by _strip_sub_account_suffix), then strip {Han-CS} from that.
+        # Using clean_name here is wrong for double-suffix accounts like
+        # "Acme {Han-CS} {Cameras}": _strip_han_cs on the raw name would only remove
+        # {Han-CS} in the middle, leaving the display as "Acme {Cameras}" — which
+        # _base_customer_name can normalise but the merge key still differs from the
+        # parent account's "Acme", and the invoice title shows the wrong name.
+        # Using _after_sub instead ensures both "Acme {Han-CS}" (parent) and
+        # "Acme {Han-CS} {Cameras}" (sub) produce display_name = "Acme".
+        display_name = _strip_han_cs(_after_sub)
         fake_customer = {
             "userContact": {
                 "userCompany": {
@@ -1318,7 +1325,9 @@ async def get_prorated_invoice_for_customer(
         or ("Han-CS" if is_han_cs else None)
         or "Unknown"
     )
-    display_name = _strip_han_cs(clean_name)
+    # Same fix as bulk endpoint: use _after_sub_s (second suffix already stripped)
+    # so that double-suffix names like "Acme {Han-CS} {Cameras}" resolve correctly.
+    display_name = _strip_han_cs(_after_sub_s)
 
     fake_customer = {
         "userContact": {"userCompany": {"id": customer_id, "name": display_name}},
