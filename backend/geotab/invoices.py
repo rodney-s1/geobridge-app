@@ -555,36 +555,45 @@ def _generate_prorated_invoice(
     billing_type = customer.get("billingType", "")
 
     if billing_type == "Han-CS":
-        # Each device spawns two entries — one for the customer, one for Hanover
+        # Han-CS split rules:
+        #   GO devices (GA/G9/G8/G7/X1/X2) → dual entry: $8 to customer + $8 to Hanover
+        #   Everything else (cameras GE/GF, asset B1/B2, OEM, CalAmp, etc.) →
+        #     customer_pool only, billed at the device's real resolved SKU and rate.
+        #     These are NEVER sent to the Hanover master invoice.
         customer_pool: List[dict] = []
         hanover_pool:  List[dict] = []
         for dev in qualifying:
-            fcd = dev["firstConnectDateObj"]
-            days_active, days_in_month, factor = _prorate_factor(fcd, billing_year, billing_month)
-            # Customer-side entry
-            cust_prorated = round(HAN_CS_RATE * factor, 2)
-            customer_pool.append({
-                **dev,
-                "skuKey":         HAN_CS_CUST_SKU,
-                "monthlyRate":    HAN_CS_RATE,
-                "proratedCharge": cust_prorated,
-                "itemCode":       full_path_index.get(HAN_CS_CUST_SKU, HAN_CS_CUST_SKU),
-                "skuDesc":        sku_desc_index.get(HAN_CS_CUST_SKU, HAN_CS_CUST_SKU),
-                "priceSource":    "hancs_fixed",
-                "sectionGroup":   "hancs",
-            })
-            # Hanover-side entry
-            han_prorated = round(HAN_CS_RATE * factor, 2)
-            hanover_pool.append({
-                **dev,
-                "skuKey":         HAN_CS_HAN_SKU,
-                "monthlyRate":    HAN_CS_RATE,
-                "proratedCharge": han_prorated,
-                "itemCode":       full_path_index.get(HAN_CS_HAN_SKU, HAN_CS_HAN_SKU),
-                "skuDesc":        sku_desc_index.get(HAN_CS_HAN_SKU, HAN_CS_HAN_SKU),
-                "priceSource":    "hancs_fixed",
-                "sectionGroup":   "hancs",
-            })
+            serial_upper = dev.get("serialUpper", "")
+            if serial_upper.startswith(_TIER1_PREFIXES):
+                # GO device — apply dual $8 Han-CS treatment
+                fcd = dev["firstConnectDateObj"]
+                days_active, days_in_month, factor = _prorate_factor(fcd, billing_year, billing_month)
+                cust_prorated = round(HAN_CS_RATE * factor, 2)
+                customer_pool.append({
+                    **dev,
+                    "skuKey":         HAN_CS_CUST_SKU,
+                    "monthlyRate":    HAN_CS_RATE,
+                    "proratedCharge": cust_prorated,
+                    "itemCode":       full_path_index.get(HAN_CS_CUST_SKU, HAN_CS_CUST_SKU),
+                    "skuDesc":        sku_desc_index.get(HAN_CS_CUST_SKU, HAN_CS_CUST_SKU),
+                    "priceSource":    "hancs_fixed",
+                    "sectionGroup":   "hancs",
+                })
+                han_prorated = round(HAN_CS_RATE * factor, 2)
+                hanover_pool.append({
+                    **dev,
+                    "skuKey":         HAN_CS_HAN_SKU,
+                    "monthlyRate":    HAN_CS_RATE,
+                    "proratedCharge": han_prorated,
+                    "itemCode":       full_path_index.get(HAN_CS_HAN_SKU, HAN_CS_HAN_SKU),
+                    "skuDesc":        sku_desc_index.get(HAN_CS_HAN_SKU, HAN_CS_HAN_SKU),
+                    "priceSource":    "hancs_fixed",
+                    "sectionGroup":   "hancs",
+                })
+            else:
+                # Non-GO device (camera, asset, OEM, CalAmp, …) — customer only,
+                # billed at the device's real resolved SKU and rate, no Hanover copy.
+                customer_pool.append(dev)
 
     elif billing_type == "Hanover":
         hanover_pool  = [d for d in qualifying if     _is_hanover_sku(d["skuKey"])]
@@ -1138,7 +1147,18 @@ async def get_prorated_invoices(
 
         # Strip suffixes exactly as enrich_customer() does
         qb_lookup_name = _strip_han_cs(_strip_sub_account_suffix(clean_name))
-        is_han_cs = clean_name.strip().lower().endswith("{han-cs}")
+        # Detect Han-CS identity via brace suffix OR parenthetical marker.
+        # The brace form '{Han-CS}' is the canonical MyAdmin identity token;
+        # some accounts use the parenthetical form '(Han-CS)' instead.
+        # We also check the suffix-stripped name so that sub-accounts like
+        # '{Cameras}' whose parent is Han-CS (either form) inherit Han-CS.
+        _cn_lower = clean_name.strip().lower()
+        _ql_lower = qb_lookup_name.strip().lower()
+        is_han_cs = (
+            _cn_lower.endswith("{han-cs}")
+            or "(han-cs)" in _cn_lower
+            or "(han-cs)" in _ql_lower
+        )
 
         bt = (
             billing_type_overrides.get(company_id)
@@ -1295,7 +1315,13 @@ async def get_prorated_invoice_for_customer(
                   .get("userCompany") or {}).get("name") or ""
     clean_name = _clean_name(raw_name)
     qb_lookup_name = _strip_han_cs(_strip_sub_account_suffix(clean_name))
-    is_han_cs  = clean_name.strip().lower().endswith("{han-cs}")
+    _cn_lower_s = clean_name.strip().lower()
+    _ql_lower_s = qb_lookup_name.strip().lower()
+    is_han_cs  = (
+        _cn_lower_s.endswith("{han-cs}")
+        or "(han-cs)" in _cn_lower_s
+        or "(han-cs)" in _ql_lower_s
+    )
     bt = (
         billing_type_overrides.get(customer_id)
         or (qb_customers.get(_normalize(qb_lookup_name)) or {}).get("billingType")
