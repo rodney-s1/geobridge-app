@@ -48,6 +48,39 @@ from .customers import _sync_cache, _clean_name, _strip_han_cs, _strip_sub_accou
 # --------------------------------------------------------------------------- #
 _HERE = os.path.dirname(os.path.abspath(__file__))
 
+# --------------------------------------------------------------------------- #
+#  Persistent stores for user-managed overrides                                 #
+# --------------------------------------------------------------------------- #
+
+EXCLUDED_INVOICES_FILE  = os.path.join(_HERE, "excluded_invoices.json")
+SKU_OVERRIDES_FILE      = os.path.join(_HERE, "invoice_sku_overrides.json")
+
+def _load_excluded_invoices() -> set:
+    """Load the set of excluded invoice keys (customerId|billingMonth)."""
+    import json
+    try:
+        with open(EXCLUDED_INVOICES_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return set(data) if isinstance(data, list) else set()
+    except Exception:
+        return set()
+
+def _save_excluded_invoices(keys: set) -> None:
+    _save_json(EXCLUDED_INVOICES_FILE, sorted(keys))
+
+def _load_sku_overrides() -> dict:
+    """Load SKU override map {customerId|billingMonth|serial -> skuKey}."""
+    import json
+    try:
+        with open(SKU_OVERRIDES_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+def _save_sku_overrides(overrides: dict) -> None:
+    _save_json(SKU_OVERRIDES_FILE, overrides)
+
 router = APIRouter()
 
 # --------------------------------------------------------------------------- #
@@ -259,6 +292,7 @@ def _generate_prorated_invoice(
     full_path_index: dict,
     sku_desc_index: dict,
     category_index: dict,
+    sku_overrides: Optional[dict] = None,
 ) -> Optional[dict]:
     """
     Build a prorated invoice for a single customer for the given billing month.
@@ -362,6 +396,14 @@ def _generate_prorated_invoice(
             or "UNMAPPED"
         )
 
+        # Apply per-serial SKU override (user-managed via the UI)
+        billing_month_str = f"{billing_year}-{billing_month:02d}"
+        serial_upper = serial.strip().upper() if serial else ""
+        if sku_overrides:
+            ovr_key = f"{customer_id}|{billing_month_str}|{serial_upper}"
+            if ovr_key in sku_overrides:
+                sku_key = sku_overrides[ovr_key]
+
         # Skip categories that are never prorated here (e.g. Digital Matter —
         # those devices are billed through the DM billing system, not GeoBridge)
         sku_category = category_index.get(sku_key, "")
@@ -378,6 +420,7 @@ def _generate_prorated_invoice(
 
         qualifying.append({
             "serialNumber":        serial,
+            "serialUpper":         serial_upper,
             "ratePlanCode":        rate_plan,
             "skuKey":              sku_key,
             "monthlyRate":         monthly_rate,
@@ -390,6 +433,7 @@ def _generate_prorated_invoice(
             "proratedCharge":      prorated_charge,
             "itemCode":            full_path_index.get(sku_key, sku_key),
             "skuDesc":             sku_desc_index.get(sku_key, sku_key),
+            "skuOverridden":       bool(sku_overrides and f"{customer_id}|{billing_month_str}|{serial_upper}" in sku_overrides),
         })
 
     if not qualifying:
@@ -545,6 +589,8 @@ def _build_invoice_from_pool(
             "daysInMonth":   rep["daysInMonth"],
             "prorateFactor": rep["prorateFactor"],
             "serials":       serials,
+            "serialsUpper":  [d["serialUpper"] for d in devs],
+            "skuOverridden": any(d.get("skuOverridden") for d in devs),
             "taxable":       True,
             "sectionGroup":  rep.get("sectionGroup", "hanover"),
         })
@@ -931,6 +977,10 @@ async def get_prorated_invoices(
      cust_map_index, full_path_index, sku_desc_index,
      category_index) = _build_indices()
 
+    # Load per-invoice exclusion set and per-serial SKU overrides
+    excluded_invoices = _load_excluded_invoices()
+    sku_overrides     = _load_sku_overrides()
+
     # Import billing_type lookup from customers module
     from .customers import billing_type_overrides, qb_customers
 
@@ -1016,6 +1066,7 @@ async def get_prorated_invoices(
             full_path_index = full_path_index,
             sku_desc_index  = sku_desc_index,
             category_index  = category_index,
+            sku_overrides   = sku_overrides,
         )
 
         if invoice is not None:
@@ -1043,6 +1094,13 @@ async def get_prorated_invoices(
 
     # Merge sub-account invoices for the same customer (e.g. {Cameras}) into one
     invoices = _merge_same_customer_invoices(invoices)
+
+    # Filter out invoices the user has explicitly excluded (e.g. trial customers)
+    billing_month_key = f"{b_year}-{b_month:02d}"
+    invoices = [
+        inv for inv in invoices
+        if f"{inv['customerId']}|{billing_month_key}" not in excluded_invoices
+    ]
 
     # Sort by customer name
     invoices.sort(key=lambda x: x["customerName"].lower())
@@ -1095,6 +1153,8 @@ async def get_prorated_invoice_for_customer(
      cust_map_index, full_path_index, sku_desc_index,
      category_index) = _build_indices()
 
+    sku_overrides = _load_sku_overrides()
+
     from .customers import billing_type_overrides, qb_customers
 
     raw_name   = ((company_contracts[0].get("userContact") or {})
@@ -1127,6 +1187,7 @@ async def get_prorated_invoice_for_customer(
         full_path_index = full_path_index,
         sku_desc_index  = sku_desc_index,
         category_index  = category_index,
+        sku_overrides   = sku_overrides,
     )
 
     if not invoice:
@@ -1145,6 +1206,127 @@ async def get_prorated_invoice_for_customer(
     invoice["qbClass"]       = qb_rec.get("qbClass", "")
 
     return {"found": True, **invoice}
+
+
+# --------------------------------------------------------------------------- #
+#  Invoice exclusion endpoints                                                  #
+#  POST   /invoices/exclude/{customer_id}?month=YYYY-MM  → exclude invoice     #
+#  DELETE /invoices/exclude/{customer_id}?month=YYYY-MM  → restore invoice     #
+#  GET    /invoices/excluded                             → list all keys        #
+# --------------------------------------------------------------------------- #
+
+from pydantic import BaseModel as _BaseModel
+
+class _SkuOverrideBody(_BaseModel):
+    serial:  str
+    skuKey:  str
+    month:   str   # YYYY-MM
+
+
+@router.post("/invoices/exclude/{customer_id}")
+async def exclude_invoice(
+    customer_id: str,
+    month: str = Query(..., description="Billing month as YYYY-MM"),
+):
+    """Mark a prorated invoice as excluded so it won't appear in the invoice list."""
+    try:
+        datetime.strptime(month, "%Y-%m")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="month must be YYYY-MM")
+    keys = _load_excluded_invoices()
+    keys.add(f"{customer_id}|{month}")
+    _save_excluded_invoices(keys)
+    return {"excluded": True, "key": f"{customer_id}|{month}"}
+
+
+@router.delete("/invoices/exclude/{customer_id}")
+async def restore_invoice(
+    customer_id: str,
+    month: str = Query(..., description="Billing month as YYYY-MM"),
+):
+    """Remove an invoice exclusion, restoring it to the invoice list."""
+    try:
+        datetime.strptime(month, "%Y-%m")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="month must be YYYY-MM")
+    keys = _load_excluded_invoices()
+    key  = f"{customer_id}|{month}"
+    keys.discard(key)
+    _save_excluded_invoices(keys)
+    return {"excluded": False, "key": key}
+
+
+@router.get("/invoices/excluded")
+async def list_excluded_invoices():
+    """Return the full list of excluded invoice keys."""
+    return {"keys": sorted(_load_excluded_invoices())}
+
+
+# --------------------------------------------------------------------------- #
+#  SKU line-item override endpoints                                             #
+#  POST   /invoices/sku-override           → set serial override               #
+#  DELETE /invoices/sku-override           → clear serial override             #
+#  GET    /invoices/sku-overrides          → list all overrides                #
+# --------------------------------------------------------------------------- #
+
+@router.post("/invoices/sku-override")
+async def set_sku_override(body: _SkuOverrideBody, customer_id: str = Query(...)):
+    """
+    Override the resolved SKU for a specific device serial on a given invoice.
+    Body: { serial: "SERIALNUM", skuKey: "...", month: "YYYY-MM" }
+    """
+    try:
+        datetime.strptime(body.month, "%Y-%m")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="month must be YYYY-MM")
+    serial_upper = body.serial.strip().upper()
+    key          = f"{customer_id}|{body.month}|{serial_upper}"
+    overrides    = _load_sku_overrides()
+    overrides[key] = body.skuKey
+    _save_sku_overrides(overrides)
+    return {"key": key, "skuKey": body.skuKey}
+
+
+@router.delete("/invoices/sku-override")
+async def clear_sku_override(
+    customer_id: str = Query(...),
+    serial:      str = Query(...),
+    month:       str = Query(..., description="YYYY-MM"),
+):
+    """Remove a per-serial SKU override, reverting to auto-resolution."""
+    serial_upper = serial.strip().upper()
+    key          = f"{customer_id}|{month}|{serial_upper}"
+    overrides    = _load_sku_overrides()
+    overrides.pop(key, None)
+    _save_sku_overrides(overrides)
+    return {"key": key, "cleared": True}
+
+
+@router.get("/invoices/sku-overrides")
+async def list_sku_overrides():
+    """Return all active SKU overrides."""
+    return {"overrides": _load_sku_overrides()}
+
+
+@router.get("/invoices/sku-catalog")
+async def get_sku_catalog():
+    """
+    Return the full SKU catalog (skuKey + fullPath + defaultPrice + category).
+    Used by the frontend SKU override picker.
+    """
+    catalog = _load_json(os.path.join(_HERE, "sku_catalog.json"), [])
+    return {
+        "items": [
+            {
+                "skuKey":        s["skuKey"],
+                "fullPath":      s.get("fullPath") or s["skuKey"],
+                "defaultPrice":  s.get("defaultPrice") or 0,
+                "category":      s.get("category") or "",
+                "desc":          s.get("desc") or s["skuKey"],
+            }
+            for s in catalog
+        ]
+    }
 
 
 # --------------------------------------------------------------------------- #
