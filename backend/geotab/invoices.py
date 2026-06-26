@@ -285,7 +285,10 @@ EXCLUDED_CATEGORIES = {"Digital Matter Service", "Digital Matter Equipment"}
 # when their activeDevicePlan is "PRO MODE" (resolves to Service Fee Geotab (Pro),
 # a non-DM category) rather than a recognised DM plan name.
 DM_SERIAL_PREFIXES: tuple = (
-    "CN", "JQ", "HN", "C1", "CL", "DC", "CY", "EG", "EK", "OE", "OB", "OF", "OG",
+    "CN", "JQ", "HN", "C1", "CL", "DC", "CY", "OE", "OB", "OF", "OG",
+    # EG and EK are Phillips Connect devices — NOT Digital Matter.
+    # They bill to 'Phillips Connect Service:Tracking Fee' at $14.95.
+    # Removed from this list so they pass through to prorated invoices.
 )
 
 def _is_dm_serial(serial: str) -> bool:
@@ -318,6 +321,7 @@ def _is_dm_serial(serial: str) -> bool:
 #   John Deere  DM          → John Deere AEMP (OEM)
 #   Komatsu     JL          → Komatsu AEMP (OEM)
 #   CalAmp      C3          → Service Fee CalAmp (Asset)
+#   Phillips     EG, EK      → Tracking Fee (Phillips Connect Service Fee)
 #   Hitachi     P8          → (no catalog entry yet — falls through to UNMAPPED)
 _SERIAL_PREFIX_SKU: list = [
     # Longer/more-specific prefixes first
@@ -330,6 +334,8 @@ _SERIAL_PREFIX_SKU: list = [
     ("CO", "Geotab GM (Premium (OEM))"),
     ("JL", "Komatsu AEMP (OEM)"),
     ("C3", "Service Fee CalAmp (Asset)"),
+    ("EG", "Tracking Fee"),
+    ("EK", "Tracking Fee"),
 ]
 
 def _sku_from_serial(serial: str) -> Optional[str]:

@@ -730,6 +730,18 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             else:
                 is_hn_serial = False   # only relevant when we actually triggered Tier 0.5b
 
+            # -- Tier 0.5c: EG / EK serial prefix = Phillips Connect Tracking Fee --
+            # Phillips Connect devices carry serial numbers starting with "EG" or "EK".
+            # MyAdmin reports their activeDevicePlan as "Pro Mode" — identical to
+            # standard Geotab GO devices — so the normal billing-plan lookup would
+            # incorrectly route them to "Service Fee Geotab (Pro)".
+            # The serial prefix is the only reliable discriminator.
+            if (sku_key is None
+                    and (serial.upper().startswith("EG") or serial.upper().startswith("EK"))):
+                sku_key      = "Tracking Fee"
+                mapping_tier = "serial_prefix"
+                lookup_code  = "EG/EK serial prefix (Phillips Connect)"
+
             if promo_code:
                 sku_key = cust_mapping_index.get((norm_cname, promo_code), None)
                 if sku_key is not None:
