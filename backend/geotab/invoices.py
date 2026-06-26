@@ -1146,19 +1146,12 @@ async def get_prorated_invoices(
         clean_name = _clean_name(raw_name)
 
         # Strip suffixes exactly as enrich_customer() does
-        qb_lookup_name = _strip_han_cs(_strip_sub_account_suffix(clean_name))
-        # Detect Han-CS identity via brace suffix OR parenthetical marker.
-        # The brace form '{Han-CS}' is the canonical MyAdmin identity token;
-        # some accounts use the parenthetical form '(Han-CS)' instead.
-        # We also check the suffix-stripped name so that sub-accounts like
-        # '{Cameras}' whose parent is Han-CS (either form) inherit Han-CS.
-        _cn_lower = clean_name.strip().lower()
-        _ql_lower = qb_lookup_name.strip().lower()
-        is_han_cs = (
-            _cn_lower.endswith("{han-cs}")
-            or "(han-cs)" in _cn_lower
-            or "(han-cs)" in _ql_lower
-        )
+        _after_sub     = _strip_sub_account_suffix(clean_name)
+        qb_lookup_name = _strip_han_cs(_after_sub)
+        # Detect Han-CS: check the intermediate value (after strip_sub_account_suffix
+        # but before strip_han_cs) — strip_sub now preserves and strips second suffixes
+        # so '{Han-CS} {Cameras}' becomes '{Han-CS}' at this stage.
+        is_han_cs = _after_sub.strip().lower().endswith("{han-cs}")
 
         bt = (
             billing_type_overrides.get(company_id)
@@ -1314,14 +1307,9 @@ async def get_prorated_invoice_for_customer(
     raw_name   = ((company_contracts[0].get("userContact") or {})
                   .get("userCompany") or {}).get("name") or ""
     clean_name = _clean_name(raw_name)
-    qb_lookup_name = _strip_han_cs(_strip_sub_account_suffix(clean_name))
-    _cn_lower_s = clean_name.strip().lower()
-    _ql_lower_s = qb_lookup_name.strip().lower()
-    is_han_cs  = (
-        _cn_lower_s.endswith("{han-cs}")
-        or "(han-cs)" in _cn_lower_s
-        or "(han-cs)" in _ql_lower_s
-    )
+    _after_sub_s   = _strip_sub_account_suffix(clean_name)
+    qb_lookup_name = _strip_han_cs(_after_sub_s)
+    is_han_cs  = _after_sub_s.strip().lower().endswith("{han-cs}")
     bt = (
         billing_type_overrides.get(customer_id)
         or (qb_customers.get(_normalize(qb_lookup_name)) or {}).get("billingType")

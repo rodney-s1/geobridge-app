@@ -241,13 +241,15 @@ def _strip_sub_account_suffix(name: str) -> str:
 
     Rules:
       - If there is no '{', return unchanged.
-      - If the FIRST token inside braces is 'han-cs', return unchanged —
+      - If the FIRST token inside braces is 'han-cs', preserve '{Han-CS}' but strip
+        any additional brace suffix that follows (e.g. '{Cameras}', '{3rd Party}').
         '{Han-CS}' is an identity qualifier handled separately by _strip_han_cs().
       - Otherwise, strip everything from the first '{' onward.
 
     Examples:
       'AWT Construction Group Inc. {3rd Party Devices}' -> 'AWT Construction Group Inc.'
-      'ACES Controls LLC {Han-CS} {Sub}'                -> 'ACES Controls LLC {Han-CS} {Sub}'  (unchanged -- han-cs identity)
+      'ACES Controls LLC {Han-CS} {Cameras}'            -> 'ACES Controls LLC {Han-CS}'
+      'ACES Controls LLC {Han-CS} {Sub}'                -> 'ACES Controls LLC {Han-CS}'
       'ACES Controls LLC {Han-CS}'                      -> 'ACES Controls LLC {Han-CS}'  (unchanged)
       'Normal Customer Name'                            -> 'Normal Customer Name'  (unchanged)
     """
@@ -257,7 +259,13 @@ def _strip_sub_account_suffix(name: str) -> str:
     close = name.find("}", idx)
     first_token = name[idx + 1 : close].strip() if close != -1 else ""
     if first_token.lower() == "han-cs":
-        return name  # identity qualifier — leave as-is; _strip_han_cs handles it
+        # Preserve the '{Han-CS}' identity qualifier but strip any further
+        # brace suffix that follows (e.g. '{Cameras}', '{3rd Party Devices}').
+        han_cs_end = close + 1  # index just after the closing '}' of {Han-CS}
+        second_idx = name.find("{", han_cs_end)
+        if second_idx != -1:
+            return name[:second_idx].strip()  # strip everything from '{Cameras}' onward
+        return name  # no second suffix — leave as-is
     return name[:idx].strip()
 
 
