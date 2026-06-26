@@ -641,7 +641,11 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                         ),
                     })
 
-        is_cua       = billing_type in ("CUA", "Charge Upon Activation")
+        # Han-CS and Hanover are treated identically to CUA for never-activated
+        # devices: billing only starts once a device has an active billing plan.
+        # Never-activated devices on these accounts are NOT under-billed — they
+        # simply haven't been deployed yet.
+        is_cua       = billing_type in ("CUA", "Charge Upon Activation", "Hanover", "Han-CS")
 
         cust_ok = cust_over = cust_under = cust_unmapped = cust_no_price = 0
         cust_never_activated = 0
@@ -659,7 +663,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         active_devices       = [d for d in devices if not d.get("neverActivated")]
         never_activated_devs = [d for d in devices if d.get("neverActivated")]
 
-        # CUA customers: never-activated devices are not billed — skip entirely.
+        # CUA / Hanover / Han-CS customers: never-activated devices are not billed — skip entirely.
         # Standard customers: process active devices first, then inherit SKU for
         # never-activated devices from the most common active SKU on the account.
         devices_to_process = active_devices if is_cua else devices
