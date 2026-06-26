@@ -1028,6 +1028,19 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         # as the other active devices on the account.  Inherit the most-used
         # active SKU.  If no active devices exist yet (brand-new account), we
         # emit them as "unmapped" so they show up visibly.
+        #
+        # Exception: never-activated devices whose promoCode is "HANOVER" are
+        # billed via the Hanover Insurance Group master invoice — and only when
+        # active on the base GO plan.  A never-activated HANOVER device has
+        # never been deployed, so HIG has never billed for it and neither should
+        # we.  Exclude these regardless of the account's billing_type label:
+        # some Hanover sub-customers are resolved as "Standard" in our system
+        # (because their QB invoice carries no HANOVER SKU line), but the
+        # promoCode is the authoritative signal that the device is HIG-covered.
+        # Count of never-activated HANOVER devices on Standard-labelled accounts.
+        # These are excluded from never-activated processing below and must also
+        # be subtracted from cust_myadmin_direct (line below).
+        _hanover_na_excluded = 0
         if not is_cua and never_activated_devs:
             # Pick the most common active SKU (or "" if no active devices)
             inherited_sku = (
@@ -1035,6 +1048,12 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 if active_sku_counts else ""
             )
             for na_dev in never_activated_devs:
+                # Skip never-activated HANOVER promoCode devices — they are
+                # billed via Hanover Insurance Group only when active on GO
+                # plan; a never-activated device is not billed by anyone.
+                if (na_dev.get("promoCode") or "").upper() == "HANOVER":
+                    _hanover_na_excluded += 1
+                    continue
                 if inherited_sku:
                     expected_na, price_source_na = _resolve_price(
                         _qb_cname, inherited_sku, ovr_index, catalog_index
@@ -1233,6 +1252,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         # not billed and are excluded from the QB invoice.  Subtract them from
         # the MyAdmin total so the header delta only reflects billed devices.
         _cua_never_activated = len(never_activated_devs) if is_cua else 0
+        # Also subtract HANOVER never-activated devices excluded above on Standard accounts.
+        _cua_never_activated += _hanover_na_excluded
 
         # Hanover-consolidated devices (HANOVER+GO-gated) are billed via the
         # Hanover Insurance Group master invoice — not on this customer's own QB
