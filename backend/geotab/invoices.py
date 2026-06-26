@@ -458,18 +458,22 @@ def _generate_prorated_invoice(
             continue
 
         # Resolve SKU — priority order:
-        #   1. Customer-specific mapping on billing_plan (activeDevicePlan.name)
-        #      — catches OEM plans like "Ford Premium: Live" before the generic
-        #        promoCode "PRO MODE" masks them
-        #   2. Global mapping on billing_plan (e.g. OEM plan names → OEM SKUs)
-        #   3. Customer-specific mapping on promoCode
-        #   4. Global mapping on promoCode (e.g. "PRO MODE" → Service Fee Geotab (Pro))
-        #   5. Serial-prefix fallback (OEM/Geotab hardware type from serial)
+        #   1. Serial-prefix OEM check (HIGHEST for OEM hardware)
+        #      DW/CO/DY/D8/etc. devices are always billed to their OEM SKU
+        #      regardless of what billing_plan or promoCode MyAdmin shows.
+        #      OEM devices routinely carry "PRO MODE" as their promoCode which
+        #      would incorrectly win if we checked billing_plan first.
+        #   2. Customer-specific mapping on billing_plan (activeDevicePlan.name)
+        #      — catches named OEM plans like "Ford Premium: Live" for any
+        #        prefix-ambiguous devices, and all non-OEM plan overrides
+        #   3. Global mapping on billing_plan
+        #   4. Customer-specific mapping on promoCode
+        #   5. Global mapping on promoCode (e.g. "PRO MODE" → Pro, "GO" → GO Plan)
         #   6. UNMAPPED fallback
         sku_key = (
-            _resolve_sku(cust_norm, billing_plan, mapping_index, cust_map_index)
+            _sku_from_serial(serial)
+            or _resolve_sku(cust_norm, billing_plan, mapping_index, cust_map_index)
             or _resolve_sku(cust_norm, rate_plan,   mapping_index, cust_map_index)
-            or _sku_from_serial(serial)
             or "UNMAPPED"
         )
 
