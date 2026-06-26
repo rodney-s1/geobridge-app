@@ -349,6 +349,26 @@ def _sku_from_serial(serial: str) -> Optional[str]:
     return None
 
 
+# Line-item sort tier based on the serial prefix of the first device in the group.
+# Tier 1 — Geotab GO devices  (GA, G9, G8, G7, X1, X2)
+# Tier 2 — Geotab Cameras     (GE, GF)
+# Tier 3 — Geotab Asset       (B1, B2)
+# Tier 4 — Everything else    (OEM, CalAmp, unmapped, …)
+_TIER1_PREFIXES = ("GA", "G9", "G8", "G7", "X1", "X2")
+_TIER2_PREFIXES = ("GE", "GF")
+_TIER3_PREFIXES = ("B1", "B2")
+
+def _serial_tier(serial_upper: str) -> int:
+    """Return the sort tier (1-4) for a device serial number."""
+    if serial_upper.startswith(_TIER1_PREFIXES):
+        return 1
+    if serial_upper.startswith(_TIER2_PREFIXES):
+        return 2
+    if serial_upper.startswith(_TIER3_PREFIXES):
+        return 3
+    return 4
+
+
 def _generate_prorated_invoice(
     customer: dict,
     contracts: List[dict],
@@ -502,6 +522,7 @@ def _generate_prorated_invoice(
         qualifying.append({
             "serialNumber":        serial,
             "serialUpper":         serial_upper,
+            "serialTier":          _serial_tier(serial_upper),
             "ratePlanCode":        rate_plan,
             "skuKey":              sku_key,
             "monthlyRate":         monthly_rate,
@@ -641,8 +662,15 @@ def _build_invoice_from_pool(
 
     line_items: List[dict] = []
 
-    # Sort groups by firstConnectDate ascending (matches QB invoice order)
-    for (sku_key, fcd_str), devs in sorted(groups.items(), key=lambda x: x[0][1]):
+    # Sort prorated groups: tier (Geotab GO → Cameras → Asset → Other),
+    # then alphabetically by SKU name within each tier, then date ascending.
+    # Tier is taken from the lowest (best) tier among devices in the group.
+    def _group_sort_key(item):
+        (sku_key, fcd_str), devs = item
+        tier = min(d.get("serialTier", 4) for d in devs)
+        return (tier, sku_key, fcd_str or "")
+
+    for (sku_key, fcd_str), devs in sorted(groups.items(), key=_group_sort_key):
         rep     = devs[0]   # all devs in group share same SKU/date/rate
         qty     = len(devs)
         serials = [d["serialNumber"] for d in devs]
@@ -674,6 +702,7 @@ def _build_invoice_from_pool(
             "skuOverridden": any(d.get("skuOverridden") for d in devs),
             "taxable":       True,
             "sectionGroup":  rep.get("sectionGroup", "hanover"),
+            "serialTier":    min(d.get("serialTier", 4) for d in devs),
         })
 
     # ---------------------------------------------------------------------- #
@@ -685,7 +714,12 @@ def _build_invoice_from_pool(
     for dev in qualifying:
         forward_groups[dev["skuKey"]].append(dev)
 
-    for sku_key, devs in sorted(forward_groups.items()):
+    def _fwd_sort_key(item):
+        sku_key, devs = item
+        tier = min(d.get("serialTier", 4) for d in devs)
+        return (tier, sku_key)
+
+    for sku_key, devs in sorted(forward_groups.items(), key=_fwd_sort_key):
         rep      = devs[0]
         qty      = len(devs)
         serials  = [d["serialNumber"] for d in devs]
@@ -711,6 +745,7 @@ def _build_invoice_from_pool(
             "serials":       [],    # serials already listed in prorated section
             "taxable":       True,
             "sectionGroup":  rep.get("sectionGroup", "hanover"),
+            "serialTier":    min(d.get("serialTier", 4) for d in devs),
         })
 
     prorated_total = sum(li["amount"] for li in line_items if li["type"] == "prorated")
@@ -752,7 +787,7 @@ def _merge_prorated_lines(lines_by_key: Dict[tuple, List[dict]]) -> List[dict]:
     qty and amount).
     """
     merged: List[dict] = []
-    for (sku_key, fcd), lines in sorted(lines_by_key.items(), key=lambda x: (x[0][1], x[0][0])):
+    for (sku_key, fcd), lines in sorted(lines_by_key.items(), key=lambda x: (min(li.get("serialTier", 4) for li in x[1]), x[0][0], x[0][1] or "")):
         if len(lines) == 1:
             merged.append(lines[0])
             continue
@@ -779,7 +814,7 @@ def _merge_forward_lines(fwd_by_sku: Dict[str, List[dict]]) -> List[dict]:
     summing quantity and recomputing amount.
     """
     merged: List[dict] = []
-    for sku_key, fwd_lines in sorted(fwd_by_sku.items()):
+    for sku_key, fwd_lines in sorted(fwd_by_sku.items(), key=lambda x: (min(li.get("serialTier", 4) for li in x[1]), x[0])):
         rep    = fwd_lines[0]
         qty    = sum(li["quantity"] for li in fwd_lines)
         amount = round(rep["priceEach"] * qty, 2)
