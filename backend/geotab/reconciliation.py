@@ -705,10 +705,15 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             # standard Geotab GO devices — so the normal billing-plan lookup
             # would incorrectly route them to "Service Fee Geotab (Pro)".
             #
-            # The sub_account_tag "Cameras" is the reliable discriminator: any
-            # device on a {Cameras} sub-account is a camera unit billed at the
-            # SS Camera Service Fee rate, regardless of reported billing plan.
-            if sub_account_tag.lower() == "cameras":
+            # The sub_account_tag "Cameras" is the reliable discriminator for
+            # Surfsight (AI-12/AI-14) cameras.  However, GO Focus Plus cameras
+            # (serial prefix "GE" or "GF") can also live on a {Cameras}
+            # sub-account and must NOT be routed here — they resolve correctly
+            # via their promoCode (GFP-BUNDLE → "Geotab Service (GO Focus Plus)")
+            # through the normal Tier 1–4 lookup chain.
+            serial_upper = serial.upper()
+            _is_ge_gf = serial_upper.startswith("GE") or serial_upper.startswith("GF")
+            if sub_account_tag.lower() == "cameras" and not _is_ge_gf:
                 sku_key      = "SS Service Fee"
                 mapping_tier = "sub_account_tag"
                 lookup_code  = "Cameras sub-account"
@@ -719,7 +724,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             # promo code in MyAdmin but belong to the same DM Service Fee family.
             # HN serials always correspond to the "(Hardwire)" QB SKU variant;
             # this flag is passed through to Tier 4.5 to select the right variant.
-            is_hn_serial = serial.upper().startswith("HN")
+            is_hn_serial = serial_upper.startswith("HN")
             if (sku_key is None
                     and not promo_code
                     and is_hn_serial
@@ -737,7 +742,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             # incorrectly route them to "Service Fee Geotab (Pro)".
             # The serial prefix is the only reliable discriminator.
             if (sku_key is None
-                    and (serial.upper().startswith("EG") or serial.upper().startswith("EK"))):
+                    and (serial_upper.startswith("EG") or serial_upper.startswith("EK"))):
                 sku_key      = "Tracking Fee"
                 mapping_tier = "serial_prefix"
                 lookup_code  = "EG/EK serial prefix (Phillips Connect)"

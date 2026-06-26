@@ -147,10 +147,10 @@
   },
   {
     "ratePlanCode": "OFFROAD",
-    "skuKey": "Geotab Off-Road (Pro)",
-    "defaultPrice": 17.0,
-    "notes": "",
-    "cost": 9.0
+    "skuKey": "Geotab Off-Road (GO)",
+    "defaultPrice": 20.0,
+    "notes": "promoCode for devices on GO plan with Off-Road feature; resolves to GO-tier SKU (not Pro)",
+    "cost": 8.5
   },
   {
     "ratePlanCode": "OHIO-BUNDLE",
