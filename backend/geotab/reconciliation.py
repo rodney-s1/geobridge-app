@@ -934,6 +934,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 device_rows.append({
                     "serialNumber":  dev["serialNumber"],
                     "ratePlanCode":  display_plan,
+                    "billingPlan":   billing_plan or "",
+                    "promoCode":     promo_code   or "",
                     "skuKey":        "",
                     "skuName":       "",
                     "expectedPrice": None,
@@ -951,6 +953,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 device_rows.append({
                     "serialNumber":  dev["serialNumber"],
                     "ratePlanCode":  display_plan,
+                    "billingPlan":   billing_plan or "",
+                    "promoCode":     promo_code   or "",
                     "skuKey":        "",
                     "skuName":       "",
                     "expectedPrice": None,
@@ -972,6 +976,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 device_rows.append({
                     "serialNumber": dev["serialNumber"],
                     "ratePlanCode": rate_plan,
+                    "billingPlan":  billing_plan or "",
+                    "promoCode":    promo_code   or "",
                     "skuKey":       sku_key,
                     "skuName":      catalog_name.get(sku_key, sku_key),
                     "expectedPrice": None,
@@ -993,6 +999,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 device_rows.append({
                     "serialNumber": dev["serialNumber"],
                     "ratePlanCode": rate_plan,
+                    "billingPlan":  billing_plan or "",
+                    "promoCode":    promo_code   or "",
                     "skuKey":       sku_key,
                     "skuName":      catalog_name.get(sku_key, sku_key),
                     "expectedPrice": round(expected, 2),
@@ -1023,6 +1031,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             device_rows.append({
                 "serialNumber": dev["serialNumber"],
                 "ratePlanCode": rate_plan,
+                "billingPlan":  billing_plan or "",
+                "promoCode":    promo_code   or "",
                 "skuKey":       sku_key,
                 "skuName":      catalog_name.get(sku_key, sku_key),
                 "expectedPrice": round(expected, 2),
@@ -1072,6 +1082,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                     device_rows.append({
                         "serialNumber":  na_dev["serialNumber"],
                         "ratePlanCode":  "Never Activated",
+                        "billingPlan":   (na_dev.get("billingPlan") or na_dev.get("billing_plan") or ""),
+                        "promoCode":     (na_dev.get("promoCode") or ""),
                         "skuKey":        inherited_sku,
                         "skuName":       catalog_name.get(inherited_sku, inherited_sku),
                         "expectedPrice": round(expected_na, 2) if expected_na is not None else None,
@@ -1091,6 +1103,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                     device_rows.append({
                         "serialNumber":  na_dev["serialNumber"],
                         "ratePlanCode":  "Never Activated",
+                        "billingPlan":   (na_dev.get("billingPlan") or na_dev.get("billing_plan") or ""),
+                        "promoCode":     (na_dev.get("promoCode") or ""),
                         "skuKey":        "",
                         "skuName":       "",
                         "expectedPrice": None,

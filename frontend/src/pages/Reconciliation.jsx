@@ -189,18 +189,19 @@ function PriceBreakdownTable({ devices }) {
       )}
       <table className="w-full table-fixed text-xs">
       <colgroup>
-        <col style={{ width: '14%' }} />
-        <col style={{ width: '14%' }} />
-        <col style={{ width: '18%' }} />
-        <col style={{ width: '9%' }} />
-        <col style={{ width: '9%' }} />
-        <col style={{ width: '9%' }} />
+        <col style={{ width: '13%' }} />
         <col style={{ width: '10%' }} />
-        <col style={{ width: '17%' }} />
+        <col style={{ width: '13%' }} />
+        <col style={{ width: '18%' }} />
+        <col style={{ width: '8%' }} />
+        <col style={{ width: '8%' }} />
+        <col style={{ width: '7%' }} />
+        <col style={{ width: '9%' }} />
+        <col style={{ width: '14%' }} />
       </colgroup>
       <thead>
         <tr className="border-b border-slate-700/40">
-          {['Serial','Rate Plan','SKU Key','Expected','Actual','Delta','Source','Status'].map(h => (
+          {['Serial','Rate Plan','Promo Code','SKU Key','Expected','Actual','Delta','Source','Status'].map(h => (
             <th key={h} className="px-4 py-2 text-left text-xs text-slate-500 font-medium">{h}</th>
           ))}
         </tr>
@@ -209,12 +210,19 @@ function PriceBreakdownTable({ devices }) {
         {devices.map((d, i) => (
           <tr key={`${d.serialNumber}-${i}`} className="border-t border-slate-700/30 hover:bg-slate-700/20">
             <td className="px-4 py-2 font-mono text-slate-300">{d.serialNumber || '—'}</td>
-            <td className="px-4 py-2 font-mono">
+            {/* Rate Plan — billing plan (GO, Pro, ProPlus, etc.) */}
+            <td className="px-4 py-2">
               {d.neverActivated
                 ? <span className="bg-yellow-900/50 text-yellow-300 border border-yellow-700/40 px-1.5 py-0.5 rounded text-[10px]">Never Activated</span>
-                : d.ratePlanCode
-                  ? <span className="bg-slate-700 text-slate-200 px-1.5 py-0.5 rounded">{d.ratePlanCode}</span>
+                : d.billingPlan
+                  ? <span className="bg-slate-700 text-slate-200 px-1.5 py-0.5 rounded font-mono">{d.billingPlan}</span>
                   : <span className="text-slate-600">—</span>}
+            </td>
+            {/* Promo Code — e.g. BUNDLE-RS56-R1, HANOVER, OFFROAD */}
+            <td className="px-4 py-2">
+              {d.promoCode
+                ? <span className="bg-indigo-900/50 text-indigo-300 border border-indigo-700/40 px-1.5 py-0.5 rounded text-[10px] font-mono">{d.promoCode}</span>
+                : <span className="text-slate-600">—</span>}
             </td>
             <td className="px-4 py-2 text-slate-400 truncate">{d.skuKey || '—'}</td>
             <td className="px-4 py-2 font-mono text-slate-300">{fmt$(d.expectedPrice)}</td>
