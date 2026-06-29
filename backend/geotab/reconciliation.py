@@ -1113,7 +1113,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         # be subtracted from cust_myadmin_direct (line below).
         _hanover_na_excluded = 0
         if not is_cua and never_activated_devs:
-            # Pick the most common active SKU (or "" if no active devices)
+            # Pick the most common active SKU (or "" if no active devices).
+            # Used as the inheritance fallback when no promoCode resolves.
             inherited_sku = (
                 max(active_sku_counts, key=active_sku_counts.get)
                 if active_sku_counts else ""
@@ -1122,34 +1123,68 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 # Skip never-activated HANOVER promoCode devices — they are
                 # billed via Hanover Insurance Group only when active on GO
                 # plan; a never-activated device is not billed by anyone.
-                if (na_dev.get("promoCode") or "").upper() == "HANOVER":
+                na_promo = (na_dev.get("promoCode") or "").upper().strip()
+                if na_promo == "HANOVER":
                     _hanover_na_excluded += 1
                     continue
-                if inherited_sku:
+
+                # -- Tier NA-1: customer-specific promoCode lookup -------------
+                # If the never-activated device carries a promoCode (e.g.
+                # "BUNDLE-GO"), try to resolve it to an SKU the same way active
+                # devices do (customer-specific first, then global).  This
+                # prevents devices that are simply not yet activated from being
+                # mis-categorised as "Service Fee Geotab (Pro)" just because
+                # the account's most common active SKU happens to be Pro.
+                na_sku_key = None
+                na_price_source = "none"
+                if na_promo:
+                    # Tier 1-equivalent: customer + promoCode
+                    na_sku_key = cust_mapping_index.get((norm_cname, na_promo), None)
+                    if na_sku_key:
+                        na_price_source = "promo_code (customer)"
+                    else:
+                        # Tier 3-equivalent: global promoCode
+                        na_sku_key = mapping_index.get(na_promo, None)
+                        if na_sku_key:
+                            na_price_source = "promo_code (global)"
+
+                # -- Tier NA-2: inheritance fallback ---------------------------
+                # If promoCode lookup missed (or no promoCode), inherit the
+                # most common active SKU on the account, as before.
+                if not na_sku_key:
+                    na_sku_key      = inherited_sku
+                    na_price_source = "inherited"   # will be overwritten by _resolve_price
+
+                if na_sku_key:
                     expected_na, price_source_na = _resolve_price(
-                        _qb_cname, inherited_sku, ovr_index, catalog_index
+                        _qb_cname, na_sku_key, ovr_index, catalog_index
                     )
+                    # Keep the promoCode resolution label unless _resolve_price
+                    # found a customer-specific override (which is more specific).
+                    if price_source_na not in ("customer_override",) and na_price_source != "inherited":
+                        price_source_na = na_price_source
                     device_rows.append({
                         "serialNumber":  na_dev["serialNumber"],
                         "ratePlanCode":  "Never Activated",
                         "billingPlan":   (na_dev.get("billingPlan") or na_dev.get("billing_plan") or ""),
                         "promoCode":     (na_dev.get("promoCode") or ""),
-                        "skuKey":        inherited_sku,
-                        "skuName":       catalog_name.get(inherited_sku, inherited_sku),
+                        "skuKey":        na_sku_key,
+                        "skuName":       catalog_name.get(na_sku_key, na_sku_key),
                         "expectedPrice": round(expected_na, 2) if expected_na is not None else None,
                         "actualPrice":   None,   # QB won't have a line for this device specifically
                         "delta":         None,
                         "priceSource":   price_source_na,
                         "status":        "never_activated",
                         "neverActivated": True,
-                    "location":      na_dev.get("location", ""),
+                        "location":      na_dev.get("location", ""),
                     })
                     cust_never_activated += 1
                     # Count toward MyAdmin SKU total — they should appear in quantity
                     if expected_na is not None:
                         cust_expected += expected_na
                 else:
-                    # No active devices to inherit SKU from — show as unmapped
+                    # No promoCode resolved AND no active devices to inherit from
+                    # — show as unmapped
                     device_rows.append({
                         "serialNumber":  na_dev["serialNumber"],
                         "ratePlanCode":  "Never Activated",
@@ -1163,7 +1198,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                         "priceSource":   "none",
                         "status":        "never_activated",
                         "neverActivated": True,
-                    "location":      na_dev.get("location", ""),
+                        "location":      na_dev.get("location", ""),
                     })
                     cust_never_activated += 1
 
