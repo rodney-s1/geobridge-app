@@ -33,6 +33,7 @@ OVERRIDES_FILE         = os.path.join(_HERE, "billing_overrides.json")
 BILLING_TYPE_OVERRIDES_FILE = os.path.join(_HERE, "billing_type_overrides.json")
 BILLING_DATE_OVERRIDES_FILE = os.path.join(_HERE, "billing_date_overrides.json")
 SYNC_CACHE_FILE        = os.path.join(_HERE, "myadmin_cache.json")   # persisted between restarts
+CONTRACT_CHECKPOINT_FILE = os.path.join(_HERE, "contract_checkpoint.json")  # sliding-window resume point
 
 def _load_json(path: str, default):
     try:
@@ -63,6 +64,7 @@ name_to_company_id: Dict[str, str]  = {}   # normalize(name) -> companyId, built
 # --- MyAdmin sync cache -------------------------------------------------------
 CACHE_TTL_HOURS = 3              # Contracts auto-expire after 3 h; background task refreshes silently
 DEVICE_DB_REFRESH_MINUTES = 30   # Background Step-1 (device DBs only) refresh interval
+WINDOW_SIZE = 4                  # Sliding-window: pages fetched concurrently during Step 2
 _sync_cache: Dict = _load_json(SYNC_CACHE_FILE, {})
 
 # --- Sync lock -- prevents concurrent fetches when multiple requests arrive ---
@@ -451,61 +453,153 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
             message=f"{len(all_contracts):,} contracts from 12-hour cache",
         )
     else:
-        print("[sync] Step 2: Fetching device contracts (slow -- customer names)...")
-        all_contracts = []
-        next_id  = 0
-        page_num = 0
+        print("[sync] Step 2: Fetching device contracts (pipeline + checkpoint)...")
 
-        # We'll estimate ~120 pages for CELU01 (100k+ contracts / 1000 per page).
-        # The bar runs from 20% -> 75% during step 2.
+        # ── Option 3: resume from checkpoint ──────────────────────────────────
+        # If a previous sync was interrupted, a checkpoint file stores the last
+        # confirmed cursor and all contracts collected so far.  Resuming from it
+        # skips already-fetched pages entirely.  The checkpoint is deleted when
+        # Step 2 completes successfully.
+        ckpt = _load_json(CONTRACT_CHECKPOINT_FILE, {})
+        if ckpt.get("next_id") and ckpt.get("contracts"):
+            all_contracts = ckpt["contracts"]
+            next_id       = ckpt["next_id"]
+            page_num      = ckpt.get("page_num", len(all_contracts) // 1000)
+            print(f"[sync] Step 2: Resuming from checkpoint — "
+                  f"{len(all_contracts):,} contracts already fetched, nextId={next_id}")
+        else:
+            all_contracts = []
+            next_id       = 0
+            page_num      = 0
+
+        # Progress bar: 20% → 75% across Step 2
         STEP2_START_PCT = 20
         STEP2_END_PCT   = 75
         STEP2_PCT_RANGE = STEP2_END_PCT - STEP2_START_PCT
-        EST_PAGES       = 120   # conservative estimate; recalculates as we go
+        EST_PAGES       = max(120, page_num + 10)
 
         _set_progress(
             step="step2",
             step_label="Step 2/2 -- Fetching device contracts...",
             pct=STEP2_START_PCT,
-            message="Starting contract fetch...",
+            records=len(all_contracts),
+            message=f"Starting contract fetch (window={WINDOW_SIZE})..."
+                    + (f" Resuming from page ~{page_num}." if page_num else ""),
         )
 
-        while True:
-            page_num += 1
-            # Progress within step 2: linear up to 95% of the step's range,
-            # then clamp -- we don't know total pages until the last batch < 1000.
-            step2_fraction = min(page_num / max(EST_PAGES, page_num + 1), 0.95)
-            current_pct    = int(STEP2_START_PCT + step2_fraction * STEP2_PCT_RANGE)
-            _set_progress(
-                step="step2",
-                step_label=f"Step 2/2 -- Fetching contracts (page {page_num})...",
-                page=page_num,
-                total_pages_est=max(EST_PAGES, page_num),
-                records=len(all_contracts),
-                pct=current_pct,
-                message=f"Page {page_num} * {len(all_contracts):,} contracts so far...",
-            )
-            print(f"[sync] Step 2 page {page_num} (nextId={next_id})...")
-            result = await myadmin_call(
+        # ── Option 2: pipelined parallel fetch ────────────────────────────────
+        # GetDeviceContractsByPage uses cursor pagination: page N's cursor (the
+        # id of its last record) is needed to dispatch page N+1.  Pure serial
+        # fetching wastes all per-page network RTT in idle waiting.
+        #
+        # Pipeline strategy:
+        #   1.  Seed a deque (pending) with WINDOW_SIZE tasks, all using the
+        #       current starting cursor.  They will be discarded/re-dispatched
+        #       as real cursors become known.
+        #   2.  Always await the FRONT of the deque (oldest page) first so pages
+        #       are consumed in strict order.
+        #   3.  Once page N's real tail cursor is known:
+        #         a.  Cancel the next slot in the deque (it was seeded with the
+        #             wrong cursor) and re-dispatch it with tail_id.
+        #         b.  Append a new slot at the back seeded with tail_id.
+        #       This keeps WINDOW_SIZE tasks live at all times after the first
+        #       cycle, hiding (WINDOW_SIZE-1) page RTTs behind local processing.
+        #   4.  Correctness guarantee: we only call all_contracts.extend() on the
+        #       batch from the FRONT task (whose cursor was confirmed by its
+        #       predecessor), so no duplicates or gaps are possible.
+
+        async def _fetch_page(cursor: int) -> tuple:
+            """Fetch one GetDeviceContractsByPage; return (batch, tail_cursor)."""
+            res = await myadmin_call(
                 "GetDeviceContractsByPage",
                 {
-                    "apiKey":                  session_store["user_id"],
-                    "sessionId":               session_store["session_id"],
-                    "forAccount":              MYADMIN_ACCOUNT,
-                    "nextId":                  next_id,
-                    # Required to populate firstDeviceActivationDate (First Connect Date)
+                    "apiKey":                       session_store["user_id"],
+                    "sessionId":                    session_store["session_id"],
+                    "forAccount":                   MYADMIN_ACCOUNT,
+                    "nextId":                       cursor,
                     "includesDeviceConnectionInfo": True,
                 },
                 timeout=120.0,
             )
-            batch = result.get("result") or []
-            print(f"[sync] Step 2 page {page_num}: {len(batch)} contracts")
-            if not batch:
+            batch = res.get("result") or []
+            tail  = batch[-1].get("id", 0) if batch else 0
+            return batch, tail
+
+        from collections import deque
+        # Each slot: (Task, seed_cursor, slot_page_num)
+        pending: deque = deque()
+
+        # Pre-fill the window; all slots use the same seed cursor initially.
+        for _i in range(WINDOW_SIZE):
+            page_num += 1
+            pending.append(
+                (asyncio.ensure_future(_fetch_page(next_id)), next_id, page_num)
+            )
+
+        while pending:
+            # Drain the FRONT — this is the authoritatively ordered page.
+            oldest_task, _seed, oldest_page = pending.popleft()
+            batch, tail_id = await oldest_task
+
+            print(f"[sync] Step 2 page {oldest_page}: {len(batch)} contracts "
+                  f"(tail={tail_id})")
+
+            if batch:
+                all_contracts.extend(batch)
+
+            last_page = (len(batch) < 1000)
+
+            # Update progress bar
+            step2_fraction = min(oldest_page / max(EST_PAGES, oldest_page + 1), 0.95)
+            current_pct    = int(STEP2_START_PCT + step2_fraction * STEP2_PCT_RANGE)
+            _set_progress(
+                step="step2",
+                step_label=f"Step 2/2 -- Fetching contracts (page {oldest_page})...",
+                page=oldest_page,
+                total_pages_est=max(EST_PAGES, oldest_page),
+                records=len(all_contracts),
+                pct=current_pct,
+                message=f"Page {oldest_page} — {len(all_contracts):,} contracts so far...",
+            )
+
+            if last_page:
+                # Cancel remaining lookahead tasks (stale cursors).
+                for fut, _, _ in pending:
+                    fut.cancel()
+                pending.clear()
                 break
-            all_contracts.extend(batch)
-            if len(batch) < 1000:
-                break
-            next_id = batch[-1].get("id", 0)
+
+            # Correct the next slot: cancel its stale-cursor task and
+            # re-dispatch with the now-confirmed cursor (tail_id).
+            if pending:
+                stale_task, _stale_cursor, stale_page = pending.popleft()
+                stale_task.cancel()
+                pending.appendleft(
+                    (asyncio.ensure_future(_fetch_page(tail_id)), tail_id, stale_page)
+                )
+            else:
+                # Window was size 1 (or drained); just append next page.
+                page_num += 1
+                pending.append(
+                    (asyncio.ensure_future(_fetch_page(tail_id)), tail_id, page_num)
+                )
+
+            # Append a new back-of-window slot seeded with tail_id; it will be
+            # corrected when it reaches the front.
+            page_num += 1
+            pending.append(
+                (asyncio.ensure_future(_fetch_page(tail_id)), tail_id, page_num)
+            )
+
+            # ── Option 3: checkpoint after each confirmed page ─────────────────
+            try:
+                _save_json(CONTRACT_CHECKPOINT_FILE, {
+                    "next_id":   tail_id,
+                    "page_num":  oldest_page,
+                    "contracts": all_contracts,
+                })
+            except Exception as ckpt_err:
+                print(f"[sync] Checkpoint write failed (non-fatal): {ckpt_err}")
 
         print(f"[sync] Step 2 complete: {len(all_contracts)} total contracts")
         _set_progress(
@@ -515,10 +609,17 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
             pct=75,
             message=f"{len(all_contracts):,} total contracts fetched",
         )
-        _sync_cache["contracts"]         = all_contracts
-        _sync_cache["fetched_at"]         = time.time()
-        _sync_cache["device_db_records"]  = all_device_dbs   # keep in sync with contracts
+        _sync_cache["contracts"]        = all_contracts
+        _sync_cache["fetched_at"]        = time.time()
+        _sync_cache["device_db_records"] = all_device_dbs
         _save_json(SYNC_CACHE_FILE, _sync_cache)
+
+        # Clear checkpoint — full sync completed successfully.
+        try:
+            if os.path.exists(CONTRACT_CHECKPOINT_FILE):
+                os.remove(CONTRACT_CHECKPOINT_FILE)
+        except Exception:
+            pass
 
     # -- Processing: join + group -----------------------------------------------
     _set_progress(

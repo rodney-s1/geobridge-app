@@ -9,6 +9,31 @@ router = APIRouter()
 # Geotab MyAdmin API URL from .env
 MYADMIN_API_URL = os.getenv("MYADMIN_API_URL", "https://myadminapi.geotab.com/v2/MyAdminApi.ashx")
 
+# ---------------------------------------------------------------------------
+# Persistent HTTP client (Option 5)
+# ---------------------------------------------------------------------------
+# Re-using a single AsyncClient across all myadmin_call() invocations means
+# TCP connections and TLS sessions are kept alive between pages, saving
+# ~200-500 ms of handshake overhead per request (multiplied across 100+ pages
+# during a full contract sync).
+#
+# Limits:
+#   max_keepalive_connections=10  — pool size; more than enough for our
+#                                   sliding-window concurrency (WINDOW_SIZE=4)
+#   max_connections=20            — hard ceiling on simultaneous sockets
+#   keepalive_expiry=30           — idle connections closed after 30 s so we
+#                                   don't hold sockets open between syncs
+# ---------------------------------------------------------------------------
+_http_client = httpx.AsyncClient(
+    limits=httpx.Limits(
+        max_keepalive_connections=10,
+        max_connections=20,
+        keepalive_expiry=30,
+    ),
+    # Default timeout applied unless overridden per-call.
+    timeout=120.0,
+)
+
 # Store session in memory while app is running
 session_store = {
     "user_id": None,
@@ -27,23 +52,27 @@ class LoginRequest(BaseModel):
 async def myadmin_call(method: str, params: dict, timeout: float = 120.0):
     """
     Make a JSON-RPC call to the Geotab MyAdmin API.
-    Default timeout is 120 s -- long enough for paginated GetDeviceContractsByPage
-    calls across large accounts (CELU01 has 2000+ customers / 5000+ contracts).
-    Pass a custom timeout for one-off calls that need a different limit.
+
+    Uses the module-level persistent AsyncClient (_http_client) so that TCP
+    connections and TLS sessions are reused across consecutive paginated calls
+    (e.g. the 100+ GetDeviceContractsByPage pages in a full sync).
+
+    Default timeout is 120 s — long enough for paginated calls across large
+    accounts.  Pass a custom timeout for one-off calls that need a different
+    limit.
     """
     payload = {
         "method": method,
         "params": params
     }
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            MYADMIN_API_URL,
-            json=payload,
-            headers={"Content-Type": "application/json"},
-            timeout=timeout
-        )
-        response.raise_for_status()
-        return response.json()
+    response = await _http_client.post(
+        MYADMIN_API_URL,
+        json=payload,
+        headers={"Content-Type": "application/json"},
+        timeout=timeout,
+    )
+    response.raise_for_status()
+    return response.json()
 
 # --- Login Route ---------------------------------------------
 @router.post("/login")
