@@ -758,7 +758,27 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 mapping_tier = "serial_prefix"
                 lookup_code  = "C3 serial prefix (CalAmp Asset)"
 
-            if promo_code:
+            # -- Tier 0.5e: Suspend billing plan always wins over promoCode ------
+            # A device on "Suspend Mode" is billed at the suspend rate regardless
+            # of what promoCode it carries.  Without this guard, a suspended device
+            # that also has e.g. BUNDLE-RS56-R1 would be resolved via the promoCode
+            # tier (Tier 1/3) to a bundle SKU instead of the suspend SKU.
+            #
+            # We check the global mapping_index for any billing_plan whose upper()
+            # resolves to a Suspend-family SKU (startswith "Service Fee Geotab (Suspend").
+            # This makes the rule data-driven: if a new suspend variant is ever added
+            # to sku_mappings.json it will be picked up automatically.
+            if sku_key is None and billing_plan:
+                _bp_upper = billing_plan.upper()
+                _bp_sku   = mapping_index.get(_bp_upper)
+                if _bp_sku and _bp_sku.startswith("Service Fee Geotab (Suspend"):
+                    sku_key      = _bp_sku
+                    mapping_tier = "billing_plan_suspend"
+                    lookup_code  = billing_plan
+
+            # Tier 1: customer-specific mapping on promoCode (highest priority,
+            # but only fires when no earlier tier has already resolved a SKU)
+            if sku_key is None and promo_code:
                 sku_key = cust_mapping_index.get((norm_cname, promo_code), None)
                 if sku_key is not None:
                     mapping_tier = "customer"
