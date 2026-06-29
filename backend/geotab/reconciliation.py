@@ -747,6 +747,17 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 mapping_tier = "serial_prefix"
                 lookup_code  = "EG/EK serial prefix (Phillips Connect)"
 
+            # -- Tier 0.5d: C3 serial prefix = CalAmp Asset Service Fee -----------
+            # CalAmp asset trackers have serial numbers starting with "C3".
+            # MyAdmin reports their activeDevicePlan as "Pro Mode" — the same plan
+            # used by standard Geotab GO devices — so the normal billing-plan lookup
+            # would incorrectly route them to "Service Fee Geotab (Pro)".
+            # The serial prefix is the only reliable discriminator.
+            if sku_key is None and serial_upper.startswith("C3"):
+                sku_key      = "Service Fee CalAmp (Asset)"
+                mapping_tier = "serial_prefix"
+                lookup_code  = "C3 serial prefix (CalAmp Asset)"
+
             if promo_code:
                 sku_key = cust_mapping_index.get((norm_cname, promo_code), None)
                 if sku_key is not None:
