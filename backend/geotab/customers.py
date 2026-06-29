@@ -453,13 +453,13 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
             message=f"{len(all_contracts):,} contracts from 12-hour cache",
         )
     else:
-        print("[sync] Step 2: Fetching device contracts (pipeline + checkpoint)...")
+        print("[sync] Step 2: Fetching device contracts...")
 
         # ── Option 3: resume from checkpoint ──────────────────────────────────
-        # If a previous sync was interrupted, a checkpoint file stores the last
-        # confirmed cursor and all contracts collected so far.  Resuming from it
-        # skips already-fetched pages entirely.  The checkpoint is deleted when
-        # Step 2 completes successfully.
+        # If a previous sync was interrupted mid-way, a checkpoint file records
+        # the last confirmed cursor and contracts collected so far.  The next
+        # sync resumes from that point instead of restarting from page 1.
+        # The checkpoint is deleted when Step 2 completes successfully.
         ckpt = _load_json(CONTRACT_CHECKPOINT_FILE, {})
         if ckpt.get("next_id") and ckpt.get("contracts"):
             all_contracts = ckpt["contracts"]
@@ -472,7 +472,6 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
             next_id       = 0
             page_num      = 0
 
-        # Progress bar: 20% → 75% across Step 2
         STEP2_START_PCT = 20
         STEP2_END_PCT   = 75
         STEP2_PCT_RANGE = STEP2_END_PCT - STEP2_START_PCT
@@ -483,123 +482,60 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
             step_label="Step 2/2 -- Fetching device contracts...",
             pct=STEP2_START_PCT,
             records=len(all_contracts),
-            message=f"Starting contract fetch (window={WINDOW_SIZE})..."
+            message="Starting contract fetch..."
                     + (f" Resuming from page ~{page_num}." if page_num else ""),
         )
 
-        # ── Option 2: pipelined parallel fetch ────────────────────────────────
-        # GetDeviceContractsByPage uses cursor pagination: page N's cursor (the
-        # id of its last record) is needed to dispatch page N+1.  Pure serial
-        # fetching wastes all per-page network RTT in idle waiting.
-        #
-        # Pipeline strategy:
-        #   1.  Seed a deque (pending) with WINDOW_SIZE tasks, all using the
-        #       current starting cursor.  They will be discarded/re-dispatched
-        #       as real cursors become known.
-        #   2.  Always await the FRONT of the deque (oldest page) first so pages
-        #       are consumed in strict order.
-        #   3.  Once page N's real tail cursor is known:
-        #         a.  Cancel the next slot in the deque (it was seeded with the
-        #             wrong cursor) and re-dispatch it with tail_id.
-        #         b.  Append a new slot at the back seeded with tail_id.
-        #       This keeps WINDOW_SIZE tasks live at all times after the first
-        #       cycle, hiding (WINDOW_SIZE-1) page RTTs behind local processing.
-        #   4.  Correctness guarantee: we only call all_contracts.extend() on the
-        #       batch from the FRONT task (whose cursor was confirmed by its
-        #       predecessor), so no duplicates or gaps are possible.
-
-        async def _fetch_page(cursor: int) -> tuple:
-            """Fetch one GetDeviceContractsByPage; return (batch, tail_cursor)."""
-            res = await myadmin_call(
+        while True:
+            page_num += 1
+            step2_fraction = min(page_num / max(EST_PAGES, page_num + 1), 0.95)
+            current_pct    = int(STEP2_START_PCT + step2_fraction * STEP2_PCT_RANGE)
+            _set_progress(
+                step="step2",
+                step_label=f"Step 2/2 -- Fetching contracts (page {page_num})...",
+                page=page_num,
+                total_pages_est=max(EST_PAGES, page_num),
+                records=len(all_contracts),
+                pct=current_pct,
+                message=f"Page {page_num} — {len(all_contracts):,} contracts so far...",
+            )
+            print(f"[sync] Step 2 page {page_num} (nextId={next_id})...")
+            result = await myadmin_call(
                 "GetDeviceContractsByPage",
                 {
                     "apiKey":                       session_store["user_id"],
                     "sessionId":                    session_store["session_id"],
                     "forAccount":                   MYADMIN_ACCOUNT,
-                    "nextId":                       cursor,
+                    "nextId":                       next_id,
                     "includesDeviceConnectionInfo": True,
                 },
                 timeout=120.0,
             )
-            batch = res.get("result") or []
-            tail  = batch[-1].get("id", 0) if batch else 0
-            return batch, tail
-
-        from collections import deque
-        # Each slot: (Task, seed_cursor, slot_page_num)
-        pending: deque = deque()
-
-        # Pre-fill the window; all slots use the same seed cursor initially.
-        for _i in range(WINDOW_SIZE):
-            page_num += 1
-            pending.append(
-                (asyncio.ensure_future(_fetch_page(next_id)), next_id, page_num)
-            )
-
-        while pending:
-            # Drain the FRONT — this is the authoritatively ordered page.
-            oldest_task, _seed, oldest_page = pending.popleft()
-            batch, tail_id = await oldest_task
-
-            print(f"[sync] Step 2 page {oldest_page}: {len(batch)} contracts "
-                  f"(tail={tail_id})")
-
-            if batch:
-                all_contracts.extend(batch)
+            batch = result.get("result") or []
+            print(f"[sync] Step 2 page {page_num}: {len(batch)} contracts")
+            if not batch:
+                break
+            all_contracts.extend(batch)
+            next_id = batch[-1].get("id", 0)
 
             last_page = (len(batch) < 1000)
 
-            # Update progress bar
-            step2_fraction = min(oldest_page / max(EST_PAGES, oldest_page + 1), 0.95)
-            current_pct    = int(STEP2_START_PCT + step2_fraction * STEP2_PCT_RANGE)
-            _set_progress(
-                step="step2",
-                step_label=f"Step 2/2 -- Fetching contracts (page {oldest_page})...",
-                page=oldest_page,
-                total_pages_est=max(EST_PAGES, oldest_page),
-                records=len(all_contracts),
-                pct=current_pct,
-                message=f"Page {oldest_page} — {len(all_contracts):,} contracts so far...",
-            )
+            # ── Option 3: checkpoint every 10 pages ───────────────────────────
+            # Writes the confirmed cursor + contracts collected so far so a
+            # crash/restart can resume mid-sync.  Every 10 pages limits disk
+            # I/O while keeping worst-case resume loss to ~10,000 contracts.
+            if page_num % 10 == 0 or last_page:
+                try:
+                    _save_json(CONTRACT_CHECKPOINT_FILE, {
+                        "next_id":   next_id,
+                        "page_num":  page_num,
+                        "contracts": all_contracts,
+                    })
+                except Exception as ckpt_err:
+                    print(f"[sync] Checkpoint write failed (non-fatal): {ckpt_err}")
 
             if last_page:
-                # Cancel remaining lookahead tasks (stale cursors).
-                for fut, _, _ in pending:
-                    fut.cancel()
-                pending.clear()
                 break
-
-            # Correct the next slot: cancel its stale-cursor task and
-            # re-dispatch with the now-confirmed cursor (tail_id).
-            if pending:
-                stale_task, _stale_cursor, stale_page = pending.popleft()
-                stale_task.cancel()
-                pending.appendleft(
-                    (asyncio.ensure_future(_fetch_page(tail_id)), tail_id, stale_page)
-                )
-            else:
-                # Window was size 1 (or drained); just append next page.
-                page_num += 1
-                pending.append(
-                    (asyncio.ensure_future(_fetch_page(tail_id)), tail_id, page_num)
-                )
-
-            # Append a new back-of-window slot seeded with tail_id; it will be
-            # corrected when it reaches the front.
-            page_num += 1
-            pending.append(
-                (asyncio.ensure_future(_fetch_page(tail_id)), tail_id, page_num)
-            )
-
-            # ── Option 3: checkpoint after each confirmed page ─────────────────
-            try:
-                _save_json(CONTRACT_CHECKPOINT_FILE, {
-                    "next_id":   tail_id,
-                    "page_num":  oldest_page,
-                    "contracts": all_contracts,
-                })
-            except Exception as ckpt_err:
-                print(f"[sync] Checkpoint write failed (non-fatal): {ckpt_err}")
 
         print(f"[sync] Step 2 complete: {len(all_contracts)} total contracts")
         _set_progress(
