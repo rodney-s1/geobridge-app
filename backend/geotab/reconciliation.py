@@ -706,22 +706,20 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             # would incorrectly route them to "Service Fee Geotab (Pro)".
             #
             # The sub_account_tag "Cameras" is the reliable discriminator.
-            # GE/GF serials are Surfsight (Geotab Camera) devices and SHOULD
-            # be locked to SS Service Fee when on a {Cameras} sub-account.
             #
             # Two device types on {Cameras} sub-accounts must fall through to
-            # normal promoCode resolution instead:
-            #   1. GO Focus Plus cameras — identified by a promoCode that maps
-            #      to a Focus Plus SKU (GFP-BUNDLE, BUNDLE-GOGF*, GFP-AUX-BUNDLE,
-            #      GO EXPAND, etc.).  These are distinct hardware from Surfsight.
+            # their own SKU resolution instead of being locked to SS Service Fee:
+            #   1. GE/GF serials — GO Focus Plus (GE) and GO Focus (GF) are
+            #      distinct Geotab hardware, NOT Surfsight cameras.  They are
+            #      handled by Tier 0.5f below.
             #   2. Surfsight devices with a bundle promoCode (SURF-BUNDLE,
             #      SURF-BND-PROMO) that maps to a more specific SS Service Fee
             #      variant — their promoCode resolution is more precise.
             serial_upper = serial.upper()
+            _is_ge_gf         = serial_upper.startswith("GE") or serial_upper.startswith("GF")
             _resolved_promo_sku = mapping_index.get(promo_code, "") if promo_code else ""
-            _is_gfp_promo    = "focus plus" in _resolved_promo_sku.lower() or "go focus" in _resolved_promo_sku.lower()
             _promo_maps_to_ss = _resolved_promo_sku.startswith("SS Service Fee")
-            if sub_account_tag.lower() == "cameras" and not _is_gfp_promo and not _promo_maps_to_ss:
+            if sub_account_tag.lower() == "cameras" and not _is_ge_gf and not _promo_maps_to_ss:
                 sku_key      = "SS Service Fee"
                 mapping_tier = "sub_account_tag"
                 lookup_code  = "Cameras sub-account"
@@ -765,6 +763,30 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 sku_key      = "Service Fee CalAmp (Asset)"
                 mapping_tier = "serial_prefix"
                 lookup_code  = "C3 serial prefix (CalAmp Asset)"
+
+            # -- Tier 0.5f: GE / GF serial prefix = GO Focus Plus / GO Focus ----
+            # GE serials = Geotab GO Focus Plus hardware.
+            # GF serials = Geotab GO Focus hardware.
+            # These are distinct Geotab devices (not Surfsight cameras) and fall
+            # through Tier 0.5a via the _is_ge_gf exclusion.  When no promoCode
+            # is present they cannot be resolved through the normal promoCode tiers
+            # (Tier 1 / Tier 3) and would incorrectly fall to the generic billing-
+            # plan lookup, often producing "Geotab Service (GO Plan)" instead of
+            # the correct Focus-family SKU.
+            #
+            # When a promoCode IS present (e.g. GFP-BUNDLE, BUNDLE-GOGF*,
+            # GFP-AUX-BUNDLE, GO EXPAND) this tier is intentionally skipped so the
+            # promoCode tiers (Tier 1 / Tier 3) can resolve the more-specific
+            # bundle variant.
+            if sku_key is None and not promo_code:
+                if serial_upper.startswith("GE"):
+                    sku_key      = "Geotab Service (GO Focus Plus)"
+                    mapping_tier = "serial_prefix"
+                    lookup_code  = "GE serial prefix (GO Focus Plus)"
+                elif serial_upper.startswith("GF"):
+                    sku_key      = "Service Fee (GO Focus)"
+                    mapping_tier = "serial_prefix"
+                    lookup_code  = "GF serial prefix (GO Focus)"
 
             # -- Tier 0.5e: Suspend billing plan always wins over promoCode ------
             # A device on "Suspend Mode" is billed at the suspend rate regardless

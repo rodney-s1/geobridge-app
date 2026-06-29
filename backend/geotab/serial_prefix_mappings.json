@@ -90,6 +90,18 @@
     "dmExcluded": false
   },
   {
+    "prefix": "GE",
+    "skuKey": "Geotab Service (GO Focus Plus)",
+    "notes": "Geotab GO Focus Plus hardware; no promoCode → Tier 0.5f; promoCode (GFP-BUNDLE etc.) → normal Tier 1/3",
+    "dmExcluded": false
+  },
+  {
+    "prefix": "GF",
+    "skuKey": "Service Fee (GO Focus)",
+    "notes": "Geotab GO Focus hardware; no promoCode → Tier 0.5f; promoCode → normal Tier 1/3",
+    "dmExcluded": false
+  },
+  {
     "prefix": "HN",
     "skuKey": "DM Service Fee",
     "notes": "Digital Matter — also in DM_SERIAL_PREFIXES (excluded from prorated invoices); reconciliation Tier 0.5b resolves to DM Service Fee when PRO MODE and no promoCode",
