@@ -706,14 +706,25 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             # would incorrectly route them to "Service Fee Geotab (Pro)".
             #
             # The sub_account_tag "Cameras" is the reliable discriminator for
-            # Surfsight (AI-12/AI-14) cameras.  However, GO Focus Plus cameras
-            # (serial prefix "GE" or "GF") can also live on a {Cameras}
-            # sub-account and must NOT be routed here — they resolve correctly
-            # via their promoCode (GFP-BUNDLE → "Geotab Service (GO Focus Plus)")
-            # through the normal Tier 1–4 lookup chain.
+            # Surfsight (AI-12/AI-14) cameras.  However, some devices on a
+            # {Cameras} sub-account carry a promoCode that already maps to the
+            # correct SS Service Fee variant (e.g. SURF-BUNDLE → SS Service Fee
+            # BUNDLE, SURF-BND-PROMO → SS Service Fee BUNDLE) and must NOT be
+            # overridden here — their promoCode resolution is more specific.
+            # Similarly, GO Focus Plus cameras (serial prefix "GE" or "GF") resolve
+            # via GFP-BUNDLE and must also be excluded.
+            #
+            # Exclusion rules (device falls through to normal Tier 1–4 lookup):
+            #   1. Serial starts with GE or GF  (GO Focus Plus camera)
+            #   2. Device has a promoCode whose global mapping resolves to any SKU
+            #      that starts with "SS Service Fee"  (e.g. SURF-BUNDLE)
             serial_upper = serial.upper()
             _is_ge_gf = serial_upper.startswith("GE") or serial_upper.startswith("GF")
-            if sub_account_tag.lower() == "cameras" and not _is_ge_gf:
+            _promo_maps_to_ss = (
+                promo_code
+                and (mapping_index.get(promo_code) or "").startswith("SS Service Fee")
+            )
+            if sub_account_tag.lower() == "cameras" and not _is_ge_gf and not _promo_maps_to_ss:
                 sku_key      = "SS Service Fee"
                 mapping_tier = "sub_account_tag"
                 lookup_code  = "Cameras sub-account"

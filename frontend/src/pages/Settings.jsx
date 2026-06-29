@@ -359,7 +359,8 @@ function SkuCatalogTab({ catalog, onRefresh }) {
 //  TAB 2 — Rate Plan Mappings
 // ═══════════════════════════════════════════════════════════════════════════════
 function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh }) {
-  const [editCode, setEditCode] = useState(null)
+  const [editCode,         setEditCode]         = useState(null)
+  const [editOriginalCode, setEditOriginalCode] = useState(null)  // tracks code before rename
   const [editForm, setEditForm] = useState({})
   const [adding, setAdding] = useState(false)
   const [addCode, setAddCode] = useState('')
@@ -385,9 +386,13 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh }) {
     if (found) setAddPrice(String(found.defaultPrice))
   }
 
-  async function saveMapping(data) {
+  async function saveMapping(data, originalCode = null) {
     setSaving(true)
     try {
+      // If the rate plan code was renamed, delete the old entry first
+      if (originalCode && originalCode.toUpperCase() !== data.ratePlanCode.toUpperCase()) {
+        await fetch(`${API}/api/settings/sku-mappings/${encodeURIComponent(originalCode)}`, { method: 'DELETE' })
+      }
       const r = await fetch(`${API}/api/settings/sku-mappings`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -396,6 +401,7 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh }) {
       if (!r.ok) throw new Error(await r.text())
       setMsg({ type: 'ok', text: 'Mapping saved.' })
       setEditCode(null)
+      setEditOriginalCode(null)
       setAdding(false)
       setAddCode(''); setAddSku(''); setAddPrice(''); setAddNotes('')
       onRefresh()
@@ -564,8 +570,9 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh }) {
                       <div className="grid grid-cols-2 gap-3 mb-2">
                         <div>
                           <label className="block text-xs text-slate-400 mb-1">Rate Plan Code</label>
-                          <input value={editForm.ratePlanCode} readOnly
-                            className="w-full bg-slate-600 border border-slate-500 rounded px-2 py-1 text-sm font-mono text-slate-300 cursor-not-allowed" />
+                          <input value={editForm.ratePlanCode || ''}
+                            onChange={e => setEditForm(f => ({ ...f, ratePlanCode: e.target.value.toUpperCase() }))}
+                            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm font-mono text-slate-100 focus:outline-none focus:border-blue-500" />
                         </div>
                         <div>
                           <label className="block text-xs text-slate-400 mb-1">QB SKU</label>
@@ -595,11 +602,11 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh }) {
                       </div>
                       <div className="flex gap-2">
                         <button disabled={saving}
-                          onClick={() => saveMapping({ ...editForm, defaultPrice: parseFloat(editForm.defaultPrice) || 0 })}
+                          onClick={() => saveMapping({ ...editForm, defaultPrice: parseFloat(editForm.defaultPrice) || 0 }, editOriginalCode)}
                           className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded font-medium">
                           {saving ? 'Saving…' : 'Save'}
                         </button>
-                        <button onClick={() => setEditCode(null)} className="px-3 py-1 text-slate-400 hover:text-white text-sm">Cancel</button>
+                        <button onClick={() => { setEditCode(null); setEditOriginalCode(null) }} className="px-3 py-1 text-slate-400 hover:text-white text-sm">Cancel</button>
                       </div>
                     </td>
                   </tr>
@@ -630,7 +637,7 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh }) {
                     <td className="px-4 py-2.5 text-slate-400 text-xs hidden lg:table-cell truncate" title={m.notes}>{m.notes || '—'}</td>
                     <td className="px-4 py-2.5 text-right">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => { setEditCode(m.ratePlanCode); setEditForm({ ...m }) }}
+                        <button onClick={() => { setEditCode(m.ratePlanCode); setEditOriginalCode(m.ratePlanCode); setEditForm({ ...m }) }}
                           className="text-xs px-2 py-0.5 text-blue-400 hover:text-blue-300">Edit</button>
                         <DeleteBtn small onConfirm={() => deleteMapping(m.ratePlanCode)} />
                       </div>
