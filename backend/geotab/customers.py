@@ -194,7 +194,7 @@ QB_JOB_TYPE_MAP = {
     "cua":                          "Charge Upon Activation",
     "charge upon activation":       "Charge Upon Activation",
     "cua - charge upon activation": "Charge Upon Activation",
-    "sourcewell":                   "Sourcewell",
+    "sourcewell":                   "Charge Upon Activation",
     "hanover":                      "Hanover",
     "hanover deal":                 "Hanover",
     "han-cs":                       "Han-CS",
@@ -1108,7 +1108,7 @@ class BillingTypeUpdate(BaseModel):
 @router.post("/customers/{account_id}/billing-type")
 async def set_billing_type(account_id: str, body: BillingTypeUpdate):
     valid = [
-        "Standard", "Charge Upon Activation", "Sourcewell", "Hanover", "Han-CS",
+        "Standard", "Charge Upon Activation", "Hanover", "Han-CS",
         "Check Before Sending",
         "Reseller", "In Collections", "Terminated", "Unknown",
     ]

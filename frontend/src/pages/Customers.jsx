@@ -6,7 +6,6 @@ const API = 'http://127.0.0.1:8001'
 const BILLING_COLORS = {
   'Standard':               'bg-blue-500/20 text-blue-300 border border-blue-500/30',
   'Charge Upon Activation': 'bg-purple-500/20 text-purple-300 border border-purple-500/30',
-  'Sourcewell':             'bg-green-500/20 text-green-300 border border-green-500/30',
   'Hanover':                'bg-orange-500/20 text-orange-300 border border-orange-500/30',
   'Han-CS':                 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30',
   'Check Before Sending':   'bg-red-500/20 text-red-300 border border-red-500/30',
@@ -18,7 +17,7 @@ const BILLING_COLORS = {
 }
 
 const VALID_BILLING_TYPES = [
-  'Standard','Charge Upon Activation','Sourcewell','Hanover','Han-CS',
+  'Standard','Charge Upon Activation','Hanover','Han-CS',
   'Check Before Sending',
   'Reseller','In Collections','Terminated','Unknown',
 ]

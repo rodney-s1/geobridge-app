@@ -594,7 +594,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         # Re-scan all sub-account cids so billing type is found even when
         # the first cid seen belongs to a sub-account with an Unknown type.
         # Priority order (most specific wins):
-        #   CUA / Hanover / Han-CS / Sourcewell / … > Standard > Unknown > (missing)
+        #   CUA / Hanover / Han-CS / … > Standard > Unknown > (missing)
         _LOW_PRIORITY = {"Unknown", "Standard"}
         sub_cids     = cdata.get("subAccountIds") or {cid}
         billing_type = cdata.get("billingType") or "Standard"
