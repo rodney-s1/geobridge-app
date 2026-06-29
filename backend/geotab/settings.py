@@ -48,8 +48,9 @@ SKU_CATALOG_FILE        = os.path.join(_HERE, "sku_catalog.json")
 SKU_MAPPINGS_FILE       = os.path.join(_HERE, "sku_mappings.json")
 CUST_RATE_PLAN_FILE     = os.path.join(_HERE, "customer_rate_plan_mappings.json")
 CUSTOMER_OVERRIDES_FILE = os.path.join(_HERE, "sku_customer_overrides.json")
-QB_QUANTITIES_FILE      = os.path.join(_HERE, "qb_invoice_quantities.json")
-MYADMIN_CACHE_FILE      = os.path.join(_HERE, "myadmin_cache.json")
+QB_QUANTITIES_FILE          = os.path.join(_HERE, "qb_invoice_quantities.json")
+MYADMIN_CACHE_FILE          = os.path.join(_HERE, "myadmin_cache.json")
+SERIAL_PREFIX_FILE          = os.path.join(_HERE, "serial_prefix_mappings.json")
 
 
 def _load(path, default):
@@ -93,8 +94,9 @@ def _save(path, data):
 # For a local desktop app with <1000 items in each file, disk reads on every
 # GET are effectively instant and far safer than module-level caching.
 
-def _catalog()       -> list: return _load(SKU_CATALOG_FILE,       [])
-def _cust_mappings() -> list:
+def _catalog()          -> list: return _load(SKU_CATALOG_FILE,        [])
+def _serial_prefixes()  -> list: return _load(SERIAL_PREFIX_FILE,      [])
+def _cust_mappings()    -> list:
     data = _load(CUST_RATE_PLAN_FILE, None)
     if data is None:
         # First run on this machine -- create the file so S3 can pick it up
@@ -152,15 +154,17 @@ def _mappings() -> list:
 
 # Keep module-level references for write operations so imports/upserts
 # don't need to reload from disk mid-operation.
-sku_catalog:     list = _catalog()
-sku_mappings:    list = _mappings()
-cust_rate_plans: list = _cust_mappings()
-cust_ovr:        list = _overrides()
+sku_catalog:      list = _catalog()
+sku_mappings:     list = _mappings()
+cust_rate_plans:  list = _cust_mappings()
+cust_ovr:         list = _overrides()
+serial_prefixes:  list = _serial_prefixes()
 
 print(f"[settings] SKU catalog: {len(sku_catalog)} SKUs, "
       f"{len(sku_mappings)} global mappings, "
       f"{len(cust_rate_plans)} customer-specific mappings, "
-      f"{len(cust_ovr)} price overrides")
+      f"{len(cust_ovr)} price overrides, "
+      f"{len(serial_prefixes)} serial prefix mappings")
 
 
 # ================================================================================
@@ -351,6 +355,59 @@ async def delete_override(override_id: str):
     cust_ovr = [o for o in cust_ovr if o["id"] != override_id]
     _save(CUSTOMER_OVERRIDES_FILE, cust_ovr)
     return {"success": True, "removed": before - len(cust_ovr)}
+
+
+# ================================================================================
+#  SERIAL PREFIX MAPPINGS  (serial prefix -> QB SKU)
+#  { prefix, skuKey, notes, dmExcluded }
+#  Used in invoices._sku_from_serial() and reconciliation.py Tier 0.5x tiers.
+#  dmExcluded=true entries are excluded from prorated invoice calculations.
+# ================================================================================
+
+class SerialPrefixUpsert(BaseModel):
+    prefix:     str
+    skuKey:     str = ""
+    notes:      str = ""
+    dmExcluded: bool = False
+
+
+@router.get("/settings/serial-prefix-mappings")
+async def list_serial_prefix_mappings():
+    data = _serial_prefixes()
+    return sorted(data, key=lambda x: x.get("prefix", "").upper())
+
+
+@router.post("/settings/serial-prefix-mappings")
+async def upsert_serial_prefix(body: SerialPrefixUpsert):
+    global serial_prefixes
+    serial_prefixes = _serial_prefixes()   # reload from disk first
+    norm_prefix = body.prefix.strip().upper()
+    if not norm_prefix:
+        raise HTTPException(status_code=400, detail="prefix must not be empty")
+    existing = next((p for p in serial_prefixes if p["prefix"].upper() == norm_prefix), None)
+    data = {
+        "prefix":     norm_prefix,
+        "skuKey":     body.skuKey.strip(),
+        "notes":      body.notes.strip(),
+        "dmExcluded": body.dmExcluded,
+    }
+    if existing:
+        existing.update(data)
+    else:
+        serial_prefixes.append(data)
+    _save(SERIAL_PREFIX_FILE, serial_prefixes)
+    return {"success": True, "mapping": data}
+
+
+@router.delete("/settings/serial-prefix-mappings/{prefix:path}")
+async def delete_serial_prefix(prefix: str):
+    global serial_prefixes
+    serial_prefixes = _serial_prefixes()   # reload from disk first
+    norm_prefix = prefix.strip().upper()
+    before = len(serial_prefixes)
+    serial_prefixes = [p for p in serial_prefixes if p["prefix"].upper() != norm_prefix]
+    _save(SERIAL_PREFIX_FILE, serial_prefixes)
+    return {"success": True, "removed": before - len(serial_prefixes)}
 
 
 # ================================================================================
@@ -813,12 +870,13 @@ async def get_settings_summary():
         unmapped_count = len(seen_codes - mapped_codes)
 
         return {
-            "skuCount":         len(catalog_now),
-            "mappingCount":     len(mappings_now),
-            "custMappingCount": len(cust_maps_now),
-            "overrideCount":    len(overrides_now),
-            "unmappedCount":    unmapped_count,
-            "hasCachedData":    bool(raw),
+            "skuCount":            len(catalog_now),
+            "mappingCount":        len(mappings_now),
+            "custMappingCount":    len(cust_maps_now),
+            "overrideCount":       len(overrides_now),
+            "serialPrefixCount":   len(_serial_prefixes()),
+            "unmappedCount":       unmapped_count,
+            "hasCachedData":       bool(raw),
         }
     except Exception as e:
         import traceback
@@ -827,12 +885,13 @@ async def get_settings_summary():
         # Return disk counts even on error so the page still shows data
         try:
             return {
-                "skuCount":         len(_catalog()),
-                "mappingCount":     len(_mappings()),
-                "custMappingCount": len(_cust_mappings()),
-                "overrideCount":    len(_overrides()),
-                "unmappedCount":    0,
-                "hasCachedData":    False,
+                "skuCount":          len(_catalog()),
+                "mappingCount":      len(_mappings()),
+                "custMappingCount":  len(_cust_mappings()),
+                "overrideCount":     len(_overrides()),
+                "serialPrefixCount": len(_serial_prefixes()),
+                "unmappedCount":     0,
+                "hasCachedData":     False,
                 "_error": str(e),
             }
         except Exception:
@@ -875,10 +934,11 @@ async def debug_settings():
         }
 
     return {
-        "version":   "schema-migration",   # git commit -- if you see this, new code is running
-        "here":      _HERE,
-        "cwd":       os.getcwd(),
-        "catalog":   file_info(SKU_CATALOG_FILE),
-        "mappings":  file_info(SKU_MAPPINGS_FILE),
-        "overrides": file_info(CUSTOMER_OVERRIDES_FILE),
+        "version":        "schema-migration",   # git commit -- if you see this, new code is running
+        "here":           _HERE,
+        "cwd":            os.getcwd(),
+        "catalog":        file_info(SKU_CATALOG_FILE),
+        "mappings":       file_info(SKU_MAPPINGS_FILE),
+        "overrides":      file_info(CUSTOMER_OVERRIDES_FILE),
+        "serialPrefixes": file_info(SERIAL_PREFIX_FILE),
     }

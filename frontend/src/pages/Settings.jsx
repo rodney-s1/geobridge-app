@@ -1213,31 +1213,270 @@ function CustRatePlanTab({ custMappings, catalog, onRefresh }) {
 }
 
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TAB — Serial Prefix Mappings
+// ═══════════════════════════════════════════════════════════════════════════════
+function SerialPrefixTab({ prefixMappings, catalog, onRefresh }) {
+  const [prefix,     setPrefix]     = useState('')
+  const [skuKey,     setSkuKey]     = useState('')
+  const [notes,      setNotes]      = useState('')
+  const [dmExcluded, setDmExcluded] = useState(false)
+  const [saving,     setSaving]     = useState(false)
+  const [error,      setError]      = useState(null)
+  const [search,     setSearch]     = useState('')
+
+  const skuOptions = [...catalog].sort((a, b) =>
+    (a.skuKey || '').localeCompare(b.skuKey || '')
+  )
+
+  const filtered = (prefixMappings || []).filter(p => {
+    const q = search.toLowerCase()
+    return !q
+      || (p.prefix || '').toLowerCase().includes(q)
+      || (p.skuKey || '').toLowerCase().includes(q)
+      || (p.notes  || '').toLowerCase().includes(q)
+  })
+
+  async function handleAdd(e) {
+    e.preventDefault()
+    if (!prefix.trim()) return
+    setSaving(true); setError(null)
+    try {
+      const res = await fetch(`${API}/api/settings/serial-prefix-mappings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prefix: prefix.trim().toUpperCase(), skuKey, notes, dmExcluded }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || `HTTP ${res.status}`)
+      }
+      setPrefix(''); setSkuKey(''); setNotes(''); setDmExcluded(false)
+      await onRefresh()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete(pfx) {
+    try {
+      await fetch(`${API}/api/settings/serial-prefix-mappings/${encodeURIComponent(pfx)}`, {
+        method: 'DELETE',
+      })
+      await onRefresh()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+
+      {/* ── Info banner ──────────────────────────────────────────── */}
+      <div className="bg-slate-800/60 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-400 leading-relaxed">
+        Serial prefixes are matched against the first 2 characters of a device serial number.
+        Entries with a <span className="text-amber-400 font-medium">QB SKU</span> resolve directly
+        to that SKU (bypassing promoCode/billing-plan lookup).
+        Entries marked <span className="text-blue-400 font-medium">DM Excluded</span> are skipped
+        during prorated invoice calculations (Digital Matter devices).
+      </div>
+
+      {/* ── Add form ─────────────────────────────────────────────── */}
+      <form onSubmit={handleAdd}
+        className="bg-slate-800 border border-slate-700 rounded-xl p-5 space-y-4">
+        <h3 className="text-sm font-semibold text-slate-200 uppercase tracking-wide">
+          Add / Update Prefix Mapping
+        </h3>
+
+        {error && (
+          <div className="text-sm text-red-400 bg-red-900/30 border border-red-800 rounded-lg px-3 py-2">
+            {error}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {/* Prefix */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-slate-400 font-medium">Serial Prefix *</label>
+            <input
+              value={prefix}
+              onChange={e => setPrefix(e.target.value.toUpperCase().slice(0, 6))}
+              placeholder="e.g. C3"
+              maxLength={6}
+              className="bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm
+                text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500
+                font-mono uppercase tracking-widest"
+            />
+          </div>
+
+          {/* SKU dropdown */}
+          <div className="flex flex-col gap-1 sm:col-span-1">
+            <label className="text-xs text-slate-400 font-medium">QB SKU (leave blank if DM-excluded only)</label>
+            <select
+              value={skuKey}
+              onChange={e => setSkuKey(e.target.value)}
+              className="bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm
+                text-slate-200 focus:outline-none focus:border-blue-500"
+            >
+              <option value="">— none —</option>
+              {skuOptions.map(s => (
+                <option key={s.skuKey} value={s.skuKey}>{s.skuKey}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Notes */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-slate-400 font-medium">Notes</label>
+            <input
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="Optional description"
+              className="bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm
+                text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500"
+            />
+          </div>
+
+          {/* DM Excluded toggle + submit */}
+          <div className="flex flex-col gap-1 justify-end">
+            <label className="flex items-center gap-2 cursor-pointer select-none mb-1">
+              <div
+                onClick={() => setDmExcluded(v => !v)}
+                className={`relative w-10 h-5 rounded-full transition-colors ${
+                  dmExcluded ? 'bg-blue-600' : 'bg-slate-600'
+                }`}
+              >
+                <div className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white
+                  transition-transform ${dmExcluded ? 'translate-x-5' : 'translate-x-0'}`} />
+              </div>
+              <span className="text-xs text-slate-400">DM Excluded</span>
+            </label>
+            <button
+              type="submit"
+              disabled={saving || !prefix.trim()}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40
+                text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              {saving ? 'Saving…' : 'Save Mapping'}
+            </button>
+          </div>
+        </div>
+      </form>
+
+      {/* ── Table ────────────────────────────────────────────────── */}
+      <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+        {/* Table toolbar */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
+          <span className="text-sm font-semibold text-slate-200">
+            Serial Prefix Mappings
+            <span className="ml-2 text-xs text-slate-500 font-normal">
+              ({(prefixMappings || []).length} entries)
+            </span>
+          </span>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">🔍</span>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Filter…"
+              className="pl-8 pr-7 py-1.5 bg-slate-900 border border-slate-600 rounded-lg
+                text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500 w-44"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500
+                  hover:text-slate-200 transition-colors leading-none"
+                title="Clear"
+              >✕</button>
+            )}
+          </div>
+        </div>
+
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-700 bg-slate-900/50">
+              <th className="px-4 py-2.5 text-left text-xs text-slate-400 font-semibold uppercase tracking-wide w-24">Prefix</th>
+              <th className="px-4 py-2.5 text-left text-xs text-slate-400 font-semibold uppercase tracking-wide">QB SKU</th>
+              <th className="px-4 py-2.5 text-left text-xs text-slate-400 font-semibold uppercase tracking-wide w-16 text-center">DM Excl.</th>
+              <th className="px-4 py-2.5 text-left text-xs text-slate-400 font-semibold uppercase tracking-wide">Notes</th>
+              <th className="px-4 py-2.5 w-12" />
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-4 py-8 text-center text-slate-500 text-sm">
+                  {search ? 'No entries match your filter.' : 'No serial prefix mappings defined.'}
+                </td>
+              </tr>
+            )}
+            {filtered.map(p => (
+              <tr key={p.prefix} className="border-b border-slate-700/50 hover:bg-slate-700/30 group transition-colors">
+                <td className="px-4 py-2.5">
+                  <code className="text-blue-300 font-mono font-semibold text-sm bg-slate-900/60 px-1.5 py-0.5 rounded">
+                    {p.prefix}
+                  </code>
+                </td>
+                <td className="px-4 py-2.5">
+                  {p.skuKey
+                    ? <Badge color="green">{p.skuKey}</Badge>
+                    : <span className="text-slate-600 text-xs italic">—</span>
+                  }
+                </td>
+                <td className="px-4 py-2.5 text-center">
+                  {p.dmExcluded
+                    ? <Badge color="blue">DM</Badge>
+                    : <span className="text-slate-700">—</span>
+                  }
+                </td>
+                <td className="px-4 py-2.5 text-slate-400 text-xs max-w-xs truncate" title={p.notes}>
+                  {p.notes || <span className="text-slate-700">—</span>}
+                </td>
+                <td className="px-4 py-2.5 text-right">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <DeleteBtn small onConfirm={() => handleDelete(p.prefix)} />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+
 // ===============================================================================
 //  ROOT COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('catalog')
-  const [catalog,   setCatalog]   = useState([])
-  const [mappings,  setMappings]  = useState([])
-  const [overrides,    setOverrides]    = useState([])
-  const [custMappings, setCustMappings] = useState([])
-  const [unmapped,     setUnmapped]     = useState([])
-  const [summary,      setSummary]      = useState(null)
-  const [loading,      setLoading]      = useState(true)
+  const [catalog,        setCatalog]        = useState([])
+  const [mappings,       setMappings]       = useState([])
+  const [overrides,      setOverrides]      = useState([])
+  const [custMappings,   setCustMappings]   = useState([])
+  const [unmapped,       setUnmapped]       = useState([])
+  const [summary,        setSummary]        = useState(null)
+  const [loading,        setLoading]        = useState(true)
+  const [prefixMappings, setPrefixMappings] = useState([])
 
   const [fetchError, setFetchError] = useState(null)
 
   const fetchAll = useCallback(async () => {
     setFetchError(null)
     // Use allSettled so one failing endpoint doesn't cancel the others
-    const [catR, mapR, ovrR, crpR, unmR, sumR] = await Promise.allSettled([
+    const [catR, mapR, ovrR, crpR, unmR, sumR, sprR] = await Promise.allSettled([
       fetch(`${API}/api/settings/sku-catalog`),
       fetch(`${API}/api/settings/sku-mappings`),
       fetch(`${API}/api/settings/customer-overrides`),
       fetch(`${API}/api/settings/customer-rate-plan-mappings`),
       fetch(`${API}/api/settings/unmapped-rate-plans`),
       fetch(`${API}/api/settings/summary`),
+      fetch(`${API}/api/settings/serial-prefix-mappings`),
     ])
     const errors = []
     try {
@@ -1265,6 +1504,10 @@ export default function Settings() {
     try {
       if (sumR.status === 'fulfilled' && sumR.value.ok) setSummary(await sumR.value.json())
       // summary failing is non-critical
+    } catch(e) { /* non-critical */ }
+    try {
+      if (sprR.status === 'fulfilled' && sprR.value.ok) setPrefixMappings(await sprR.value.json())
+      // serial prefix mappings non-critical
     } catch(e) { /* non-critical */ }
     if (errors.length) setFetchError(`Fetch errors — ${errors.join(', ')}`)
     setLoading(false)
@@ -1299,19 +1542,20 @@ export default function Settings() {
 
       {/* Summary stat cards */}
       {summary && (
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          <StatCard icon="📦" label="SKUs in Catalog" value={summary.skuCount} color="blue" />
-          <StatCard icon="🔗" label="Rate Plan Mappings" value={summary.mappingCount} color="green" />
-          <StatCard icon="👤" label="Customer Rate Plans" value={summary.custMappingCount ?? 0} color="amber" />
-          <StatCard icon="💲" label="Customer Overrides" value={summary.overrideCount.toLocaleString()} color="purple" />
-          <StatCard icon="⚠" label="Unmapped Codes" value={summary.unmappedCount} color={summary.unmappedCount > 0 ? 'red' : 'green'} />
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+          <StatCard icon="📦" label="SKUs in Catalog"        value={summary.skuCount}              color="blue"   />
+          <StatCard icon="🔗" label="Rate Plan Mappings"     value={summary.mappingCount}           color="green"  />
+          <StatCard icon="👤" label="Customer Rate Plans"    value={summary.custMappingCount ?? 0}  color="amber"  />
+          <StatCard icon="💲" label="Customer Overrides"     value={summary.overrideCount.toLocaleString()} color="purple" />
+          <StatCard icon="🔢" label="Serial Prefix Mappings" value={summary.serialPrefixCount ?? prefixMappings.length} color="slate" />
+          <StatCard icon="⚠" label="Unmapped Codes"         value={summary.unmappedCount}          color={summary.unmappedCount > 0 ? 'red' : 'green'} />
         </div>
       )}
 
       {/* Tab navigation */}
-      <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-xl p-1 w-fit">
-        <TabBtn active={activeTab === 'catalog'}   onClick={() => setActiveTab('catalog')}>SKU Catalog</TabBtn>
-        <TabBtn active={activeTab === 'mappings'}  onClick={() => setActiveTab('mappings')}>
+      <div className="flex items-center gap-1 bg-slate-800 border border-slate-700 rounded-xl p-1 w-fit flex-wrap">
+        <TabBtn active={activeTab === 'catalog'}       onClick={() => setActiveTab('catalog')}>SKU Catalog</TabBtn>
+        <TabBtn active={activeTab === 'mappings'}      onClick={() => setActiveTab('mappings')}>
           Rate Plan Mappings
           {unmapped.length > 0 && (
             <span className="ml-1.5 inline-flex items-center justify-center min-w-[1.1rem] h-[1.1rem] px-1 text-xs bg-amber-500 text-white rounded-full font-bold">
@@ -1320,8 +1564,9 @@ export default function Settings() {
           )}
         </TabBtn>
         <TabBtn active={activeTab === 'custRatePlans'} onClick={() => setActiveTab('custRatePlans')}>Customer Rate Plans</TabBtn>
-        <TabBtn active={activeTab === 'overrides'} onClick={() => setActiveTab('overrides')}>Customer Prices</TabBtn>
-        <TabBtn active={activeTab === 'import'}    onClick={() => setActiveTab('import')}>Import CSV</TabBtn>
+        <TabBtn active={activeTab === 'overrides'}     onClick={() => setActiveTab('overrides')}>Customer Prices</TabBtn>
+        <TabBtn active={activeTab === 'serialPrefixes'} onClick={() => setActiveTab('serialPrefixes')}>Serial Prefixes</TabBtn>
+        <TabBtn active={activeTab === 'import'}        onClick={() => setActiveTab('import')}>Import CSV</TabBtn>
       </div>
 
       {/* Tab content */}
@@ -1335,11 +1580,12 @@ export default function Settings() {
         </div>
       ) : (
         <>
-          {activeTab === 'catalog'   && <SkuCatalogTab      catalog={catalog}   onRefresh={fetchAll} />}
-          {activeTab === 'mappings'  && <RatePlanMappingsTab mappings={mappings} catalog={catalog} unmapped={unmapped} onRefresh={fetchAll} />}
-          {activeTab === 'custRatePlans' && <CustRatePlanTab custMappings={custMappings} catalog={catalog} onRefresh={fetchAll} />}
-          {activeTab === 'overrides' && <CustomerOverridesTab overrides={overrides} catalog={catalog} onRefresh={fetchAll} />}
-          {activeTab === 'import'    && <ImportCsvTab        onRefresh={fetchAll} />}
+          {activeTab === 'catalog'        && <SkuCatalogTab      catalog={catalog}   onRefresh={fetchAll} />}
+          {activeTab === 'mappings'       && <RatePlanMappingsTab mappings={mappings} catalog={catalog} unmapped={unmapped} onRefresh={fetchAll} />}
+          {activeTab === 'custRatePlans'  && <CustRatePlanTab custMappings={custMappings} catalog={catalog} onRefresh={fetchAll} />}
+          {activeTab === 'overrides'      && <CustomerOverridesTab overrides={overrides} catalog={catalog} onRefresh={fetchAll} />}
+          {activeTab === 'serialPrefixes' && <SerialPrefixTab prefixMappings={prefixMappings} catalog={catalog} onRefresh={fetchAll} />}
+          {activeTab === 'import'         && <ImportCsvTab        onRefresh={fetchAll} />}
         </>
       )}
     </div>

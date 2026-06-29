@@ -1,0 +1,134 @@
+[
+  {
+    "prefix": "C1",
+    "skuKey": "",
+    "notes": "Digital Matter — excluded from prorated invoices (DM_SERIAL_PREFIXES)",
+    "dmExcluded": true
+  },
+  {
+    "prefix": "C3",
+    "skuKey": "Service Fee CalAmp (Asset)",
+    "notes": "CalAmp Asset devices (PRO MODE in MyAdmin)",
+    "dmExcluded": false
+  },
+  {
+    "prefix": "CL",
+    "skuKey": "",
+    "notes": "Digital Matter — excluded from prorated invoices (DM_SERIAL_PREFIXES)",
+    "dmExcluded": true
+  },
+  {
+    "prefix": "CN",
+    "skuKey": "",
+    "notes": "Digital Matter — excluded from prorated invoices (DM_SERIAL_PREFIXES)",
+    "dmExcluded": true
+  },
+  {
+    "prefix": "CO",
+    "skuKey": "Geotab GM (Premium (OEM))",
+    "notes": "Geotab GM OEM integration",
+    "dmExcluded": false
+  },
+  {
+    "prefix": "CY",
+    "skuKey": "",
+    "notes": "Digital Matter — excluded from prorated invoices (DM_SERIAL_PREFIXES)",
+    "dmExcluded": true
+  },
+  {
+    "prefix": "D5",
+    "skuKey": "CAT AEMP (OEM)",
+    "notes": "CAT AEMP OEM integration (alternate prefix)",
+    "dmExcluded": false
+  },
+  {
+    "prefix": "D8",
+    "skuKey": "Geotab Volvo (Premium (OEM))",
+    "notes": "Geotab Volvo OEM integration",
+    "dmExcluded": false
+  },
+  {
+    "prefix": "DC",
+    "skuKey": "",
+    "notes": "Digital Matter — excluded from prorated invoices (DM_SERIAL_PREFIXES)",
+    "dmExcluded": true
+  },
+  {
+    "prefix": "DM",
+    "skuKey": "John Deere AEMP (OEM)",
+    "notes": "John Deere AEMP OEM integration",
+    "dmExcluded": false
+  },
+  {
+    "prefix": "DS",
+    "skuKey": "CAT AEMP (OEM)",
+    "notes": "CAT AEMP OEM integration",
+    "dmExcluded": false
+  },
+  {
+    "prefix": "DW",
+    "skuKey": "Geotab Ford (Premium (OEM))",
+    "notes": "Geotab Ford OEM integration",
+    "dmExcluded": false
+  },
+  {
+    "prefix": "DY",
+    "skuKey": "Geotab Mack (Premium (OEM))",
+    "notes": "Geotab Mack OEM integration",
+    "dmExcluded": false
+  },
+  {
+    "prefix": "EG",
+    "skuKey": "Tracking Fee",
+    "notes": "Phillips Connect camera devices",
+    "dmExcluded": false
+  },
+  {
+    "prefix": "EK",
+    "skuKey": "Tracking Fee",
+    "notes": "Phillips Connect camera devices (alternate prefix)",
+    "dmExcluded": false
+  },
+  {
+    "prefix": "HN",
+    "skuKey": "DM Service Fee",
+    "notes": "Digital Matter — also in DM_SERIAL_PREFIXES (excluded from prorated invoices); reconciliation Tier 0.5b resolves to DM Service Fee when PRO MODE and no promoCode",
+    "dmExcluded": true
+  },
+  {
+    "prefix": "JL",
+    "skuKey": "Komatsu AEMP (OEM)",
+    "notes": "Komatsu AEMP OEM integration",
+    "dmExcluded": false
+  },
+  {
+    "prefix": "JQ",
+    "skuKey": "",
+    "notes": "Digital Matter — excluded from prorated invoices (DM_SERIAL_PREFIXES)",
+    "dmExcluded": true
+  },
+  {
+    "prefix": "OB",
+    "skuKey": "",
+    "notes": "Digital Matter — excluded from prorated invoices (DM_SERIAL_PREFIXES)",
+    "dmExcluded": true
+  },
+  {
+    "prefix": "OE",
+    "skuKey": "",
+    "notes": "Digital Matter — excluded from prorated invoices (DM_SERIAL_PREFIXES)",
+    "dmExcluded": true
+  },
+  {
+    "prefix": "OF",
+    "skuKey": "",
+    "notes": "Digital Matter — excluded from prorated invoices (DM_SERIAL_PREFIXES)",
+    "dmExcluded": true
+  },
+  {
+    "prefix": "OG",
+    "skuKey": "",
+    "notes": "Digital Matter — excluded from prorated invoices (DM_SERIAL_PREFIXES)",
+    "dmExcluded": true
+  }
+]
