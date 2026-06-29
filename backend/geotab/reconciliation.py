@@ -645,7 +645,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         # devices: billing only starts once a device has an active billing plan.
         # Never-activated devices on these accounts are NOT under-billed — they
         # simply haven't been deployed yet.
-        is_cua       = billing_type in ("CUA", "Charge Upon Activation", "Hanover", "Han-CS")
+        is_cua       = billing_type in ("CUA", "Charge Upon Activation", "Hanover", "Han-CS", "Sourcewell")
 
         cust_ok = cust_over = cust_under = cust_unmapped = cust_no_price = 0
         cust_never_activated = 0
