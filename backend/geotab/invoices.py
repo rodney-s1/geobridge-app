@@ -456,6 +456,17 @@ def _generate_prorated_invoice(
         if contract.get("isTerminated"):
             continue
 
+        # ── Skip never-activated devices ───────────────────────────────────
+        # MyAdmin marks never-activated devices with activeDevicePlan.name =
+        # "NEVER ACTIVATED" (or blank).  These devices have a startDate
+        # ("Assignment Date") but no firstDeviceActivationDate or
+        # billingStartDate.  Rule 1a below would otherwise use startDate as a
+        # billing activation date, incorrectly placing them on prorated
+        # invoices before the device has ever connected.
+        _adp_name = ((contract.get("activeDevicePlan") or {}).get("name") or "").upper()
+        if not _adp_name or _adp_name == "NEVER ACTIVATED" or "never" in _adp_name:
+            continue
+
         # ── Manual billing-date override (highest priority) ────────────────
         # If the user has set a date for this serial via the UI, use it as
         # billingStartDate and bypass the API dates entirely.
