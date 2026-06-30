@@ -292,6 +292,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     from geotab.customers import (
         _sync_cache, enrich_customer, qb_customers as _qb_customers,
         billing_type_overrides as _billing_type_overrides,
+        billing_frequency_overrides as _billing_freq_overrides,
+        _strip_han_cs, _strip_sub_account_suffix,
     )
 
     contracts = _sync_cache.get("contracts") or []
@@ -1556,6 +1558,9 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             "customerId":        cid,
             "customerName":      cname,
             "billingType":       billing_type,
+            "billingFrequency":  _billing_freq_overrides.get(
+                _normalize(_strip_han_cs(_strip_sub_account_suffix(cname)))
+            ) or "",
             "subAccountNames":   sorted(cdata.get("subAccountNames") or []),
             "locationNames":     sorted(cdata.get("locationNames") or []),
             "deviceCount":       len(devices),

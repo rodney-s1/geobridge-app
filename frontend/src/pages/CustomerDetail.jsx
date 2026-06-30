@@ -616,6 +616,106 @@ function PricingTab({ customerName }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 //  ROOT COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
+
+const VALID_BILLING_FREQUENCIES_DETAIL = ['Annual', 'Semi-Annual', 'Quarterly']
+
+function BillingFrequencySection({ customerId }) {
+  const [freq,    setFreq]    = useState(null)   // null = loading
+  const [editing, setEditing] = useState(false)
+  const [selected, setSelected] = useState('')
+  const [saving,  setSaving]  = useState(false)
+  const [error,   setError]   = useState(null)
+
+  useEffect(() => {
+    fetch(`${API}/api/customers/${encodeURIComponent(customerId)}/billing-frequency`)
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        const f = d?.billingFrequency || ''
+        setFreq(f)
+        setSelected(f)
+      })
+      .catch(() => setFreq(''))
+  }, [customerId])
+
+  const save = async () => {
+    setSaving(true)
+    setError(null)
+    try {
+      if (selected) {
+        const res = await fetch(`${API}/api/customers/${encodeURIComponent(customerId)}/billing-frequency`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ billingFrequency: selected }),
+        })
+        if (!res.ok) throw new Error(`Server error (${res.status})`)
+        setFreq(selected)
+      } else {
+        const res = await fetch(`${API}/api/customers/${encodeURIComponent(customerId)}/billing-frequency`, { method: 'DELETE' })
+        if (!res.ok) throw new Error(`Server error (${res.status})`)
+        setFreq('')
+      }
+      setEditing(false)
+    } catch (e) {
+      setError(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (freq === null) return null   // still loading — don't flash
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-xs text-slate-500">Billing frequency:</span>
+        <select
+          value={selected}
+          onChange={e => setSelected(e.target.value)}
+          className="bg-slate-700 text-slate-200 text-xs rounded px-2 py-1 border border-teal-700/60 focus:outline-none focus:border-teal-500"
+        >
+          <option value="">— None —</option>
+          {VALID_BILLING_FREQUENCIES_DETAIL.map(f => (
+            <option key={f} value={f}>{f}</option>
+          ))}
+        </select>
+        <button
+          onClick={save}
+          disabled={saving}
+          className="px-2 py-1 bg-teal-700 hover:bg-teal-600 text-white text-xs rounded disabled:opacity-50"
+        >
+          {saving ? '…' : '✓ Save'}
+        </button>
+        <button
+          onClick={() => { setEditing(false); setSelected(freq); setError(null) }}
+          className="px-2 py-1 bg-slate-600 hover:bg-slate-500 text-white text-xs rounded"
+        >
+          Cancel
+        </button>
+        {error && <span className="text-xs text-red-400">{error}</span>}
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="flex items-center gap-2 group cursor-pointer"
+      onClick={() => setEditing(true)}
+      title={freq ? `Billing frequency: ${freq} — click to change` : 'Click to set billing frequency (Annual / Semi-Annual / Quarterly)'}
+    >
+      {freq ? (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium border bg-teal-900/50 text-teal-300 border-teal-700/40">
+          ↻ {freq}
+        </span>
+      ) : (
+        <span className="text-xs text-slate-600 group-hover:text-teal-500 italic transition-colors">+ set billing frequency</span>
+      )}
+      <svg className="w-3 h-3 text-slate-600 group-hover:text-teal-500 transition-colors opacity-0 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+      </svg>
+    </div>
+  )
+}
+
 export default function CustomerDetail({ customerId, customerName, onBack }) {
   const [activeTab, setActiveTab] = useState('devices')
   const [customer,  setCustomer]  = useState(null)
@@ -642,6 +742,9 @@ export default function CustomerDetail({ customerId, customerName, onBack }) {
         <div>
           <h2 className="text-xl font-bold text-white">{customerName || 'Customer Detail'}</h2>
           <p className="text-xs text-slate-500 mt-0.5">ID: {customerId}</p>
+          <div className="mt-1.5">
+            <BillingFrequencySection customerId={customerId} />
+          </div>
         </div>
       </div>
 

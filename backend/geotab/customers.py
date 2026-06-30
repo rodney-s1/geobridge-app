@@ -33,6 +33,7 @@ OVERRIDES_FILE         = os.path.join(_HERE, "billing_overrides.json")
 BILLING_TYPE_OVERRIDES_FILE = os.path.join(_HERE, "billing_type_overrides.json")
 BILLING_DATE_OVERRIDES_FILE      = os.path.join(_HERE, "billing_date_overrides.json")
 FIRST_CONNECT_OVERRIDES_FILE     = os.path.join(_HERE, "first_connect_date_overrides.json")
+BILLING_FREQUENCY_FILE           = os.path.join(_HERE, "billing_frequency_overrides.json")
 SYNC_CACHE_FILE        = os.path.join(_HERE, "myadmin_cache.json")   # persisted between restarts
 CONTRACT_CHECKPOINT_FILE = os.path.join(_HERE, "contract_checkpoint.json")  # sliding-window resume point
 
@@ -62,6 +63,11 @@ billing_date_overrides:  Dict[str, str]  = _load_json(BILLING_DATE_OVERRIDES_FIL
 # Written by POST /api/customers/device/{serial}/first-connect-date
 # When set, this overrides the MyAdmin firstDeviceActivationDate for invoice proration.
 first_connect_date_overrides: Dict[str, str] = _load_json(FIRST_CONNECT_OVERRIDES_FILE, {})
+# Billing frequency overrides: {normalize(customerName): "Annual"|"Semi-Annual"|"Quarterly"}
+# Written by POST /api/customers/{account_id}/billing-frequency
+# Customers marked with a frequency are shown differently in Reconciliation
+# (they won't clutter the 'No QB Data' column on months they aren't invoiced).
+billing_frequency_overrides: Dict[str, str] = _load_json(BILLING_FREQUENCY_FILE, {})
 qb_customers:       Dict[str, dict] = _load_json(QB_DATA_FILE, {})
 qb_items:           List[dict]      = []
 name_to_company_id: Dict[str, str]  = {}   # normalize(name) -> companyId, built on sync
@@ -356,18 +362,19 @@ def enrich_customer(customer: dict) -> dict:
     )
 
     return {
-        "id":              cid,
-        "name":            display_name,
-        "accountNo":       qb.get("accountNo") or "",
-        "billingType":     billing_type,
-        "primaryDatabase": db_name,
-        "deviceCount":     customer.get("activeDevices") or 0,
-        "terms":           qb.get("terms") or "",
-        "balance":         float(qb.get("balance") or 0),
-        "hasQbData":       bool(qb),
-        "email":           customer.get("email") or "",
-        "phone":           customer.get("phone") or "",
-        "address":         customer.get("address") or "",
+        "id":                cid,
+        "name":              display_name,
+        "accountNo":         qb.get("accountNo") or "",
+        "billingType":       billing_type,
+        "billingFrequency":  billing_frequency_overrides.get(normalize(qb_lookup_name)) or "",
+        "primaryDatabase":   db_name,
+        "deviceCount":       customer.get("activeDevices") or 0,
+        "terms":             qb.get("terms") or "",
+        "balance":           float(qb.get("balance") or 0),
+        "hasQbData":         bool(qb),
+        "email":             customer.get("email") or "",
+        "phone":             customer.get("phone") or "",
+        "address":           customer.get("address") or "",
     }
 
 
@@ -1340,4 +1347,114 @@ async def get_device_first_connect_date(serial: str):
         "serial":           key,
         "hasOverride":      override is not None,
         "firstConnectDate": override,
+    }
+
+
+# =============================================================================
+#  Billing frequency overrides  (per-customer)
+# =============================================================================
+
+VALID_BILLING_FREQUENCIES = {"Annual", "Semi-Annual", "Quarterly"}
+
+class BillingFrequencyUpdate(BaseModel):
+    billingFrequency: str   # "Annual" | "Semi-Annual" | "Quarterly"
+
+
+@router.post("/customers/{account_id}/billing-frequency")
+async def set_billing_frequency(account_id: str, body: BillingFrequencyUpdate):
+    """
+    Mark a customer as Annual, Semi-Annual, or Quarterly.
+
+    These customers are only invoiced 1, 2, or 4 times a year, so on months
+    where they have no QB invoice they should not appear as 'No QB Data' in
+    Reconciliation — they just aren't billed that month.
+
+    Stored in billing_frequency_overrides.json keyed by normalize(customerName).
+    The account_id is resolved to a customer name from the sync cache.
+    """
+    if body.billingFrequency not in VALID_BILLING_FREQUENCIES and body.billingFrequency != "":
+        raise HTTPException(
+            status_code=400,
+            detail=f"billingFrequency must be one of: {', '.join(sorted(VALID_BILLING_FREQUENCIES))} (or empty to clear)"
+        )
+
+    # Resolve account_id -> normalize(customerName) using the sync cache
+    contracts: List[dict] = _sync_cache.get("contracts") or []
+    # Find any contract for this company ID
+    company_name = None
+    for c in contracts:
+        cid = str(((c.get("userContact") or {}).get("userCompany") or {}).get("id") or "")
+        if cid == str(account_id):
+            company_name = ((c.get("userContact") or {}).get("userCompany") or {}).get("name") or ""
+            break
+
+    if not company_name:
+        # No contract found — use account_id itself as the key (fallback)
+        norm_key = normalize(account_id)
+    else:
+        # Strip sub-account / Han-CS suffixes so sub-accounts share the parent key
+        qb_lookup = _strip_han_cs(_strip_sub_account_suffix(company_name))
+        norm_key = normalize(qb_lookup)
+
+    if body.billingFrequency:
+        billing_frequency_overrides[norm_key] = body.billingFrequency
+    else:
+        billing_frequency_overrides.pop(norm_key, None)
+
+    _save_json(BILLING_FREQUENCY_FILE, billing_frequency_overrides)
+    return {
+        "success":          True,
+        "accountId":        account_id,
+        "normKey":          norm_key,
+        "billingFrequency": body.billingFrequency or None,
+    }
+
+
+@router.delete("/customers/{account_id}/billing-frequency")
+async def delete_billing_frequency(account_id: str):
+    """Remove the billing frequency override for a customer."""
+    contracts: List[dict] = _sync_cache.get("contracts") or []
+    company_name = None
+    for c in contracts:
+        cid = str(((c.get("userContact") or {}).get("userCompany") or {}).get("id") or "")
+        if cid == str(account_id):
+            company_name = ((c.get("userContact") or {}).get("userCompany") or {}).get("name") or ""
+            break
+
+    if not company_name:
+        norm_key = normalize(account_id)
+    else:
+        qb_lookup = _strip_han_cs(_strip_sub_account_suffix(company_name))
+        norm_key = normalize(qb_lookup)
+
+    if norm_key not in billing_frequency_overrides:
+        raise HTTPException(status_code=404, detail=f"No billing frequency override for account '{account_id}'")
+
+    del billing_frequency_overrides[norm_key]
+    _save_json(BILLING_FREQUENCY_FILE, billing_frequency_overrides)
+    return {"success": True, "accountId": account_id, "cleared": True}
+
+
+@router.get("/customers/{account_id}/billing-frequency")
+async def get_billing_frequency(account_id: str):
+    """Return the billing frequency override for a customer (if any)."""
+    contracts: List[dict] = _sync_cache.get("contracts") or []
+    company_name = None
+    for c in contracts:
+        cid = str(((c.get("userContact") or {}).get("userCompany") or {}).get("id") or "")
+        if cid == str(account_id):
+            company_name = ((c.get("userContact") or {}).get("userCompany") or {}).get("name") or ""
+            break
+
+    if not company_name:
+        norm_key = normalize(account_id)
+    else:
+        qb_lookup = _strip_han_cs(_strip_sub_account_suffix(company_name))
+        norm_key = normalize(qb_lookup)
+
+    freq = billing_frequency_overrides.get(norm_key)
+    return {
+        "accountId":        account_id,
+        "hasOverride":      freq is not None,
+        "billingFrequency": freq,
     }

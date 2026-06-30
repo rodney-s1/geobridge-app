@@ -23,6 +23,7 @@ const QTY_META = {
   under_billed: { label: 'Under-billed',   cls: 'bg-red-900/50    text-red-300    border-red-700/40'    },
   over_billed:  { label: 'Over-billed',    cls: 'bg-blue-900/50   text-blue-300   border-blue-700/40'   },
   no_qb_data:   { label: 'No QB Data',     cls: 'bg-amber-900/50  text-amber-300  border-amber-700/40'  },
+  periodic:     { label: 'Periodic',       cls: 'bg-teal-900/50   text-teal-300   border-teal-700/40'   },
 }
 
 // ─── Price status metadata (kept for price tab) ────────────────────────────────
@@ -37,10 +38,10 @@ const PRICE_META = {
   never_activated: { label: 'Never Activated',  cls: 'bg-yellow-900/50 text-yellow-300 border-yellow-700/40' },
 }
 
-function QtyChip({ status, size = 'sm' }) {
+function QtyChip({ status, label: labelOverride, size = 'sm' }) {
   const meta = QTY_META[status] || { label: status, cls: 'bg-slate-700 text-slate-300 border-slate-600' }
   const pad  = size === 'xs' ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-0.5 text-xs'
-  return <span className={`inline-flex items-center rounded border font-medium ${pad} ${meta.cls}`}>{meta.label}</span>
+  return <span className={`inline-flex items-center rounded border font-medium ${pad} ${meta.cls}`}>{labelOverride || meta.label}</span>
 }
 
 function PriceChip({ status, size = 'sm' }) {
@@ -336,7 +337,7 @@ function CustomerRow({ customer }) {
   const [expanded, setExpanded] = useState(false)
 
   const {
-    customerName, deviceCount, billingType,
+    customerName, deviceCount, billingType, billingFrequency,
     myAdminTotal, qbTotal, qtyDelta, hasQbData,
     qtyMatch, qtyUnderBilled, qtyOverBilled, qtyMissing,
     ok, over, under, unmapped, noPrice, neverActivated,
@@ -349,11 +350,14 @@ function CustomerRow({ customer }) {
 
   // Quantity status for the row badge
   const qtyMismatch = hasQbData && qtyDelta !== 0 && qtyDelta !== null
-  const qtyRowStatus = !hasQbData
-    ? 'no_qb_data'
-    : qtyDelta === 0
-      ? 'match'
-      : qtyDelta > 0 ? 'under_billed' : 'over_billed'
+  const qtyRowStatus = !hasQbData && billingFrequency ? 'periodic'
+    : !hasQbData ? 'no_qb_data'
+    : qtyDelta === 0 ? 'match'
+    : qtyDelta > 0 ? 'under_billed' : 'over_billed'
+
+  // Frequency label abbreviation for chip overrides
+  const freqAbbr = billingFrequency === 'Semi-Annual' ? 'Semi-Annual'
+    : billingFrequency || ''
 
   return (
     <>
@@ -369,15 +373,22 @@ function CustomerRow({ customer }) {
 
         {/* Customer name */}
         <td className="px-4 py-3">
-          <span className="text-sm font-medium text-slate-200">{customerName}</span>
-          {hasLocations && (
-            <span className="ml-2 text-xs bg-slate-700/60 text-slate-400 border border-slate-600/40 rounded px-1.5 py-0.5 align-middle">
-              {locationNames.length} location{locationNames.length !== 1 ? 's' : ''}
-            </span>
-          )}
-          {qbOnly && (
-            <span className="ml-2 text-xs bg-violet-900/50 text-violet-300 border border-violet-700/40 rounded px-1.5 py-0.5 align-middle">QB Only</span>
-          )}
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-sm font-medium text-slate-200">{customerName}</span>
+            {billingFrequency && (
+              <span className="text-xs bg-teal-900/50 text-teal-300 border border-teal-700/40 rounded px-1.5 py-0.5">
+                {billingFrequency}
+              </span>
+            )}
+            {hasLocations && (
+              <span className="text-xs bg-slate-700/60 text-slate-400 border border-slate-600/40 rounded px-1.5 py-0.5">
+                {locationNames.length} location{locationNames.length !== 1 ? 's' : ''}
+              </span>
+            )}
+            {qbOnly && (
+              <span className="text-xs bg-violet-900/50 text-violet-300 border border-violet-700/40 rounded px-1.5 py-0.5">QB Only</span>
+            )}
+          </div>
         </td>
 
         {/* MyAdmin device count */}
@@ -434,7 +445,10 @@ function CustomerRow({ customer }) {
             {hasQbData && qtyMismatch === false && unmapped === 0 && !neverActivated && (
               <span className="text-xs text-emerald-500">✓ Match</span>
             )}
-            {!hasQbData && (
+            {!hasQbData && billingFrequency && (
+              <span className="text-xs text-teal-600/80 italic">{freqAbbr} · no invoice this month</span>
+            )}
+            {!hasQbData && !billingFrequency && (
               <span className="text-xs text-slate-600 italic">import QB to compare</span>
             )}
           </div>
@@ -442,7 +456,10 @@ function CustomerRow({ customer }) {
 
         {/* Qty status */}
         <td className="px-4 py-3">
-          <QtyChip status={qtyRowStatus} />
+          {qtyRowStatus === 'periodic'
+            ? <QtyChip status="periodic" label={`${freqAbbr} · No QB`} />
+            : <QtyChip status={qtyRowStatus} />
+          }
         </td>
       </tr>
 
@@ -528,8 +545,8 @@ export default function Reconciliation() {
   const [loading,      setLoading]     = useState(false)
   const [error,        setError]       = useState(null)
   const [search,       setSearch]      = useState('')
-  const [qtyFilter,    setQtyFilter]   = useState('')  // '' | 'under_billed' | 'over_billed' | 'no_qb_data' | 'match'
-  const [sortBy,       setSortBy]      = useState('alpha') // 'alpha' | 'status' | 'under_first' | 'over_first' | 'no_qb_first' | 'match_first'
+  const [qtyFilter,    setQtyFilter]   = useState('')  // '' | 'under_billed' | 'over_billed' | 'no_qb_data' | 'match' | 'periodic'
+  const [sortBy,       setSortBy]      = useState('alpha') // 'alpha' | 'status' | 'under_first' | 'over_first' | 'no_qb_first' | 'match_first' | 'periodic_first'
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -556,11 +573,15 @@ export default function Reconciliation() {
   const qbHanCsUnmatched     = data?.qbHanCsUnmatched    || []
 
   // Client-side filtering + sorting
-  const getQtyStatus = c => !c.hasQbData ? 'no_qb_data'
-    : c.qtyDelta === 0 ? 'match'
-    : c.qtyDelta > 0   ? 'under_billed' : 'over_billed'
+  // periodic: has a billing frequency set (Annual/Semi-Annual/Quarterly) AND no QB data this month
+  // — these are expected absences, not errors, so they sort to the bottom
+  const getQtyStatus = c => {
+    if (!c.hasQbData && c.billingFrequency) return 'periodic'
+    if (!c.hasQbData) return 'no_qb_data'
+    return c.qtyDelta === 0 ? 'match' : c.qtyDelta > 0 ? 'under_billed' : 'over_billed'
+  }
 
-  const STATUS_ORDER = { under_billed: 0, over_billed: 1, no_qb_data: 2, match: 3 }
+  const STATUS_ORDER = { under_billed: 0, over_billed: 1, no_qb_data: 2, match: 3, periodic: 4 }
 
   const visible = customers
     .filter(c => {
@@ -578,6 +599,7 @@ export default function Reconciliation() {
         case 'over_first':   return (getQtyStatus(a) === 'over_billed'  ? 0 : 1) - (getQtyStatus(b) === 'over_billed'  ? 0 : 1) || alpha
         case 'no_qb_first':  return (getQtyStatus(a) === 'no_qb_data'   ? 0 : 1) - (getQtyStatus(b) === 'no_qb_data'   ? 0 : 1) || alpha
         case 'match_first':  return (getQtyStatus(a) === 'match'         ? 0 : 1) - (getQtyStatus(b) === 'match'         ? 0 : 1) || alpha
+        case 'periodic_first': return (getQtyStatus(a) === 'periodic'    ? 0 : 1) - (getQtyStatus(b) === 'periodic'    ? 0 : 1) || alpha
         default:             return alpha
       }
     })
@@ -631,7 +653,7 @@ export default function Reconciliation() {
       {summary && (
         <div className="bg-slate-800 border border-slate-700 rounded-xl px-6 py-4">
           <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Device Count Reconciliation</div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
             <SummaryCard
               label="MyAdmin Devices"
               value={(summary.myAdminTotal ?? summary.totalDevices).toLocaleString()}
@@ -676,11 +698,19 @@ export default function Reconciliation() {
             />
             <SummaryCard
               label="No QB Data"
-              value={summary.qtyMissing.toLocaleString()}
+              value={customers.filter(c => !c.hasQbData && !c.billingFrequency).length.toLocaleString()}
               sub="not in QB invoice"
               color="amber"
               active={qtyFilter === 'no_qb_data'}
               onClick={() => setQtyFilter(f => f === 'no_qb_data' ? '' : 'no_qb_data')}
+            />
+            <SummaryCard
+              label="Periodic"
+              value={customers.filter(c => c.billingFrequency).length.toLocaleString()}
+              sub="Annual / Semi / Quarterly"
+              color="purple"
+              active={qtyFilter === 'periodic'}
+              onClick={() => setQtyFilter(f => f === 'periodic' ? '' : 'periodic')}
             />
           </div>
         </div>
@@ -788,11 +818,12 @@ export default function Reconciliation() {
                 px-3 py-2 focus:outline-none focus:border-blue-500 cursor-pointer"
             >
               <option value="alpha">A → Z</option>
-              <option value="status">By Status (Under → Over → No QB → Match)</option>
+              <option value="status">By Status (Under → Over → No QB → Match → Periodic)</option>
               <option value="under_first">Under-billed First</option>
               <option value="over_first">Over-billed First</option>
               <option value="no_qb_first">No QB Data First</option>
               <option value="match_first">Matches First</option>
+              <option value="periodic_first">Periodic First</option>
             </select>
           </div>
 
@@ -874,6 +905,9 @@ export default function Reconciliation() {
         ))}
         <span className="text-slate-600 ml-2">
           Difference = MyAdmin count − QB invoice qty · positive = under-billed · negative = over-billed
+        </span>
+        <span className="text-teal-700 ml-2">
+          Periodic = Annual / Semi-Annual / Quarterly customer · invoice expected only on their billing cycle months
         </span>
       </div>
 

@@ -22,6 +22,25 @@ const VALID_BILLING_TYPES = [
   'Reseller','In Collections','Terminated','Unknown',
 ]
 
+const VALID_BILLING_FREQUENCIES = ['Annual', 'Semi-Annual', 'Quarterly']
+
+// ─── Billing frequency badge colours ──────────────────────────────────────────
+const FREQ_COLORS = {
+  'Annual':      'bg-teal-900/50 text-teal-300 border-teal-700/40',
+  'Semi-Annual': 'bg-teal-900/50 text-teal-300 border-teal-700/40',
+  'Quarterly':   'bg-teal-900/50 text-teal-300 border-teal-700/40',
+}
+
+function FrequencyBadge({ freq }) {
+  if (!freq) return null
+  const cls = FREQ_COLORS[freq] || 'bg-slate-700/50 text-slate-400 border-slate-600/40'
+  return (
+    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${cls}`}>
+      ↻ {freq}
+    </span>
+  )
+}
+
 function BillingBadge({ type }) {
   const cls = BILLING_COLORS[type] || BILLING_COLORS['Unknown']
   return (
@@ -365,6 +384,94 @@ function DeviceRow({ device, onDateSaved }) {
   )
 }
 
+// ─── Shared billing-frequency editor ─────────────────────────────────────────
+function BillingFrequencyEditor({ customer, onBillingFrequencyChange, stopPropagation = true }) {
+  const [editing, setEditing]         = useState(false)
+  const [selected, setSelected]       = useState(customer.billingFrequency || '')
+  const [saving, setSaving]           = useState(false)
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      if (selected) {
+        const res = await fetch(`${API}/api/customers/${customer.id}/billing-frequency`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ billingFrequency: selected }),
+        })
+        if (res.ok) {
+          onBillingFrequencyChange(customer.id, selected)
+          setEditing(false)
+        }
+      } else {
+        const res = await fetch(`${API}/api/customers/${customer.id}/billing-frequency`, { method: 'DELETE' })
+        if (res.ok) {
+          onBillingFrequencyChange(customer.id, '')
+          setEditing(false)
+        }
+      }
+    } catch (e) {
+      console.error('Failed to save billing frequency:', e)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const sp = (fn) => stopPropagation
+    ? (e) => { e.stopPropagation(); fn() }
+    : () => fn()
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1 mt-1">
+        <select
+          value={selected}
+          onChange={e => setSelected(e.target.value)}
+          className="bg-slate-700 text-slate-200 text-xs rounded px-2 py-1 border border-teal-700/60 focus:outline-none focus:border-teal-500"
+          onClick={stopPropagation ? e => e.stopPropagation() : undefined}
+        >
+          <option value="">— None —</option>
+          {VALID_BILLING_FREQUENCIES.map(f => (
+            <option key={f} value={f}>{f}</option>
+          ))}
+        </select>
+        <button
+          onClick={sp(save)}
+          disabled={saving}
+          className="px-2 py-1 bg-teal-700 hover:bg-teal-600 text-white text-xs rounded disabled:opacity-50"
+        >
+          {saving ? '...' : '✓'}
+        </button>
+        <button
+          onClick={sp(() => { setEditing(false); setSelected(customer.billingFrequency || '') })}
+          className="px-2 py-1 bg-slate-600 hover:bg-slate-500 text-white text-xs rounded"
+        >
+          ✕
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="flex items-center gap-1 mt-1 group cursor-pointer"
+      onClick={stopPropagation ? e => { e.stopPropagation(); setEditing(true) } : () => setEditing(true)}
+      title={customer.billingFrequency ? `Billing frequency: ${customer.billingFrequency} — click to change` : 'Click to set billing frequency'}
+    >
+      {customer.billingFrequency ? (
+        <FrequencyBadge freq={customer.billingFrequency} />
+      ) : (
+        <span className="text-[10px] text-slate-700 group-hover:text-teal-600 italic transition-colors">+ set frequency</span>
+      )}
+      {customer.billingFrequency && (
+        <svg className="w-2.5 h-2.5 text-slate-700 group-hover:text-teal-500 transition-colors opacity-0 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+        </svg>
+      )}
+    </div>
+  )
+}
+
 // ─── Shared billing-type editor (used by CustomerRow and SubAccountRow) ───────
 function BillingTypeEditor({ customer, onBillingTypeChange, stopPropagation = true }) {
   const [editingBilling, setEditingBilling] = useState(false)
@@ -513,7 +620,7 @@ function DeviceSubTable({ devices, onDateSaved }) {
 
 // ─── Sub-account row (indented, inside an expanded parent group) ──────────────
 // devices prop is pre-loaded by the parent; expandable to show the device table.
-function SubAccountRow({ customer, devices, loadingDevices, onBillingTypeChange, onDetail }) {
+function SubAccountRow({ customer, devices, loadingDevices, onBillingTypeChange, onBillingFrequencyChange, onDetail }) {
   const [expanded, setExpanded] = useState(false)
   const subLabel = getSubLabel(customer.name)
 
@@ -577,9 +684,10 @@ function SubAccountRow({ customer, devices, loadingDevices, onBillingTypeChange,
           </div>
         </td>
 
-        {/* Billing type */}
+        {/* Billing type + frequency */}
         <td className="px-4 py-2.5" onClick={e => e.stopPropagation()}>
           <BillingTypeEditor customer={customer} onBillingTypeChange={onBillingTypeChange} />
+          <BillingFrequencyEditor customer={customer} onBillingFrequencyChange={onBillingFrequencyChange} />
         </td>
 
         {/* Primary database */}
@@ -626,7 +734,7 @@ function SubAccountRow({ customer, devices, loadingDevices, onBillingTypeChange,
 // ─── Parent group row (with optional sub-accounts) ───────────────────────────
 // When expanded, fetches all sub-accounts' devices in parallel,
 // then shows a combined RPC breakdown + indented sub-account rows.
-function ParentGroupRow({ group, onBillingTypeChange, onDetail }) {
+function ParentGroupRow({ group, onBillingTypeChange, onBillingFrequencyChange, onDetail }) {
   const { parentName, parent, subs, combinedDeviceCount } = group
   const hasSubs = subs.length > 0
 
@@ -742,6 +850,7 @@ function ParentGroupRow({ group, onBillingTypeChange, onDetail }) {
       <CustomerRow
         customer={parent}
         onBillingTypeChange={onBillingTypeChange}
+        onBillingFrequencyChange={onBillingFrequencyChange}
       />
     )
   }
@@ -839,10 +948,13 @@ function ParentGroupRow({ group, onBillingTypeChange, onDetail }) {
           )}
         </td>
 
-        {/* Billing type (parent's own, if it exists) */}
+        {/* Billing type + frequency (parent's own, if it exists) */}
         <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
           {parent ? (
-            <BillingTypeEditor customer={parent} onBillingTypeChange={onBillingTypeChange} />
+            <>
+              <BillingTypeEditor customer={parent} onBillingTypeChange={onBillingTypeChange} />
+              <BillingFrequencyEditor customer={parent} onBillingFrequencyChange={onBillingFrequencyChange} />
+            </>
           ) : (
             <span className="text-xs text-slate-600">—</span>
           )}
@@ -953,6 +1065,7 @@ function ParentGroupRow({ group, onBillingTypeChange, onDetail }) {
           devices={devicesByCustomer[sub.id] || null}
           loadingDevices={loadingDevices && !devicesByCustomer[sub.id]}
           onBillingTypeChange={onBillingTypeChange}
+          onBillingFrequencyChange={onBillingFrequencyChange}
           onDetail={onDetail}
         />
       ))}
@@ -961,7 +1074,7 @@ function ParentGroupRow({ group, onBillingTypeChange, onDetail }) {
 }
 
 // ─── Single expandable customer row (standalone, no sub-account grouping) ─────
-function CustomerRow({ customer, onBillingTypeChange }) {
+function CustomerRow({ customer, onBillingTypeChange, onBillingFrequencyChange }) {
   const [expanded, setExpanded] = useState(false)
   const [devices, setDevices] = useState([])
   const [loadingDevices, setLoadingDevices] = useState(false)
@@ -1033,9 +1146,10 @@ function CustomerRow({ customer, onBillingTypeChange }) {
           )}
         </td>
 
-        {/* Billing type (editable) */}
+        {/* Billing type + frequency (editable) */}
         <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
           <BillingTypeEditor customer={customer} onBillingTypeChange={onBillingTypeChange} />
+          <BillingFrequencyEditor customer={customer} onBillingFrequencyChange={onBillingFrequencyChange} />
         </td>
 
         {/* Primary database */}
@@ -1363,6 +1477,12 @@ export default function Customers({ onDetail }) {
     )
   }
 
+  const handleBillingFrequencyChange = (customerId, newFreq) => {
+    setCustomers(prev =>
+      prev.map(c => c.id === customerId ? { ...c, billingFrequency: newFreq } : c)
+    )
+  }
+
   const handleQbImport = async (e) => {
     const file = e.target.files[0]
     if (!file) return
@@ -1657,6 +1777,7 @@ export default function Customers({ onDetail }) {
                   key={group.parentName}
                   group={group}
                   onBillingTypeChange={handleBillingTypeChange}
+                  onBillingFrequencyChange={handleBillingFrequencyChange}
                   onDetail={onDetail}
                 />
               ))
