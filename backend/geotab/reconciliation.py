@@ -1558,9 +1558,12 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             "customerId":        cid,
             "customerName":      cname,
             "billingType":       billing_type,
-            "billingFrequency":  _billing_freq_overrides.get(
+            "billingFrequency":  (_billing_freq_overrides.get(
                 _normalize(_strip_han_cs(_strip_sub_account_suffix(cname)))
-            ) or "",
+            ) or {}).get("billingFrequency") or "",
+            "billingStartMonth": (_billing_freq_overrides.get(
+                _normalize(_strip_han_cs(_strip_sub_account_suffix(cname)))
+            ) or {}).get("billingStartMonth") or None,
             "subAccountNames":   sorted(cdata.get("subAccountNames") or []),
             "locationNames":     sorted(cdata.get("locationNames") or []),
             "deviceCount":       len(devices),

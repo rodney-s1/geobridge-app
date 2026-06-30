@@ -332,12 +332,27 @@ function LocationsPanel({ locationNames, devices, customerName }) {
   )
 }
 
-function CustomerRow({ customer }) {
+// ─── Billing cycle helper (pure, module-level) ────────────────────────────────
+// Returns true  if referenceMonth is a billing month for this frequency+anchor
+// Returns false if it's a non-billing month
+// Returns null  if no billingStartMonth anchor is set (can't determine)
+function isBillingMonth(billingFrequency, billingStartMonth, referenceMonth) {
+  if (!billingFrequency || !billingStartMonth || !referenceMonth) return null
+  const [ry, rm] = referenceMonth.split('-').map(Number)
+  const [sy, sm] = billingStartMonth.split('-').map(Number)
+  const elapsed = (ry - sy) * 12 + (rm - sm)
+  if (elapsed < 0) return false
+  const step = billingFrequency === 'Annual' ? 12
+    : billingFrequency === 'Semi-Annual' ? 6 : 3
+  return elapsed % step === 0
+}
+
+function CustomerRow({ customer, nowMonth }) {
   const [tab, setTab] = useState('qty')   // 'qty' | 'price' | 'locations'
   const [expanded, setExpanded] = useState(false)
 
   const {
-    customerName, deviceCount, billingType, billingFrequency,
+    customerName, deviceCount, billingType, billingFrequency, billingStartMonth,
     myAdminTotal, qbTotal, qtyDelta, hasQbData,
     qtyMatch, qtyUnderBilled, qtyOverBilled, qtyMissing,
     ok, over, under, unmapped, noPrice, neverActivated,
@@ -348,9 +363,15 @@ function CustomerRow({ customer }) {
 
   const hasLocations = locationNames && locationNames.length > 0
 
+  // Determine whether this periodic customer is in a billing month
+  const periodicBillingMonth = billingFrequency
+    ? isBillingMonth(billingFrequency, billingStartMonth, nowMonth)
+    : null
+
   // Quantity status for the row badge
   const qtyMismatch = hasQbData && qtyDelta !== 0 && qtyDelta !== null
-  const qtyRowStatus = !hasQbData && billingFrequency ? 'periodic'
+  const qtyRowStatus = !hasQbData && billingFrequency
+    ? (periodicBillingMonth === true ? 'no_qb_data' : 'periodic')
     : !hasQbData ? 'no_qb_data'
     : qtyDelta === 0 ? 'match'
     : qtyDelta > 0 ? 'under_billed' : 'over_billed'
@@ -358,6 +379,16 @@ function CustomerRow({ customer }) {
   // Frequency label abbreviation for chip overrides
   const freqAbbr = billingFrequency === 'Semi-Annual' ? 'Semi-Annual'
     : billingFrequency || ''
+
+  // Issues cell text for periodic customers with no QB data
+  function periodicIssueText() {
+    if (periodicBillingMonth === true)
+      return <span className="text-xs text-amber-500/80 italic">{freqAbbr} · invoice expected this month!</span>
+    if (periodicBillingMonth === false)
+      return <span className="text-xs text-teal-600/80 italic">{freqAbbr} · no invoice this month</span>
+    // null = no anchor set
+    return <span className="text-xs text-teal-600/80 italic">{freqAbbr} · no invoice this month</span>
+  }
 
   return (
     <>
@@ -445,9 +476,7 @@ function CustomerRow({ customer }) {
             {hasQbData && qtyMismatch === false && unmapped === 0 && !neverActivated && (
               <span className="text-xs text-emerald-500">✓ Match</span>
             )}
-            {!hasQbData && billingFrequency && (
-              <span className="text-xs text-teal-600/80 italic">{freqAbbr} · no invoice this month</span>
-            )}
+            {!hasQbData && billingFrequency && periodicIssueText()}
             {!hasQbData && !billingFrequency && (
               <span className="text-xs text-slate-600 italic">import QB to compare</span>
             )}
@@ -458,7 +487,9 @@ function CustomerRow({ customer }) {
         <td className="px-4 py-3">
           {qtyRowStatus === 'periodic'
             ? <QtyChip status="periodic" label={`${freqAbbr} · No QB`} />
-            : <QtyChip status={qtyRowStatus} />
+            : qtyRowStatus === 'no_qb_data' && billingFrequency && periodicBillingMonth === true
+              ? <QtyChip status="no_qb_data" label={`${freqAbbr} · Invoice Due!`} />
+              : <QtyChip status={qtyRowStatus} />
           }
         </td>
       </tr>
@@ -573,10 +604,21 @@ export default function Reconciliation() {
   const qbHanCsUnmatched     = data?.qbHanCsUnmatched    || []
 
   // Client-side filtering + sorting
+  // Current month in YYYY-MM format (used as the reconciliation reference month)
+  const nowMonth = (() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  })()
+
   // periodic: has a billing frequency set (Annual/Semi-Annual/Quarterly) AND no QB data this month
-  // — these are expected absences, not errors, so they sort to the bottom
+  //   - if billingStartMonth set AND this is a billing month -> 'no_qb_data' (amber, alert — invoice expected)
+  //   - if billingStartMonth set AND non-billing month       -> 'periodic'   (teal, suppress)
+  //   - if no billingStartMonth                             -> 'periodic'   (teal, suppress — can't tell)
   const getQtyStatus = c => {
-    if (!c.hasQbData && c.billingFrequency) return 'periodic'
+    if (!c.hasQbData && c.billingFrequency) {
+      const billing = isBillingMonth(c.billingFrequency, c.billingStartMonth, nowMonth)
+      return billing === true ? 'no_qb_data' : 'periodic'
+    }
     if (!c.hasQbData) return 'no_qb_data'
     return c.qtyDelta === 0 ? 'match' : c.qtyDelta > 0 ? 'under_billed' : 'over_billed'
   }
@@ -698,7 +740,7 @@ export default function Reconciliation() {
             />
             <SummaryCard
               label="No QB Data"
-              value={customers.filter(c => !c.hasQbData && !c.billingFrequency).length.toLocaleString()}
+              value={customers.filter(c => getQtyStatus(c) === 'no_qb_data').length.toLocaleString()}
               sub="not in QB invoice"
               color="amber"
               active={qtyFilter === 'no_qb_data'}
@@ -706,7 +748,7 @@ export default function Reconciliation() {
             />
             <SummaryCard
               label="Periodic"
-              value={customers.filter(c => c.billingFrequency).length.toLocaleString()}
+              value={customers.filter(c => getQtyStatus(c) === 'periodic').length.toLocaleString()}
               sub="Annual / Semi / Quarterly"
               color="purple"
               active={qtyFilter === 'periodic'}
@@ -890,7 +932,7 @@ export default function Reconciliation() {
               </tr>
             </thead>
             <tbody>
-              {visible.map(c => <CustomerRow key={c.customerId} customer={c} />)}
+              {visible.map(c => <CustomerRow key={c.customerId} customer={c} nowMonth={nowMonth} />)}
             </tbody>
           </table>
           </div>
@@ -907,7 +949,7 @@ export default function Reconciliation() {
           Difference = MyAdmin count − QB invoice qty · positive = under-billed · negative = over-billed
         </span>
         <span className="text-teal-700 ml-2">
-          Periodic = Annual / Semi-Annual / Quarterly customer · invoice expected only on their billing cycle months
+          Periodic = Annual / Semi-Annual / Quarterly customer · suppressed on non-billing months · turns amber on their billing month if no QB invoice found
         </span>
       </div>
 

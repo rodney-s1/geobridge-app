@@ -31,12 +31,13 @@ const FREQ_COLORS = {
   'Quarterly':   'bg-teal-900/50 text-teal-300 border-teal-700/40',
 }
 
-function FrequencyBadge({ freq }) {
+function FrequencyBadge({ freq, startMonth }) {
   if (!freq) return null
   const cls = FREQ_COLORS[freq] || 'bg-slate-700/50 text-slate-400 border-slate-600/40'
   return (
-    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${cls}`}>
+    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border ${cls}`}>
       ↻ {freq}
+      {startMonth && <span className="opacity-60">· {startMonth}</span>}
     </span>
   )
 }
@@ -386,9 +387,17 @@ function DeviceRow({ device, onDateSaved }) {
 
 // ─── Shared billing-frequency editor ─────────────────────────────────────────
 function BillingFrequencyEditor({ customer, onBillingFrequencyChange, stopPropagation = true }) {
-  const [editing, setEditing]         = useState(false)
-  const [selected, setSelected]       = useState(customer.billingFrequency || '')
-  const [saving, setSaving]           = useState(false)
+  const [editing, setEditing]       = useState(false)
+  const [selected, setSelected]     = useState(customer.billingFrequency || '')
+  const [startMonth, setStartMonth] = useState(customer.billingStartMonth || '')
+  const [saving, setSaving]         = useState(false)
+
+  // Keep local state in sync if parent refreshes customer prop
+  // (e.g. after a force-sync re-fetch)
+  React.useEffect(() => {
+    setSelected(customer.billingFrequency || '')
+    setStartMonth(customer.billingStartMonth || '')
+  }, [customer.billingFrequency, customer.billingStartMonth])
 
   const save = async () => {
     setSaving(true)
@@ -397,16 +406,19 @@ function BillingFrequencyEditor({ customer, onBillingFrequencyChange, stopPropag
         const res = await fetch(`${API}/api/customers/${customer.id}/billing-frequency`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ billingFrequency: selected }),
+          body: JSON.stringify({
+            billingFrequency:  selected,
+            billingStartMonth: startMonth || null,
+          }),
         })
         if (res.ok) {
-          onBillingFrequencyChange(customer.id, selected)
+          onBillingFrequencyChange(customer.id, selected, startMonth || null)
           setEditing(false)
         }
       } else {
         const res = await fetch(`${API}/api/customers/${customer.id}/billing-frequency`, { method: 'DELETE' })
         if (res.ok) {
-          onBillingFrequencyChange(customer.id, '')
+          onBillingFrequencyChange(customer.id, '', null)
           setEditing(false)
         }
       }
@@ -423,31 +435,53 @@ function BillingFrequencyEditor({ customer, onBillingFrequencyChange, stopPropag
 
   if (editing) {
     return (
-      <div className="flex items-center gap-1 mt-1">
-        <select
-          value={selected}
-          onChange={e => setSelected(e.target.value)}
-          className="bg-slate-700 text-slate-200 text-xs rounded px-2 py-1 border border-teal-700/60 focus:outline-none focus:border-teal-500"
-          onClick={stopPropagation ? e => e.stopPropagation() : undefined}
-        >
-          <option value="">— None —</option>
-          {VALID_BILLING_FREQUENCIES.map(f => (
-            <option key={f} value={f}>{f}</option>
-          ))}
-        </select>
-        <button
-          onClick={sp(save)}
-          disabled={saving}
-          className="px-2 py-1 bg-teal-700 hover:bg-teal-600 text-white text-xs rounded disabled:opacity-50"
-        >
-          {saving ? '...' : '✓'}
-        </button>
-        <button
-          onClick={sp(() => { setEditing(false); setSelected(customer.billingFrequency || '') })}
-          className="px-2 py-1 bg-slate-600 hover:bg-slate-500 text-white text-xs rounded"
-        >
-          ✕
-        </button>
+      <div className="flex flex-col gap-1 mt-1">
+        <div className="flex items-center gap-1 flex-wrap">
+          <select
+            value={selected}
+            onChange={e => setSelected(e.target.value)}
+            className="bg-slate-700 text-slate-200 text-xs rounded px-2 py-1 border border-teal-700/60 focus:outline-none focus:border-teal-500"
+            onClick={stopPropagation ? e => e.stopPropagation() : undefined}
+          >
+            <option value="">— None —</option>
+            {VALID_BILLING_FREQUENCIES.map(f => (
+              <option key={f} value={f}>{f}</option>
+            ))}
+          </select>
+          {selected && (
+            <input
+              type="month"
+              value={startMonth}
+              onChange={e => setStartMonth(e.target.value)}
+              onClick={stopPropagation ? e => e.stopPropagation() : undefined}
+              title="Billing cycle anchor month (e.g. 2024-03 means Quarterly bills in Mar/Jun/Sep/Dec)"
+              className="bg-slate-700 text-slate-200 text-xs rounded px-2 py-1 border border-teal-700/40
+                focus:outline-none focus:border-teal-500 w-32"
+            />
+          )}
+          <button
+            onClick={sp(save)}
+            disabled={saving}
+            className="px-2 py-1 bg-teal-700 hover:bg-teal-600 text-white text-xs rounded disabled:opacity-50"
+          >
+            {saving ? '...' : '✓'}
+          </button>
+          <button
+            onClick={sp(() => {
+              setEditing(false)
+              setSelected(customer.billingFrequency || '')
+              setStartMonth(customer.billingStartMonth || '')
+            })}
+            className="px-2 py-1 bg-slate-600 hover:bg-slate-500 text-white text-xs rounded"
+          >
+            ✕
+          </button>
+        </div>
+        {selected && (
+          <span className="text-[10px] text-teal-700/80 italic">
+            Start month anchors the cycle — leave blank to suppress only (no billing-month alerts)
+          </span>
+        )}
       </div>
     )
   }
@@ -456,10 +490,12 @@ function BillingFrequencyEditor({ customer, onBillingFrequencyChange, stopPropag
     <div
       className="flex items-center gap-1 mt-1 group cursor-pointer"
       onClick={stopPropagation ? e => { e.stopPropagation(); setEditing(true) } : () => setEditing(true)}
-      title={customer.billingFrequency ? `Billing frequency: ${customer.billingFrequency} — click to change` : 'Click to set billing frequency'}
+      title={customer.billingFrequency
+        ? `Billing frequency: ${customer.billingFrequency}${customer.billingStartMonth ? ` · starts ${customer.billingStartMonth}` : ''} — click to change`
+        : 'Click to set billing frequency'}
     >
       {customer.billingFrequency ? (
-        <FrequencyBadge freq={customer.billingFrequency} />
+        <FrequencyBadge freq={customer.billingFrequency} startMonth={customer.billingStartMonth} />
       ) : (
         <span className="text-[10px] text-slate-700 group-hover:text-teal-600 italic transition-colors">+ set frequency</span>
       )}
@@ -1477,9 +1513,12 @@ export default function Customers({ onDetail }) {
     )
   }
 
-  const handleBillingFrequencyChange = (customerId, newFreq) => {
+  const handleBillingFrequencyChange = (customerId, newFreq, newStartMonth) => {
     setCustomers(prev =>
-      prev.map(c => c.id === customerId ? { ...c, billingFrequency: newFreq } : c)
+      prev.map(c => c.id === customerId
+        ? { ...c, billingFrequency: newFreq, billingStartMonth: newStartMonth }
+        : c
+      )
     )
   }
 
