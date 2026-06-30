@@ -1161,6 +1161,86 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                     _hanover_na_excluded += 1
                     continue
 
+                # -- Tier NA-0.5: serial-prefix overrides (mirrors active Tiers 0.5a–0.5f) --
+                # Never-activated devices bypass the main active-device loop so
+                # the serial-prefix tiers never fire for them.  We replicate the
+                # same checks here so that e.g. Surfsight cameras (EVD-MKH-SRF*)
+                # are correctly resolved to SS Service Fee rather than inheriting
+                # the account's most common active SKU (usually Pro / GO Plan).
+                na_serial        = (na_dev.get("serialNumber") or "").upper()
+                na_sub_tag       = (na_dev.get("subAccountTag") or "").lower()
+                na_resolved_promo_sku = mapping_index.get(na_promo, "") if na_promo else ""
+                na_promo_maps_to_ss  = na_resolved_promo_sku.startswith("SS Service Fee")
+                na_is_ge_gf          = na_serial.startswith("GE") or na_serial.startswith("GF")
+                na_sku_key = None
+                na_price_source = "none"
+
+                # NA-0.5a: {Cameras} sub-account → SS Service Fee
+                # (same exclusions as Tier 0.5a: GE/GF hardware and SS bundle promoCodes)
+                if (na_sub_tag == "cameras"
+                        and not na_is_ge_gf
+                        and not na_promo_maps_to_ss):
+                    na_sku_key      = "SS Service Fee"
+                    na_price_source = "serial_prefix"
+
+                # NA-0.5b: HN serial + (no promoCode) → DM Service Fee
+                if na_sku_key is None and not na_promo and na_serial.startswith("HN"):
+                    na_sku_key      = "DM Service Fee"
+                    na_price_source = "serial_prefix"
+
+                # NA-0.5c: EG / EK serial → Phillips Connect Tracking Fee
+                if (na_sku_key is None
+                        and (na_serial.startswith("EG") or na_serial.startswith("EK"))):
+                    na_sku_key      = "Tracking Fee"
+                    na_price_source = "serial_prefix"
+
+                # NA-0.5d: C3 serial → CalAmp Asset Service Fee
+                if na_sku_key is None and na_serial.startswith("C3"):
+                    na_sku_key      = "Service Fee CalAmp (Asset)"
+                    na_price_source = "serial_prefix"
+
+                # NA-0.5e: Surfsight camera serial (EVD-MKH-SRF*) → SS Service Fee
+                # Surfsight cameras don't sit on a {Cameras} sub-account in all
+                # configurations, so the sub-account tag check (NA-0.5a) may miss
+                # them.  The serial prefix is the definitive discriminator.
+                if na_sku_key is None and na_serial.startswith("EVD-MKH-SRF"):
+                    na_sku_key      = "SS Service Fee"
+                    na_price_source = "serial_prefix"
+
+                # NA-0.5f: GE / GF serial (no promoCode) → GO Focus Plus / GO Focus
+                if na_sku_key is None and not na_promo:
+                    if na_serial.startswith("GE"):
+                        na_sku_key      = "Geotab Service (GO Focus Plus)"
+                        na_price_source = "serial_prefix"
+                    elif na_serial.startswith("GF"):
+                        na_sku_key      = "Service Fee (GO Focus)"
+                        na_price_source = "serial_prefix"
+
+                # If a serial-prefix tier already resolved the SKU, skip NA-1/NA-2.
+                if na_sku_key:
+                    expected_na, _ps = _resolve_price(
+                        _qb_cname, na_sku_key, ovr_index, catalog_index
+                    )
+                    device_rows.append({
+                        "serialNumber":  na_dev["serialNumber"],
+                        "ratePlanCode":  "Never Activated",
+                        "billingPlan":   (na_dev.get("billingPlan") or na_dev.get("billing_plan") or ""),
+                        "promoCode":     (na_dev.get("promoCode") or ""),
+                        "skuKey":        na_sku_key,
+                        "skuName":       catalog_name.get(na_sku_key, na_sku_key),
+                        "expectedPrice": round(expected_na, 2) if expected_na is not None else None,
+                        "actualPrice":   None,
+                        "delta":         None,
+                        "priceSource":   na_price_source,
+                        "status":        "never_activated",
+                        "neverActivated": True,
+                        "location":      na_dev.get("location", ""),
+                    })
+                    cust_never_activated += 1
+                    if expected_na is not None:
+                        cust_expected += expected_na
+                    continue   # skip NA-1 / NA-2 entirely for this device
+
                 # -- Tier NA-1: promoCode lookup (mirrors active-device Tiers 1/1.5/3) --
                 # If the never-activated device carries a promoCode (e.g.
                 # "BUNDLE-GO"), try to resolve it to an SKU the same way active
