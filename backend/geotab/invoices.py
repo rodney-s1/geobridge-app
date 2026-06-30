@@ -368,6 +368,28 @@ _SERIAL_PREFIX_SKU: list = [
     ("EK", "Tracking Fee"),
 ]
 
+# GO Focus (GF) / GO Focus Plus (GE) serial-prefix base SKUs.
+# Used by _gf_ge_base_sku() when a device has NO promoCode and its billing plan
+# does not disambiguate further (e.g. both map to "GO EXPAND" in MyAdmin).
+_GE_GF_BASE_SKU: dict = {
+    "GE": "Geotab Service (GO Focus Plus)",
+    "GF": "Service Fee (GO Focus)",
+}
+
+# Post-resolution remap for GF serials: if promoCode resolution (Tier 1.5)
+# returns a GO Focus Plus SKU, replace it with the correct GO Focus equivalent.
+# GE serials are already correct (GO Focus Plus).
+# Keys: GO Focus Plus skuKey   Values: correct GO Focus skuKey for GF hardware
+_GF_SKU_REMAP: dict = {
+    "Geotab Service (GO Focus Plus)":   "Service Fee (GO Focus)",
+    "Service (GO Focus Plus) SW-SI3":   "Service Fee (GO Focus) SW-SI3",
+    # SWELL-NOINSTALL / SWELL-NOINSTALL2: no GF-specific STRD variant exists
+    # → fall back to base GO Focus service fee
+    "Service (GO Focus Plus) SW-STRD":  "Service Fee (GO Focus)",
+    "Service (GO Focus Plus) SWELL3":   "Service Fee (GO Focus) SWELL3",
+    "Service (GO Focus Plus) Bundle":   "Service Fee (GO Focus)",
+}
+
 def _sku_from_serial(serial: str) -> Optional[str]:
     """
     Return a best-guess skuKey based on serial number prefix for OEM hardware,
@@ -541,6 +563,9 @@ def _generate_prorated_invoice(
         #   1. Serial-prefix check (HIGHEST for OEM + Surfsight hardware)
         #      DW/CO/DY/D8/EVD-MKH-SRF/etc. always billed to their own SKU
         #      regardless of billing_plan or promoCode.
+        #   1.5 GE/GF serial + no promoCode → base hardware SKU
+        #      GE (GO Focus Plus) → Geotab Service (GO Focus Plus)
+        #      GF (GO Focus)      → Service Fee (GO Focus)
         #   2. Customer-specific mapping on promoCode  (Tier 1)
         #   2.5 Plan+promoCode compound lookup         (Tier 1.5)
         #      e.g. SWELL-NOINS3 on GO Expand → Service (GO Focus Plus) SW-SI3
@@ -548,17 +573,29 @@ def _generate_prorated_invoice(
         #   3. Global mapping on promoCode             (Tier 3)
         #   4. Customer-specific / global on billing_plan
         #   5. UNMAPPED fallback
-        sku_key = (
-            _sku_from_serial(serial)
-            or _resolve_sku(cust_norm, rate_plan,    mapping_index, cust_map_index,
-                            billing_plan, plan_promo_index)
-            or _resolve_sku(cust_norm, billing_plan, mapping_index, cust_map_index)
-            or "UNMAPPED"
-        )
+        #   6. GF serial post-correction: if resolution yielded a GO Focus Plus
+        #      SKU but the device is GF hardware, remap to GO Focus equivalent.
+        serial_upper  = serial.strip().upper() if serial else ""
+        _gf_serial    = serial_upper.startswith("GF")
+        _ge_serial    = serial_upper.startswith("GE")
+
+        # Step 1.5: GE/GF with no promoCode → base hardware SKU directly
+        if not rate_plan and (_gf_serial or _ge_serial):
+            sku_key = _GE_GF_BASE_SKU["GF" if _gf_serial else "GE"]
+        else:
+            sku_key = (
+                _sku_from_serial(serial)
+                or _resolve_sku(cust_norm, rate_plan,    mapping_index, cust_map_index,
+                                billing_plan, plan_promo_index)
+                or _resolve_sku(cust_norm, billing_plan, mapping_index, cust_map_index)
+                or "UNMAPPED"
+            )
+            # Step 6: GF serial post-correction — remap Focus Plus → Focus
+            if _gf_serial and sku_key in _GF_SKU_REMAP:
+                sku_key = _GF_SKU_REMAP[sku_key]
 
         # Apply per-serial SKU override (user-managed via the UI)
         billing_month_str = f"{billing_year}-{billing_month:02d}"
-        serial_upper = serial.strip().upper() if serial else ""
         if sku_overrides:
             ovr_key = f"{customer_id}|{billing_month_str}|{serial_upper}"
             if ovr_key in sku_overrides:
