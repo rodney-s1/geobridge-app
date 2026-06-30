@@ -182,13 +182,14 @@ def _connect_day_label(d: date) -> str:
 def _build_indices():
     """
     Build the same lookup indices reconciliation.py uses:
-      catalog_index  : skuKey -> defaultPrice
-      ovr_index      : (norm_customerName, skuKey) -> override price
-      mapping_index  : ratePlanCode_upper -> skuKey   (global)
-      cust_map_index : (norm_customerName, ratePlanCode_upper) -> skuKey
-      full_path_index: skuKey -> fullPath  (QB item code format)
-      sku_desc_index : skuKey -> desc  (human label for description)
-      category_index : skuKey -> category  (used to exclude non-billable categories)
+      catalog_index    : skuKey -> defaultPrice
+      ovr_index        : (norm_customerName, skuKey) -> override price
+      mapping_index    : ratePlanCode_upper -> skuKey   (global, first-entry-wins)
+      cust_map_index   : (norm_customerName, ratePlanCode_upper) -> skuKey
+      full_path_index  : skuKey -> fullPath  (QB item code format)
+      sku_desc_index   : skuKey -> desc  (human label for description)
+      category_index   : skuKey -> category  (used to exclude non-billable categories)
+      plan_promo_index : (planLevel_upper, ratePlanCode_upper) -> skuKey  (Tier 1.5)
     """
     catalog  = _load_json(os.path.join(_HERE, "sku_catalog.json"), [])
     mappings = _load_json(os.path.join(_HERE, "sku_mappings.json"), [])
@@ -215,32 +216,56 @@ def _build_indices():
         (_normalize(o["customerName"]), o["skuKey"]): float(o.get("price") or 0)
         for o in overrides
     }
-    mapping_index: Dict[str, str] = {
-        (m.get("ratePlanCode") or "").upper(): m.get("skuKey") or ""
-        for m in mappings
-    }
+    # First-entry-wins: ensures the GO CORE variant is the safe flat default
+    # for codes like BUNDLE-GO that appear multiple times with different planLevels.
+    mapping_index: Dict[str, str] = {}
+    for m in mappings:
+        key = (m.get("ratePlanCode") or "").upper()
+        if key and key not in mapping_index:
+            mapping_index[key] = m.get("skuKey") or ""
     cust_map_index: Dict[tuple, str] = {
         (_normalize(m["customerName"]), (m.get("ratePlanCode") or "").upper()): m.get("skuKey") or ""
         for m in cust_maps
     }
+    # Tier 1.5 compound index: (planLevel_upper, ratePlanCode_upper) -> skuKey
+    # Used to disambiguate codes like SWELL-NOINS3 that resolve differently on
+    # GO vs GO EXPAND billing plans.
+    plan_promo_index: Dict[tuple, str] = {
+        (
+            (m.get("planLevel") or "").upper(),
+            (m.get("ratePlanCode") or "").upper(),
+        ): m.get("skuKey") or ""
+        for m in mappings
+        if m.get("planLevel")
+    }
 
-    return catalog_index, ovr_index, mapping_index, cust_map_index, full_path_index, sku_desc_index, category_index
+    return catalog_index, ovr_index, mapping_index, cust_map_index, full_path_index, sku_desc_index, category_index, plan_promo_index
 
 
 def _resolve_sku(customer_norm: str, rate_plan_code: str,
-                 mapping_index: dict, cust_map_index: dict) -> Optional[str]:
+                 mapping_index: dict, cust_map_index: dict,
+                 billing_plan: str = "",
+                 plan_promo_index: Optional[dict] = None) -> Optional[str]:
     """
-    4-tier SKU resolution (same tiers as reconciliation.py):
-      Tier 1: customer-specific mapping on ratePlanCode
-      Tier 2: global mapping on ratePlanCode
+    Tiered SKU resolution (mirrors reconciliation.py):
+      Tier 1:   customer-specific mapping on ratePlanCode
+      Tier 1.5: (planLevel, ratePlanCode) compound lookup — disambiguates
+                same promoCode across GO / GO EXPAND billing plans
+      Tier 2:   global flat mapping on ratePlanCode
       Returns None if no mapping found.
     """
     code = (rate_plan_code or "").upper()
-    return (
-        cust_map_index.get((customer_norm, code))
-        or mapping_index.get(code)
-        or None
-    )
+    # Tier 1: customer override
+    sku = cust_map_index.get((customer_norm, code))
+    if sku:
+        return sku
+    # Tier 1.5: plan + promoCode compound
+    if plan_promo_index and billing_plan and code:
+        sku = plan_promo_index.get((billing_plan.upper(), code))
+        if sku:
+            return sku
+    # Tier 2: global flat
+    return mapping_index.get(code) or None
 
 
 # --------------------------------------------------------------------------- #
