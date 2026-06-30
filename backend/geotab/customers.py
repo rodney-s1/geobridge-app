@@ -31,7 +31,8 @@ _HERE = os.path.dirname(os.path.abspath(__file__))
 QB_DATA_FILE           = os.path.join(_HERE, "qb_customers.json")
 OVERRIDES_FILE         = os.path.join(_HERE, "billing_overrides.json")
 BILLING_TYPE_OVERRIDES_FILE = os.path.join(_HERE, "billing_type_overrides.json")
-BILLING_DATE_OVERRIDES_FILE = os.path.join(_HERE, "billing_date_overrides.json")
+BILLING_DATE_OVERRIDES_FILE      = os.path.join(_HERE, "billing_date_overrides.json")
+FIRST_CONNECT_OVERRIDES_FILE     = os.path.join(_HERE, "first_connect_date_overrides.json")
 SYNC_CACHE_FILE        = os.path.join(_HERE, "myadmin_cache.json")   # persisted between restarts
 CONTRACT_CHECKPOINT_FILE = os.path.join(_HERE, "contract_checkpoint.json")  # sliding-window resume point
 
@@ -57,6 +58,10 @@ billing_type_overrides:  Dict[str, str]  = {
 # Manual billing start date overrides: {"SERIAL": "YYYY-MM-DD"}
 # Written by POST /api/customers/device/{serial}/billing-date
 billing_date_overrides:  Dict[str, str]  = _load_json(BILLING_DATE_OVERRIDES_FILE, {})
+# Manual first connect date overrides: {"SERIAL": "YYYY-MM-DD"}
+# Written by POST /api/customers/device/{serial}/first-connect-date
+# When set, this overrides the MyAdmin firstDeviceActivationDate for invoice proration.
+first_connect_date_overrides: Dict[str, str] = _load_json(FIRST_CONNECT_OVERRIDES_FILE, {})
 qb_customers:       Dict[str, dict] = _load_json(QB_DATA_FILE, {})
 qb_items:           List[dict]      = []
 name_to_company_id: Dict[str, str]  = {}   # normalize(name) -> companyId, built on sync
@@ -1101,29 +1106,38 @@ async def get_customer(account_id: str):
             # Manual billing-date override takes highest priority.
             # If the user has set a date via the UI it shows immediately here
             # and is also used by the invoice engine (same store).
-            _override_date = billing_date_overrides.get(_serial.strip().upper())
+            _serial_key    = _serial.strip().upper()
+            _override_date = billing_date_overrides.get(_serial_key)
 
-            # Display date: override > First Connect Date > Billing Start Date > startDate
-            # Column header stays "Billing Start Date" in the UI.
+            # Manual first-connect-date override: user can correct a missing/wrong
+            # firstDeviceActivationDate from MyAdmin (e.g. sync ran before first connect).
+            _fcd_override  = first_connect_date_overrides.get(_serial_key)
+
+            # firstConnectDate shown in UI: override > API field
+            _api_fcd            = _date(d.get("firstDeviceActivationDate") or "")
+            _display_fcd        = _fcd_override or _api_fcd
+
+            # Display date: fcd_override / api_fcd > bsd_override > billingStartDate > startDate
             _api_start_date = _date(
                 d.get("firstDeviceActivationDate")
                 or d.get("billingStartDate")
                 or d.get("startDate")
                 or ""
             )
-            _display_start_date = _override_date or _api_start_date
+            _display_start_date = _fcd_override or _override_date or _api_start_date
 
             normalized.append({
-                "serialNumber":      _serial,
-                "deviceType":        (device.get("deviceType") or {}).get("name") or "",
-                "activeBillingPlan": active_billing_plan,
-                "ratePlanCode":      rate_plan_code,
-                "database":          db_name,
-                "status":            "Never Activated" if _is_never_activated else "Active",
-                "contractStartDate": _display_start_date,
-                "hasDateOverride":   _override_date is not None,
-                "firstConnectDate":  _date(d.get("firstDeviceActivationDate") or ""),
-                "contractEndDate":   _date(d.get("endDate") or ""),
+                "serialNumber":           _serial,
+                "deviceType":             (device.get("deviceType") or {}).get("name") or "",
+                "activeBillingPlan":      active_billing_plan,
+                "ratePlanCode":           rate_plan_code,
+                "database":               db_name,
+                "status":                 "Never Activated" if _is_never_activated else "Active",
+                "contractStartDate":      _display_start_date,
+                "hasDateOverride":        _override_date is not None,
+                "firstConnectDate":       _display_fcd,
+                "hasFirstConnectOverride": _fcd_override is not None,
+                "contractEndDate":        _date(d.get("endDate") or ""),
             })
 
         return {
@@ -1266,4 +1280,64 @@ async def get_device_billing_date(serial: str):
         "serial":             key,
         "hasOverride":        override is not None,
         "billingStartDate":   override,
+    }
+
+
+# =============================================================================
+#  Manual first-connect-date overrides  (per-device)
+# =============================================================================
+
+class FirstConnectDateOverride(BaseModel):
+    firstConnectDate: str   # "YYYY-MM-DD"
+
+
+@router.post("/customers/device/{serial}/first-connect-date")
+async def set_device_first_connect_date(serial: str, body: FirstConnectDateOverride):
+    """
+    Manually set (or replace) the First Connect Date for a device serial.
+    Stored in first_connect_date_overrides.json as {"SERIAL": "YYYY-MM-DD"}.
+
+    This date takes priority over MyAdmin's firstDeviceActivationDate in invoice
+    generation (Rule 3 fires — uses fcd as activation date).  Use this when the
+    MyAdmin sync ran before the device had its first connection, leaving
+    firstDeviceActivationDate as 0001-01-01 (null), but the true first-connect
+    date is known from the MyAdmin UI.
+    """
+    from datetime import date as _date_cls
+    try:
+        _date_cls.fromisoformat(body.firstConnectDate)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="firstConnectDate must be YYYY-MM-DD")
+
+    key = serial.strip().upper()
+    first_connect_date_overrides[key] = body.firstConnectDate
+    _save_json(FIRST_CONNECT_OVERRIDES_FILE, first_connect_date_overrides)
+    return {"success": True, "serial": key, "firstConnectDate": body.firstConnectDate}
+
+
+@router.delete("/customers/device/{serial}/first-connect-date")
+async def delete_device_first_connect_date(serial: str):
+    """
+    Remove the manual first-connect-date override for a device serial.
+    After deletion the invoice engine falls back to MyAdmin's firstDeviceActivationDate,
+    then billingStartDate.
+    """
+    key = serial.strip().upper()
+    if key not in first_connect_date_overrides:
+        raise HTTPException(status_code=404, detail=f"No first-connect-date override found for serial '{serial}'")
+
+    del first_connect_date_overrides[key]
+    _save_json(FIRST_CONNECT_OVERRIDES_FILE, first_connect_date_overrides)
+    return {"success": True, "serial": key, "cleared": True}
+
+
+@router.get("/customers/device/{serial}/first-connect-date")
+async def get_device_first_connect_date(serial: str):
+    """Return the current manual first-connect-date override for a serial (if any)."""
+    key = serial.strip().upper()
+    override = first_connect_date_overrides.get(key)
+    return {
+        "serial":           key,
+        "hasOverride":      override is not None,
+        "firstConnectDate": override,
     }

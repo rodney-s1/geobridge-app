@@ -41,7 +41,9 @@ from fastapi import APIRouter, HTTPException, Query
 from .reconciliation import _normalize, _resolve_price
 
 # Shared in-memory cache populated by customers.py sync
-from .customers import _sync_cache, _clean_name, _strip_han_cs, _strip_sub_account_suffix, billing_date_overrides, BILLING_DATE_OVERRIDES_FILE, _save_json
+from .customers import (_sync_cache, _clean_name, _strip_han_cs, _strip_sub_account_suffix,
+                        billing_date_overrides, BILLING_DATE_OVERRIDES_FILE,
+                        first_connect_date_overrides, FIRST_CONNECT_OVERRIDES_FILE, _save_json)
 
 # --------------------------------------------------------------------------- #
 #  File paths (same dir as all other geotab data files)                        #
@@ -489,13 +491,22 @@ def _generate_prorated_invoice(
         if not _adp_name or _adp_name == "NEVER ACTIVATED" or "never" in _adp_name:
             continue
 
-        # ── Manual billing-date override (highest priority) ────────────────
-        # If the user has set a date for this serial via the UI, use it as
-        # billingStartDate and bypass the API dates entirely.
+        # ── Manual date overrides (highest priority) ──────────────────────
         device_serial_raw = (contract.get("device") or {}).get("serialNumber") or ""
-        override_bsd = billing_date_overrides.get(device_serial_raw.strip().upper())
+        _serial_key       = device_serial_raw.strip().upper()
 
-        raw_fcd = _safe_date(contract.get("firstDeviceActivationDate"))
+        # First-connect-date override: user-set date that feeds raw_fcd directly.
+        # Use when MyAdmin sync ran before the device's first connection, leaving
+        # firstDeviceActivationDate as 0001-01-01 sentinel (empty after _safe_date).
+        override_fcd = first_connect_date_overrides.get(_serial_key)
+
+        # Billing-start-date override: replaces billingStartDate from API.
+        # Note: fcd override takes precedence — if both are set, fcd override wins
+        # and is used as the proration anchor (Rule 3).
+        override_bsd = billing_date_overrides.get(_serial_key)
+
+        # Apply overrides: fcd_override > API firstDeviceActivationDate
+        raw_fcd = override_fcd or _safe_date(contract.get("firstDeviceActivationDate"))
         # If override present it replaces billingStartDate; firstConnectDate
         # from the API is preserved so Rule 2 still applies.
         raw_bsd = override_bsd or _safe_date(contract.get("billingStartDate"))
@@ -1267,7 +1278,9 @@ async def get_prorated_invoices(
             for c in company_contracts:
                 if c.get("isTerminated"):
                     continue
-                raw_fcd = _safe_date(c.get("firstDeviceActivationDate"))
+                raw_fcd = first_connect_date_overrides.get(
+                    (((c.get("device") or {}).get("serialNumber") or "").strip().upper())
+                ) or _safe_date(c.get("firstDeviceActivationDate"))
                 if not raw_fcd:
                     continue
                 try:
@@ -1704,11 +1717,12 @@ async def get_unbilled_check(
             if _is_never_activated_plan:
                 continue
 
-            # Check override
+            # Check overrides
+            override_fcd = first_connect_date_overrides.get(serial)
             override_bsd = billing_date_overrides.get(serial)
-            has_override = override_bsd is not None
+            has_override = override_fcd is not None or override_bsd is not None
 
-            raw_fcd = _safe_date(c.get("firstDeviceActivationDate"))
+            raw_fcd = override_fcd or _safe_date(c.get("firstDeviceActivationDate"))
             raw_bsd = override_bsd or _safe_date(c.get("billingStartDate"))
 
             # Auto-assign startDate ("Assignment Date" in MyAdmin UI) when a device

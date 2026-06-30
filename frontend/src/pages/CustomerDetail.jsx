@@ -90,8 +90,11 @@ function DevicesTab({ customerId }) {
   const [filterCode,    setFilterCode]    = useState(null)
   const [copied,        copy]             = useCopySerials()
 
-  // Inline "Set date" state
-  const [setDateSerial, setSetDateSerial] = useState(null)   // serial with picker open
+  // Inline picker state — tracks which picker is open:
+  //   null         → none open
+  //   { serial, mode: 'bsd' }  → billing-start-date picker
+  //   { serial, mode: 'fcd' }  → first-connect-date picker
+  const [activePicker,  setActivePicker]  = useState(null)
   const [dateInput,     setDateInput]     = useState('')
   const [saving,        setSaving]        = useState(false)
   const [saveError,     setSaveError]     = useState(null)
@@ -107,33 +110,44 @@ function DevicesTab({ customerId }) {
 
   useEffect(() => { loadDevices() }, [loadDevices])
 
-  // Open the inline date picker for a device row
-  function openSetDate(serial) {
-    setSetDateSerial(serial)
+  // Open a date picker for a device row
+  // mode: 'bsd' (billing start date) | 'fcd' (first connect date)
+  function openPicker(serial, mode) {
+    setActivePicker({ serial, mode })
     setDateInput('')
     setSaveError(null)
   }
 
+  function closePicker() {
+    setActivePicker(null)
+    setSaveError(null)
+  }
+
   // Save override via POST
-  async function handleSaveDate(serial) {
+  async function handleSaveDate() {
+    if (!activePicker) return
+    const { serial, mode } = activePicker
     if (!dateInput) { setSaveError('Please pick a date'); return }
     setSaving(true)
     setSaveError(null)
     try {
-      const res = await fetch(
-        `${API}/api/customers/device/${encodeURIComponent(serial)}/billing-date`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ billingStartDate: dateInput }),
-        }
-      )
+      const url    = mode === 'fcd'
+        ? `${API}/api/customers/device/${encodeURIComponent(serial)}/first-connect-date`
+        : `${API}/api/customers/device/${encodeURIComponent(serial)}/billing-date`
+      const body   = mode === 'fcd'
+        ? { firstConnectDate: dateInput }
+        : { billingStartDate: dateInput }
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.detail || `Server error (${res.status})`)
+        const b = await res.json().catch(() => ({}))
+        throw new Error(b.detail || `Server error (${res.status})`)
       }
-      setSetDateSerial(null)
-      loadDevices()   // refresh the device list so the date appears
+      closePicker()
+      loadDevices()
     } catch (e) {
       setSaveError(e.message)
     } finally {
@@ -142,19 +156,19 @@ function DevicesTab({ customerId }) {
   }
 
   // Clear override via DELETE
-  async function handleClearDate(serial) {
+  async function handleClearDate(serial, mode) {
     setSaving(true)
     setSaveError(null)
     try {
-      const res = await fetch(
-        `${API}/api/customers/device/${encodeURIComponent(serial)}/billing-date`,
-        { method: 'DELETE' }
-      )
+      const url = mode === 'fcd'
+        ? `${API}/api/customers/device/${encodeURIComponent(serial)}/first-connect-date`
+        : `${API}/api/customers/device/${encodeURIComponent(serial)}/billing-date`
+      const res = await fetch(url, { method: 'DELETE' })
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}))
-        throw new Error(body.detail || `Server error (${res.status})`)
+        const b = await res.json().catch(() => ({}))
+        throw new Error(b.detail || `Server error (${res.status})`)
       }
-      setSetDateSerial(null)
+      closePicker()
       loadDevices()
     } catch (e) {
       setSaveError(e.message)
@@ -263,27 +277,31 @@ function DevicesTab({ customerId }) {
       <div className="bg-slate-900/60 border border-slate-700/40 rounded-xl overflow-hidden">
         <table className="w-full table-fixed text-xs">
           <colgroup>
+            <col style={{ width: '12%' }} />
             <col style={{ width: '14%' }} />
-            <col style={{ width: '18%' }} />
-            <col style={{ width: '14%' }} />
+            <col style={{ width: '12%' }} />
+            <col style={{ width: '9%' }} />
             <col style={{ width: '11%' }} />
             <col style={{ width: '14%' }} />
-            <col style={{ width: '13%' }} />
-            <col style={{ width: '9%' }} />
+            <col style={{ width: '14%' }} />
+            <col style={{ width: '7%' }} />
             <col style={{ width: '7%' }} />
           </colgroup>
           <thead className="bg-slate-800/60">
             <tr>
-              {['Serial', 'Device Type', 'Billing Plan', 'Rate Plan', 'Database', 'Billing Start Date', 'End', ''].map(h => (
+              {['Serial', 'Device Type', 'Billing Plan', 'Rate Plan', 'Database', 'First Connect Date', 'Billing Start Date', 'End', ''].map(h => (
                 <th key={h} className="px-3 py-2.5 text-left text-xs text-slate-400 font-semibold">{h}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {visibleDevices.map((d, i) => {
-              const isActive     = d.status === 'Active'
-              const needsDate    = isActive && !d.contractStartDate
-              const pickerOpen   = setDateSerial === d.serialNumber
+              const isActive         = d.status === 'Active'
+              const fcdPickerOpen    = activePicker?.serial === d.serialNumber && activePicker?.mode === 'fcd'
+              const bsdPickerOpen    = activePicker?.serial === d.serialNumber && activePicker?.mode === 'bsd'
+              const anyPickerOpen    = fcdPickerOpen || bsdPickerOpen
+              // Show the BSD "Set date" button only when there is no date at all (needsDate)
+              const needsDate        = isActive && !d.contractStartDate
               return (
                 <React.Fragment key={`${d.serialNumber}-${i}`}>
                   <tr className="border-t border-slate-700/30 hover:bg-slate-700/20">
@@ -296,54 +314,97 @@ function DevicesTab({ customerId }) {
                         : <span className="text-slate-600">—</span>}
                     </td>
                     <td className="px-3 py-2 text-slate-400 truncate">{d.database || '—'}</td>
+
+                    {/* ── First Connect Date cell ── */}
+                    <td className="px-3 py-2 font-mono">
+                      {d.firstConnectDate ? (
+                        <span className={`flex items-center gap-1 ${d.hasFirstConnectOverride ? 'text-sky-300' : 'text-slate-300'}`}>
+                          {d.firstConnectDate}
+                          {d.hasFirstConnectOverride && (
+                            <span title="Manual override — click ✕ to clear"
+                              className="text-sky-400 cursor-pointer hover:text-red-400 ml-0.5 leading-none"
+                              onClick={() => handleClearDate(d.serialNumber, 'fcd')}>✕</span>
+                          )}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => fcdPickerOpen ? closePicker() : openPicker(d.serialNumber, 'fcd')}
+                          title="Set manual first connect date"
+                          className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
+                            fcdPickerOpen
+                              ? 'bg-sky-500/30 text-sky-300 border border-sky-500/50'
+                              : 'bg-sky-500/15 text-sky-400 border border-sky-500/30 hover:bg-sky-500/25'
+                          }`}
+                        >
+                          Set FCD
+                        </button>
+                      )}
+                    </td>
+
+                    {/* ── Billing Start Date cell ── */}
                     <td className="px-3 py-2 font-mono">
                       {d.contractStartDate
-                        ? <span className="text-slate-300">{d.contractStartDate}</span>
+                        ? <span className={d.hasDateOverride ? 'text-amber-300' : 'text-slate-300'}>
+                            {d.contractStartDate}
+                            {d.hasDateOverride && (
+                              <span title="Manual override — click ✕ to clear"
+                                className="text-amber-400 cursor-pointer hover:text-red-400 ml-1 leading-none"
+                                onClick={() => handleClearDate(d.serialNumber, 'bsd')}>✕</span>
+                            )}
+                          </span>
                         : <span className="text-slate-600 italic">not set</span>}
                     </td>
+
                     <td className="px-3 py-2 text-slate-500 font-mono">{d.contractEndDate || '—'}</td>
                     <td className="px-3 py-2">
                       {needsDate && (
                         <button
-                          onClick={() => pickerOpen ? setSetDateSerial(null) : openSetDate(d.serialNumber)}
+                          onClick={() => bsdPickerOpen ? closePicker() : openPicker(d.serialNumber, 'bsd')}
                           title="Set manual billing start date"
                           className={`px-2 py-0.5 rounded text-xs font-medium transition-colors ${
-                            pickerOpen
+                            bsdPickerOpen
                               ? 'bg-amber-500/30 text-amber-300 border border-amber-500/50'
                               : 'bg-amber-500/15 text-amber-400 border border-amber-500/30 hover:bg-amber-500/25'
                           }`}
                         >
-                          Set date
+                          Set BSD
                         </button>
                       )}
                     </td>
                   </tr>
 
                   {/* Inline date picker row */}
-                  {pickerOpen && (
-                    <tr className="bg-amber-900/10 border-t border-amber-700/20">
-                      <td colSpan={8} className="px-4 py-3">
+                  {anyPickerOpen && (
+                    <tr className={`border-t ${fcdPickerOpen ? 'bg-sky-900/10 border-sky-700/20' : 'bg-amber-900/10 border-amber-700/20'}`}>
+                      <td colSpan={9} className="px-4 py-3">
                         <div className="flex items-center gap-3 flex-wrap">
-                          <span className="text-xs text-amber-400 font-medium">
-                            Manual billing start date for {d.serialNumber}:
+                          <span className={`text-xs font-medium ${fcdPickerOpen ? 'text-sky-400' : 'text-amber-400'}`}>
+                            {fcdPickerOpen
+                              ? `Manual first connect date for ${activePicker.serial}:`
+                              : `Manual billing start date for ${activePicker.serial}:`}
                           </span>
                           <input
                             type="date"
                             value={dateInput}
                             onChange={e => setDateInput(e.target.value)}
-                            className="px-2 py-1 bg-slate-800 border border-slate-600 text-slate-200 rounded text-xs
-                                       focus:outline-none focus:border-amber-500"
+                            className={`px-2 py-1 bg-slate-800 border text-slate-200 rounded text-xs
+                                       focus:outline-none ${fcdPickerOpen
+                                         ? 'border-slate-600 focus:border-sky-500'
+                                         : 'border-slate-600 focus:border-amber-500'}`}
                           />
                           <button
-                            onClick={() => handleSaveDate(d.serialNumber)}
+                            onClick={handleSaveDate}
                             disabled={saving || !dateInput}
-                            className="px-3 py-1 bg-amber-600 hover:bg-amber-500 disabled:opacity-50
-                                       text-white rounded text-xs font-medium transition-colors"
+                            className={`px-3 py-1 disabled:opacity-50 text-white rounded text-xs font-medium transition-colors ${
+                              fcdPickerOpen
+                                ? 'bg-sky-600 hover:bg-sky-500'
+                                : 'bg-amber-600 hover:bg-amber-500'
+                            }`}
                           >
                             {saving ? 'Saving…' : 'Save'}
                           </button>
                           <button
-                            onClick={() => setSetDateSerial(null)}
+                            onClick={closePicker}
                             className="px-3 py-1 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded text-xs transition-colors"
                           >
                             Cancel
@@ -352,7 +413,9 @@ function DevicesTab({ customerId }) {
                             <span className="text-xs text-red-400">{saveError}</span>
                           )}
                           <span className="ml-auto text-xs text-slate-500 italic">
-                            Override takes priority over MyAdmin dates for invoice generation.
+                            {fcdPickerOpen
+                              ? 'FCD override: invoice proration uses this as First Connect Date (priority over MyAdmin).'
+                              : 'BSD override: takes priority over MyAdmin billing start date.'}
                           </span>
                         </div>
                       </td>
