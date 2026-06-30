@@ -1079,6 +1079,74 @@ function CustomerRow({ customer, onBillingTypeChange }) {
   )
 }
 
+// ─── Inline sync progress indicator ──────────────────────────────────────────
+// Shown inside the table cell during any load (background or force-refresh).
+// When syncProgress is available (SSE connected) it shows step label + progress
+// bar + live page count. Otherwise falls back to a plain spinner.
+function SyncProgressInline({ syncProgress, isForcingRefresh, fullHeight = false }) {
+  const p = syncProgress
+
+  // Plain spinner (fast cache hit or SSE not yet connected)
+  if (!p || !p.active) {
+    const label = isForcingRefresh ? 'Syncing from MyAdmin…' : 'Loading customers…'
+    return (
+      <div className={`flex items-center justify-center gap-3 text-slate-400 ${fullHeight ? '' : ''}`}>
+        <svg className="animate-spin w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+        </svg>
+        <span className="text-sm">{label}</span>
+      </div>
+    )
+  }
+
+  // Rich progress display (SSE connected — background or force sync in progress)
+  const pct   = p.pct || 0
+  const isErr = p.step === 'error'
+  const isDone = pct >= 100 && !p.active
+
+  return (
+    <div className="flex flex-col items-center gap-3 px-8 max-w-lg mx-auto">
+      {/* Title row */}
+      <div className="flex items-center gap-2.5 text-slate-300">
+        {!isDone && !isErr && (
+          <svg className="animate-spin w-4 h-4 flex-shrink-0 text-blue-400" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+        )}
+        <span className="text-sm font-semibold">
+          {isErr ? '⚠ Sync error' : p.step_label || 'Syncing from MyAdmin…'}
+        </span>
+        <span className={`text-xs font-mono font-bold ml-auto ${isErr ? 'text-red-400' : isDone ? 'text-green-400' : 'text-blue-400'}`}>
+          {pct}%
+        </span>
+      </div>
+
+      {/* Progress bar */}
+      <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-500 ease-out"
+          style={{
+            width: `${pct}%`,
+            background: isErr ? '#ef4444' : isDone ? '#22c55e' : 'linear-gradient(90deg, #3b82f6, #6366f1)',
+          }}
+        />
+      </div>
+
+      {/* Detail line */}
+      {p.message && (
+        <span className="text-xs text-slate-500 text-center">{p.message}</span>
+      )}
+      <span className="text-xs text-slate-600 italic">
+        {isErr
+          ? 'Sync failed — check the console or try again'
+          : 'Pulling device contracts from Geotab MyAdmin — this can take up to 10 minutes'}
+      </span>
+    </div>
+  )
+}
+
 // ─── Main Customers page ──────────────────────────────────────────────────────
 export default function Customers({ onDetail }) {
   const [customers, setCustomers] = useState([])
@@ -1102,6 +1170,9 @@ export default function Customers({ onDetail }) {
   const sseRef = useRef(null)   // holds the EventSource so we can close it
   const forceSyncingRef = useRef(false)   // true while a force-refresh sync is in progress
   const sseCompletedRef = useRef(false)   // true once SSE received done/error (normal close)
+  // Auto-SSE for background/initial loads: connect after a delay when loading
+  // so we can show progress even when the user didn't click "Sync from MyAdmin".
+  const autoSseTimerRef = useRef(null)
   const PAGE_SIZE = 50
 
   // ── SSE progress connection ────────────────────────────────────────────────
@@ -1150,9 +1221,42 @@ export default function Customers({ onDetail }) {
     }
   }, [])
 
-  // Close SSE on unmount
+  // ── Auto-SSE for background / initial loads ────────────────────────────────
+  // When loading becomes true (any fetch, not just force-refresh), wait 3 s
+  // then open SSE so the user can see sync progress if the backend is running
+  // a background sync.  The 3 s delay avoids opening a connection for fast
+  // cache-hit responses.
   useEffect(() => {
-    return () => { if (sseRef.current) sseRef.current.close() }
+    if (loading && !isForcingRefresh) {
+      // Schedule SSE open after 3 s
+      autoSseTimerRef.current = setTimeout(() => {
+        if (!sseRef.current) {   // don't double-open if force-refresh already opened it
+          console.log('[autoSSE] loading took >3s — opening background SSE')
+          startProgressSSE()
+        }
+      }, 3000)
+    } else {
+      // Loading ended (or force-refresh took over) — cancel any pending timer
+      if (autoSseTimerRef.current) {
+        clearTimeout(autoSseTimerRef.current)
+        autoSseTimerRef.current = null
+      }
+      // If the SSE was opened by the auto-timer (not force-refresh), close it now
+      if (!isForcingRefresh && sseRef.current) {
+        sseRef.current.close()
+        sseRef.current = null
+        // Clear progress after a brief moment so the final state is readable
+        setTimeout(() => setSyncProgress(null), 2000)
+      }
+    }
+  }, [loading, isForcingRefresh, startProgressSSE])
+
+  // Close SSE and timers on unmount
+  useEffect(() => {
+    return () => {
+      if (sseRef.current) sseRef.current.close()
+      if (autoSseTimerRef.current) clearTimeout(autoSseTimerRef.current)
+    }
   }, [])
 
   const fetchCustomers = useCallback(async (pg = 1, reset = false, forceRefresh = false) => {
@@ -1541,16 +1645,8 @@ export default function Customers({ onDetail }) {
             ) : customers.length === 0 && loading ? (
               /* First-ever load — no prior data to show yet */
               <tr>
-                <td colSpan={8} className="text-center py-16">
-                  <div className="flex items-center justify-center gap-3 text-slate-400">
-                    <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                    </svg>
-                    <span className="text-sm">
-                      {isForcingRefresh ? 'Syncing from MyAdmin…' : 'Loading customers…'}
-                    </span>
-                  </div>
+                <td colSpan={8} className="py-16">
+                  <SyncProgressInline syncProgress={syncProgress} isForcingRefresh={isForcingRefresh} fullHeight />
                 </td>
               </tr>
             ) : (
@@ -1570,14 +1666,8 @@ export default function Customers({ onDetail }) {
                 bottom spinner; force-refresh uses the top progress banner instead */}
             {loading && !isForcingRefresh && customers.length > 0 && (
               <tr>
-                <td colSpan={8} className="text-center py-6">
-                  <div className="flex items-center justify-center gap-3 text-slate-400">
-                    <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                    </svg>
-                    <span>Loading customers…</span>
-                  </div>
+                <td colSpan={8} className="py-6">
+                  <SyncProgressInline syncProgress={syncProgress} isForcingRefresh={isForcingRefresh} />
                 </td>
               </tr>
             )}
