@@ -15,44 +15,66 @@
   },
   {
     "ratePlanCode": "BUNDLE-GO",
+    "planLevel": "GO CORE",
     "skuKey": "GO Core Bundle Plan",
     "defaultPrice": 17.95,
-    "notes": "",
+    "notes": "Safety Bundle on GO Core plan. Tier 1.5: (GO CORE, BUNDLE-GO) → this SKU. Flat promoCode lookup (Tier 3) also resolves here as default.",
+    "cost": 8.0
+  },
+  {
+    "ratePlanCode": "BUNDLE-GO",
+    "planLevel": "GO",
+    "skuKey": "Geotab Service (GO Bundle-SB)",
+    "defaultPrice": 17.95,
+    "notes": "Safety Bundle on GO plan. Tier 1.5: (GO, BUNDLE-GO) → this SKU.",
     "cost": 8.0
   },
   {
     "ratePlanCode": "BUNDLE-GO-INS",
+    "planLevel": "GO CORE",
     "skuKey": "GO Core Bundle Plan w/INS",
     "defaultPrice": 19.95,
-    "notes": "",
+    "notes": "Safety Bundle w/install on GO Core plan. Tier 1.5: (GO CORE, BUNDLE-GO-INS) → this SKU.",
+    "cost": 10.0
+  },
+  {
+    "ratePlanCode": "BUNDLE-GO-INS",
+    "planLevel": "GO",
+    "skuKey": "Geotab Service (GO Bundle-SBWI)",
+    "defaultPrice": 19.95,
+    "notes": "Safety Bundle w/install on GO plan. Tier 1.5: (GO, BUNDLE-GO-INS) → this SKU.",
     "cost": 10.0
   },
   {
     "ratePlanCode": "BUNDLE-GOGF",
+    "planLevel": "GO EXPAND",
     "skuKey": "Bundle Service (GO Focus-SB)",
     "defaultPrice": 11.0,
-    "notes": "",
+    "notes": "Safety Bundle on GO Expand (GO Focus) plan. Tier 1.5: (GO EXPAND, BUNDLE-GOGF) → this SKU (default). Customer overrides may select Safety Bundle Plan instead.",
     "cost": 4.0
   },
   {
     "ratePlanCode": "BUNDLE-GOGF-INS",
+    "planLevel": "GO EXPAND",
     "skuKey": "Bundle Service (GO Focus-SBWI)",
     "defaultPrice": 15.0,
-    "notes": "",
+    "notes": "Safety Bundle w/install on GO Expand (GO Focus) plan. Tier 1.5: (GO EXPAND, BUNDLE-GOGF-INS) → this SKU (default). Customer overrides may select Safety Bundle Plan w/Install instead.",
     "cost": 6.0
   },
   {
     "ratePlanCode": "BUNDLE-GOGFP",
+    "planLevel": "GO EXPAND",
     "skuKey": "Bundle Service Fee (GFP-SB)",
     "defaultPrice": 15.0,
-    "notes": "",
+    "notes": "Safety Plus Bundle on GO Expand (GO Focus Plus) plan. Tier 1.5: (GO EXPAND, BUNDLE-GOGFP) → this SKU (default). Customer overrides may select Safety Plus Bundle Plan instead.",
     "cost": 9.0
   },
   {
     "ratePlanCode": "BUNDLE-GOGFP-INS",
+    "planLevel": "GO EXPAND",
     "skuKey": "Bundle Service Fee (GFP-SBWI)",
     "defaultPrice": 20.0,
-    "notes": "",
+    "notes": "Safety Plus Bundle w/install on GO Expand (GO Focus Plus) plan. Tier 1.5: (GO EXPAND, BUNDLE-GOGFP-INS) → this SKU (default). Customer overrides may select Safety Plus Bundle Plan w/INS instead.",
     "cost": 11.0
   },
   {

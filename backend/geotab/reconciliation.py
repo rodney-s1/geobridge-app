@@ -335,9 +335,28 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     }
 
     # Tier 2: ratePlanCode (upper) -> skuKey  (global default)
-    mapping_index: Dict[str, str] = {
-        (m.get("ratePlanCode") or m.get("promoCode") or "").upper(): m.get("skuKey") or ""
+    # Note: for promoCodes that appear under multiple plan levels (e.g. BUNDLE-GO
+    # on GO vs GO Core), this flat index keeps the FIRST entry seen, which will be
+    # the GO Core variant (the most common default).  The plan_promo_index below
+    # is the authoritative lookup when billing_plan is available.
+    mapping_index: Dict[str, str] = {}
+    for m in mappings:
+        key = (m.get("ratePlanCode") or m.get("promoCode") or "").upper()
+        if key and key not in mapping_index:          # first entry wins (GO Core default)
+            mapping_index[key] = m.get("skuKey") or ""
+
+    # Tier 1.5: (planLevel_upper, ratePlanCode_upper) -> skuKey
+    # Resolves promoCodes that map to different QB SKUs depending on the
+    # MyAdmin billing plan (e.g. BUNDLE-GO on GO Core → "GO Core Bundle Plan",
+    # on GO → "Geotab Service (GO Bundle-SB)").  Only entries with a non-empty
+    # "planLevel" field participate; all other entries are handled by Tier 3.
+    plan_promo_index: Dict[tuple, str] = {
+        (
+            (m.get("planLevel") or "").upper(),
+            (m.get("ratePlanCode") or m.get("promoCode") or "").upper(),
+        ): m.get("skuKey") or ""
         for m in mappings
+        if m.get("planLevel")
     }
 
     # (norm_customerName, skuKey) -> price
@@ -822,6 +841,20 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                     mapping_tier = "customer"
                     lookup_code  = billing_plan
 
+            # Tier 1.5: plan-level + promoCode compound lookup
+            # Resolves promoCodes whose QB SKU depends on the MyAdmin billing
+            # plan.  Example: BUNDLE-GO on "GO Core" → "GO Core Bundle Plan";
+            # BUNDLE-GO on "GO" → "Geotab Service (GO Bundle-SB)".
+            # This fires after customer overrides (Tier 1/2) so a customer-
+            # specific mapping still takes precedence, but before the flat
+            # global promoCode lookup (Tier 3) which cannot distinguish plans.
+            if sku_key is None and promo_code and billing_plan:
+                bp_upper = billing_plan.upper()
+                sku_key  = plan_promo_index.get((bp_upper, promo_code), None)
+                if sku_key is not None:
+                    mapping_tier = "plan_promo"
+                    lookup_code  = promo_code
+
             # Tier 3: global mapping on promoCode
             if sku_key is None and promo_code:
                 sku_key = mapping_index.get(promo_code, None)
@@ -1128,13 +1161,18 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                     _hanover_na_excluded += 1
                     continue
 
-                # -- Tier NA-1: customer-specific promoCode lookup -------------
+                # -- Tier NA-1: promoCode lookup (mirrors active-device Tiers 1/1.5/3) --
                 # If the never-activated device carries a promoCode (e.g.
                 # "BUNDLE-GO"), try to resolve it to an SKU the same way active
-                # devices do (customer-specific first, then global).  This
-                # prevents devices that are simply not yet activated from being
-                # mis-categorised as "Service Fee Geotab (Pro)" just because
-                # the account's most common active SKU happens to be Pro.
+                # devices do (customer-specific first, then plan+promo compound,
+                # then global flat).  This prevents devices that are simply not
+                # yet activated from being mis-categorised as "Service Fee Geotab
+                # (Pro)" just because the account's most common active SKU is Pro.
+                #
+                # For never-activated devices the billing_plan is empty (MyAdmin
+                # reports no activeDevicePlan), so we fall back to the billing
+                # plan of the most common active device on the same account as a
+                # proxy when attempting the plan+promo compound lookup.
                 na_sku_key = None
                 na_price_source = "none"
                 if na_promo:
@@ -1143,7 +1181,25 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                     if na_sku_key:
                         na_price_source = "promo_code (customer)"
                     else:
-                        # Tier 3-equivalent: global promoCode
+                        # Tier 1.5-equivalent: plan + promoCode compound
+                        # Use the inherited (most common active) SKU's billing
+                        # plan as a proxy for the never-activated device's plan.
+                        # We look up the plan that corresponds to inherited_sku
+                        # by scanning plan_promo_index for a matching skuKey, or
+                        # fall back to checking the active devices' billing plans.
+                        _na_bp = (na_dev.get("billingPlan") or "").upper().strip()
+                        if not _na_bp and inherited_sku:
+                            # Derive plan from the mapping that produced inherited_sku
+                            for (_pl, _pc), _sk in plan_promo_index.items():
+                                if _sk == inherited_sku:
+                                    _na_bp = _pl
+                                    break
+                        if _na_bp:
+                            na_sku_key = plan_promo_index.get((_na_bp, na_promo), None)
+                            if na_sku_key:
+                                na_price_source = "promo_code (plan+promo)"
+                    if not na_sku_key:
+                        # Tier 3-equivalent: global flat promoCode
                         na_sku_key = mapping_index.get(na_promo, None)
                         if na_sku_key:
                             na_price_source = "promo_code (global)"
