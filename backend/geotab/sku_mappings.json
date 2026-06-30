@@ -238,6 +238,14 @@
     "cost": 14.5
   },
   {
+    "ratePlanCode": "SWELL-NOINS3",
+    "planLevel": "GO EXPAND",
+    "skuKey": "Service (GO Focus Plus) SW-SI3",
+    "defaultPrice": 20.0,
+    "notes": "SWELL-NOINS3 on GO Expand (GE/GF hardware) → GO Focus Plus SW-SI3 variant. Tier 1.5: (GO EXPAND, SWELL-NOINS3) → this SKU.",
+    "cost": 14.5
+  },
+  {
     "ratePlanCode": "SWELL-NOINSTALL",
     "skuKey": "Geotab Service (GO SW-SI)",
     "defaultPrice": 19.25,
@@ -245,11 +253,27 @@
     "cost": 14.12
   },
   {
+    "ratePlanCode": "SWELL-NOINSTALL",
+    "planLevel": "GO EXPAND",
+    "skuKey": "Service (GO Focus Plus) SW-STRD",
+    "defaultPrice": 20.0,
+    "notes": "SWELL-NOINSTALL on GO Expand (GE/GF hardware) → GO Focus Plus SW variant. Tier 1.5: (GO EXPAND, SWELL-NOINSTALL) → this SKU.",
+    "cost": 14.0
+  },
+  {
     "ratePlanCode": "SWELL-NOINSTALL2",
     "skuKey": "Geotab Service (GO SW-SI2)",
     "defaultPrice": 19.25,
     "notes": "",
     "cost": 14.5
+  },
+  {
+    "ratePlanCode": "SWELL-NOINSTALL2",
+    "planLevel": "GO EXPAND",
+    "skuKey": "Service (GO Focus Plus) SW-STRD",
+    "defaultPrice": 20.0,
+    "notes": "SWELL-NOINSTALL2 on GO Expand (GE/GF hardware) → GO Focus Plus SW variant. Tier 1.5: (GO EXPAND, SWELL-NOINSTALL2) → this SKU.",
+    "cost": 14.0
   },
   {
     "ratePlanCode": "SWELL2",
@@ -264,6 +288,14 @@
     "defaultPrice": 19.25,
     "notes": "",
     "cost": 15.75
+  },
+  {
+    "ratePlanCode": "SWELL3",
+    "planLevel": "GO EXPAND",
+    "skuKey": "Service (GO Focus Plus) SWELL3",
+    "defaultPrice": 20.0,
+    "notes": "SWELL3 on GO Expand (GE/GF hardware) → GO Focus Plus SWELL3 variant. Tier 1.5: (GO EXPAND, SWELL3) → this SKU.",
+    "cost": 15.0
   },
   {
     "ratePlanCode": "SWELL3-CC",

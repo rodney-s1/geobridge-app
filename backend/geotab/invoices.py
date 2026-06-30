@@ -291,6 +291,10 @@ DM_SERIAL_PREFIXES: tuple = (
     # Removed from this list so they pass through to prorated invoices.
 )
 
+# Surfsight camera serial prefix — always resolves to SS Service Fee on
+# prorated invoices regardless of billing_plan or promoCode.
+SURFSIGHT_SERIAL_PREFIX = "EVD-MKH-SRF"
+
 def _is_dm_serial(serial: str) -> bool:
     """Return True if the serial number belongs to a Digital Matter device."""
     s = (serial or "").strip().upper()
@@ -325,6 +329,7 @@ def _is_dm_serial(serial: str) -> bool:
 #   Hitachi     P8          → (no catalog entry yet — falls through to UNMAPPED)
 _SERIAL_PREFIX_SKU: list = [
     # Longer/more-specific prefixes first
+    ("EVD-MKH-SRF", "SS Service Fee"),   # Surfsight cameras
     ("DS", "CAT AEMP (OEM)"),
     ("D5", "CAT AEMP (OEM)"),
     ("DM", "John Deere AEMP (OEM)"),
@@ -388,6 +393,7 @@ def _generate_prorated_invoice(
     sku_desc_index: dict,
     category_index: dict,
     sku_overrides: Optional[dict] = None,
+    plan_promo_index: Optional[dict] = None,
 ) -> Optional[dict]:
     """
     Build a prorated invoice for a single customer for the given billing month.
@@ -496,23 +502,20 @@ def _generate_prorated_invoice(
             continue
 
         # Resolve SKU — priority order:
-        #   1. Serial-prefix OEM check (HIGHEST for OEM hardware)
-        #      DW/CO/DY/D8/etc. devices are always billed to their OEM SKU
-        #      regardless of what billing_plan or promoCode MyAdmin shows.
-        #      OEM devices routinely carry "PRO MODE" as their promoCode which
-        #      would incorrectly win before serial prefix if not checked first.
-        #   2. Customer-specific mapping on promoCode (ratePlanCode)
-        #      — the promoCode is always the specific billing signal, e.g.
-        #        GFP-BUNDLE → Service (GO Focus Plus) Bundle for cameras
-        #   3. Global mapping on promoCode (e.g. "PRO MODE" → Pro, "GO" → GO Plan)
-        #   4. Customer-specific mapping on billing_plan (activeDevicePlan.name)
-        #      — fallback for devices whose promoCode is unmapped (BASE, HOS,
-        #        SUSPEND, etc.); billing_plan carries the plan name in those cases
-        #   5. Global mapping on billing_plan
-        #   6. UNMAPPED fallback
+        #   1. Serial-prefix check (HIGHEST for OEM + Surfsight hardware)
+        #      DW/CO/DY/D8/EVD-MKH-SRF/etc. always billed to their own SKU
+        #      regardless of billing_plan or promoCode.
+        #   2. Customer-specific mapping on promoCode  (Tier 1)
+        #   2.5 Plan+promoCode compound lookup         (Tier 1.5)
+        #      e.g. SWELL-NOINS3 on GO Expand → Service (GO Focus Plus) SW-SI3
+        #           SWELL-NOINS3 on GO        → Geotab Service (GO SW-SI3)
+        #   3. Global mapping on promoCode             (Tier 3)
+        #   4. Customer-specific / global on billing_plan
+        #   5. UNMAPPED fallback
         sku_key = (
             _sku_from_serial(serial)
-            or _resolve_sku(cust_norm, rate_plan,    mapping_index, cust_map_index)
+            or _resolve_sku(cust_norm, rate_plan,    mapping_index, cust_map_index,
+                            billing_plan, plan_promo_index)
             or _resolve_sku(cust_norm, billing_plan, mapping_index, cust_map_index)
             or "UNMAPPED"
         )
@@ -1138,7 +1141,7 @@ async def get_prorated_invoices(
     # Load lookup indices (built fresh each request — fast, files are small)
     (catalog_index, ovr_index, mapping_index,
      cust_map_index, full_path_index, sku_desc_index,
-     category_index) = _build_indices()
+     category_index, plan_promo_index) = _build_indices()
 
     # Load per-invoice exclusion set and per-serial SKU overrides
     excluded_invoices = _load_excluded_invoices()
@@ -1229,18 +1232,19 @@ async def get_prorated_invoices(
         }
 
         invoice = _generate_prorated_invoice(
-            customer        = fake_customer,
-            contracts       = company_contracts,
-            billing_year    = b_year,
-            billing_month   = b_month,
-            catalog_index   = catalog_index,
-            ovr_index       = ovr_index,
-            mapping_index   = mapping_index,
-            cust_map_index  = cust_map_index,
-            full_path_index = full_path_index,
-            sku_desc_index  = sku_desc_index,
-            category_index  = category_index,
-            sku_overrides   = sku_overrides,
+            customer         = fake_customer,
+            contracts        = company_contracts,
+            billing_year     = b_year,
+            billing_month    = b_month,
+            catalog_index    = catalog_index,
+            ovr_index        = ovr_index,
+            mapping_index    = mapping_index,
+            cust_map_index   = cust_map_index,
+            full_path_index  = full_path_index,
+            sku_desc_index   = sku_desc_index,
+            category_index   = category_index,
+            sku_overrides    = sku_overrides,
+            plan_promo_index = plan_promo_index,
         )
 
         if invoice is not None:
@@ -1325,7 +1329,7 @@ async def get_prorated_invoice_for_customer(
 
     (catalog_index, ovr_index, mapping_index,
      cust_map_index, full_path_index, sku_desc_index,
-     category_index) = _build_indices()
+     category_index, plan_promo_index) = _build_indices()
 
     sku_overrides = _load_sku_overrides()
 
@@ -1353,18 +1357,19 @@ async def get_prorated_invoice_for_customer(
     }
 
     invoice = _generate_prorated_invoice(
-        customer        = fake_customer,
-        contracts       = company_contracts,
-        billing_year    = b_year,
-        billing_month   = b_month,
-        catalog_index   = catalog_index,
-        ovr_index       = ovr_index,
-        mapping_index   = mapping_index,
-        cust_map_index  = cust_map_index,
-        full_path_index = full_path_index,
-        sku_desc_index  = sku_desc_index,
-        category_index  = category_index,
-        sku_overrides   = sku_overrides,
+        customer         = fake_customer,
+        contracts        = company_contracts,
+        billing_year     = b_year,
+        billing_month    = b_month,
+        catalog_index    = catalog_index,
+        ovr_index        = ovr_index,
+        mapping_index    = mapping_index,
+        cust_map_index   = cust_map_index,
+        full_path_index  = full_path_index,
+        sku_desc_index   = sku_desc_index,
+        category_index   = category_index,
+        sku_overrides    = sku_overrides,
+        plan_promo_index = plan_promo_index,
     )
 
     if not invoice:
