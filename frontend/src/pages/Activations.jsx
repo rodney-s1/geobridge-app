@@ -33,6 +33,90 @@ function defaultDates() {
   return { from: fmt(from), to: fmt(today) }
 }
 
+// Build the full ordered quick-range list
+// Ascending order: smallest/most-recent windows first, then calendar years
+function buildRanges(setFromDate, setToDate) {
+  const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  const today = new Date()
+  const t = fmt(today)
+
+  // yesterday
+  const yest = new Date(today); yest.setDate(yest.getDate() - 1)
+
+  // first of this month
+  const thisMonthStart = new Date(today.getFullYear(), today.getMonth(), 1)
+
+  // last month: first → last day
+  const lastMonthStart = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+  const lastMonthEnd   = new Date(today.getFullYear(), today.getMonth(), 0)
+
+  // rolling windows: N days ago → today
+  const daysAgo = n => { const d = new Date(today); d.setDate(d.getDate() - n); return d }
+
+  // 3 months ago (first of month 3 months back → today)
+  const threeMonthsStart = new Date(today.getFullYear(), today.getMonth() - 3, 1)
+
+  // 6 months ago
+  const sixMonthsStart = new Date(today.getFullYear(), today.getMonth() - 6, 1)
+
+  // 12 months ago
+  const twelveMonthsStart = new Date(today.getFullYear(), today.getMonth() - 12, 1)
+
+  // full calendar years going back 3 years
+  const currentYear = today.getFullYear()
+  const yearRanges = [currentYear, currentYear - 1, currentYear - 2].map(y => ({
+    label: String(y),
+    fn: () => {
+      setFromDate(`${y}-01-01`)
+      setToDate(y === currentYear ? t : `${y}-12-31`)
+    },
+  }))
+
+  return [
+    {
+      label: 'Today',
+      fn: () => { setFromDate(t); setToDate(t) },
+    },
+    {
+      label: 'Yesterday',
+      fn: () => { setFromDate(fmt(yest)); setToDate(fmt(yest)) },
+    },
+    {
+      label: 'This Month',
+      fn: () => { setFromDate(fmt(thisMonthStart)); setToDate(t) },
+    },
+    {
+      label: 'Last Month',
+      fn: () => { setFromDate(fmt(lastMonthStart)); setToDate(fmt(lastMonthEnd)) },
+    },
+    {
+      label: 'Last 7 Days',
+      fn: () => { setFromDate(fmt(daysAgo(7))); setToDate(t) },
+    },
+    {
+      label: 'Last 14 Days',
+      fn: () => { setFromDate(fmt(daysAgo(14))); setToDate(t) },
+    },
+    {
+      label: 'Last 30 Days',
+      fn: () => { setFromDate(fmt(daysAgo(30))); setToDate(t) },
+    },
+    {
+      label: 'Last 3 Months',
+      fn: () => { setFromDate(fmt(threeMonthsStart)); setToDate(t) },
+    },
+    {
+      label: 'Last 6 Months',
+      fn: () => { setFromDate(fmt(sixMonthsStart)); setToDate(t) },
+    },
+    {
+      label: 'Last 12 Months',
+      fn: () => { setFromDate(fmt(twelveMonthsStart)); setToDate(t) },
+    },
+    ...yearRanges,
+  ]
+}
+
 // ─── Chips ───────────────────────────────────────────────────────────────────
 function BillingTypeBadge({ billingType }) {
   const bt = billingType || ''
@@ -353,30 +437,13 @@ export default function Activations() {
           </div>
 
           {/* Quick range shortcuts */}
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 w-full">
             <label className="text-xs text-slate-400 font-medium">Quick Range</label>
-            <div className="flex gap-1.5">
-              {[
-                { label: 'This Month', fn: () => {
-                    const t = new Date(); const f = new Date(t.getFullYear(), t.getMonth(), 1)
-                    const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-                    setFromDate(fmt(f)); setToDate(fmt(t))
-                }},
-                { label: 'Last Month', fn: () => {
-                    const t = new Date(); const f = new Date(t.getFullYear(), t.getMonth()-1, 1)
-                    const l = new Date(t.getFullYear(), t.getMonth(), 0)
-                    const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-                    setFromDate(fmt(f)); setToDate(fmt(l))
-                }},
-                { label: 'Last 30d', fn: () => {
-                    const t = new Date(); const f = new Date(t); f.setDate(f.getDate()-30)
-                    const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
-                    setFromDate(fmt(f)); setToDate(fmt(t))
-                }},
-              ].map(({ label, fn }) => (
+            <div className="flex flex-wrap gap-1.5">
+              {buildRanges(setFromDate, setToDate).map(({ label, fn }) => (
                 <button key={label} onClick={fn}
                   className="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300
-                             text-xs rounded border border-slate-600/50 transition-colors">
+                             text-xs rounded border border-slate-600/50 transition-colors whitespace-nowrap">
                   {label}
                 </button>
               ))}
