@@ -37,6 +37,7 @@ from .customers import (
     _clean_name,
     _strip_han_cs,
     _strip_sub_account_suffix,
+    billing_overrides,
     billing_type_overrides,
     billing_date_overrides,
     first_connect_date_overrides,
@@ -124,9 +125,10 @@ def _get_billing_type(company_id: str, raw_name: str) -> str:
     is_han_cs      = _after_sub.strip().lower().endswith("{han-cs}")
 
     return (
-        billing_type_overrides.get(company_id)
-        or (qb_customers.get(_normalize(qb_lookup_name)) or {}).get("billingType")
-        or ("Han-CS" if is_han_cs else "Unknown")
+        billing_overrides.get(company_id)                                   # 1. UI manual override (highest priority)
+        or billing_type_overrides.get(_normalize(qb_lookup_name))           # 2. name-keyed static config override
+        or (qb_customers.get(_normalize(qb_lookup_name)) or {}).get("billingType")  # 3. QB record
+        or ("Han-CS" if is_han_cs else "Unknown")                           # 4. {Han-CS} suffix or Unknown
     )
 
 

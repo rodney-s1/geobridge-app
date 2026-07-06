@@ -42,6 +42,7 @@ from .reconciliation import _normalize, _resolve_price
 
 # Shared in-memory cache populated by customers.py sync
 from .customers import (_sync_cache, _clean_name, _strip_han_cs, _strip_sub_account_suffix,
+                        billing_overrides,
                         billing_date_overrides, BILLING_DATE_OVERRIDES_FILE,
                         first_connect_date_overrides, FIRST_CONNECT_OVERRIDES_FILE, _save_json)
 
@@ -1232,7 +1233,7 @@ async def get_prorated_invoices(
     sku_overrides     = _load_sku_overrides()
 
     # Import billing_type lookup from customers module
-    from .customers import billing_type_overrides, qb_customers
+    from .customers import billing_type_overrides, billing_overrides, qb_customers
 
     invoices: List[dict] = []
 
@@ -1261,8 +1262,9 @@ async def get_prorated_invoices(
         is_han_cs = _after_sub.strip().lower().endswith("{han-cs}")
 
         bt = (
-            billing_type_overrides.get(company_id)
-            or (qb_customers.get(_normalize(qb_lookup_name)) or {}).get("billingType")
+            billing_overrides.get(company_id)                                        # 1. UI manual override
+            or billing_type_overrides.get(_normalize(qb_lookup_name))               # 2. name-keyed static config
+            or (qb_customers.get(_normalize(qb_lookup_name)) or {}).get("billingType")  # 3. QB record
             or ("Han-CS" if is_han_cs else None)
             or "Unknown"
         )
@@ -1419,7 +1421,7 @@ async def get_prorated_invoice_for_customer(
 
     sku_overrides = _load_sku_overrides()
 
-    from .customers import billing_type_overrides, qb_customers
+    from .customers import billing_type_overrides, billing_overrides, qb_customers
 
     raw_name   = ((company_contracts[0].get("userContact") or {})
                   .get("userCompany") or {}).get("name") or ""
@@ -1428,8 +1430,9 @@ async def get_prorated_invoice_for_customer(
     qb_lookup_name = _strip_han_cs(_after_sub_s)
     is_han_cs  = _after_sub_s.strip().lower().endswith("{han-cs}")
     bt = (
-        billing_type_overrides.get(customer_id)
-        or (qb_customers.get(_normalize(qb_lookup_name)) or {}).get("billingType")
+        billing_overrides.get(customer_id)                                        # 1. UI manual override
+        or billing_type_overrides.get(_normalize(qb_lookup_name))                # 2. name-keyed static config
+        or (qb_customers.get(_normalize(qb_lookup_name)) or {}).get("billingType")  # 3. QB record
         or ("Han-CS" if is_han_cs else None)
         or "Unknown"
     )
@@ -1658,7 +1661,7 @@ async def get_unbilled_check(
             detail="No contract data cached. Please run a MyAdmin sync first.",
         )
 
-    from .customers import billing_type_overrides, qb_customers
+    from .customers import billing_type_overrides, billing_overrides, qb_customers
 
     month_start = date(b_year, b_month, 1)
     month_end   = date(b_year, b_month, _days_in_month(b_year, b_month))
@@ -1687,8 +1690,9 @@ async def get_unbilled_check(
         qb_lookup_name = _strip_han_cs(_strip_sub_account_suffix(clean_name))
         is_han_cs  = clean_name.strip().lower().endswith("{han-cs}")
         bt = (
-            billing_type_overrides.get(company_id)
-            or (qb_customers.get(_normalize(qb_lookup_name)) or {}).get("billingType")
+            billing_overrides.get(company_id)                                        # 1. UI manual override
+            or billing_type_overrides.get(_normalize(qb_lookup_name))               # 2. name-keyed static config
+            or (qb_customers.get(_normalize(qb_lookup_name)) or {}).get("billingType")  # 3. QB record
             or ("Han-CS" if is_han_cs else None)
             or "Unknown"
         )
