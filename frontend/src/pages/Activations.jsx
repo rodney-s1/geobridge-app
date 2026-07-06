@@ -330,6 +330,7 @@ export default function Activations() {
   const [fromDate,    setFromDate]    = useState(defaults.from)
   const [toDate,      setToDate]      = useState(defaults.to)
   const [btFilter,    setBtFilter]    = useState('')
+  const [quickRange,  setQuickRange]  = useState('')
   const [search,      setSearch]      = useState('')
 
   const [data,    setData]    = useState(null)
@@ -428,26 +429,32 @@ export default function Activations() {
           </div>
 
           <div className="flex flex-col gap-1">
+            <label className="text-xs text-slate-400 font-medium">Quick Range</label>
+            <select
+              value={quickRange}
+              onChange={e => {
+                const chosen = e.target.value
+                if (!chosen) return
+                const match = buildRanges(setFromDate, setToDate).find(r => r.label === chosen)
+                if (match) match.fn()
+                setQuickRange('')
+              }}
+              className="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-200
+                         focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30">
+              <option value="">Quick Range</option>
+              {buildRanges(setFromDate, setToDate).map(({ label }) => (
+                <option key={label} value={label}>{label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1">
             <label className="text-xs text-slate-400 font-medium invisible">Load</label>
             <button onClick={fetchActivations} disabled={loading}
               className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 disabled:text-blue-400
                          text-white text-sm font-medium rounded transition-colors">
               {loading ? 'Loading…' : 'Load Activations'}
             </button>
-          </div>
-
-          {/* Quick range shortcuts */}
-          <div className="flex flex-col gap-1 w-full">
-            <label className="text-xs text-slate-400 font-medium">Quick Range</label>
-            <div className="flex flex-wrap gap-1.5">
-              {buildRanges(setFromDate, setToDate).map(({ label, fn }) => (
-                <button key={label} onClick={fn}
-                  className="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300
-                             text-xs rounded border border-slate-600/50 transition-colors whitespace-nowrap">
-                  {label}
-                </button>
-              ))}
-            </div>
           </div>
 
         </div>
