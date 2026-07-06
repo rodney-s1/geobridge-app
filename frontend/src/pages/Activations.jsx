@@ -319,9 +319,9 @@ function ActivationGroup({ group }) {
           {fmtDate(activationDate)}
         </td>
 
-        {/* Billing Start — single only */}
+        {/* First Connect — single only */}
         <td className="px-3 py-2.5 text-xs text-slate-500 align-middle whitespace-nowrap">
-          {isMulti ? '—' : fmtDate(records[0].billingStartDate)}
+          {isMulti ? '—' : fmtDate(records[0].activationDate)}
         </td>
 
         {/* Prorated Amount */}
@@ -357,7 +357,7 @@ function ActivationGroup({ group }) {
                     <th className="px-3 py-2 text-[11px] font-medium text-slate-500">Serial</th>
                     <th className="px-3 py-2 text-[11px] font-medium text-slate-500">Plan / Code</th>
                     <th className="px-3 py-2 text-[11px] font-medium text-slate-500">Resolved SKU</th>
-                    <th className="px-3 py-2 text-[11px] font-medium text-slate-500 whitespace-nowrap">Billing Start</th>
+                    <th className="px-3 py-2 text-[11px] font-medium text-slate-500 whitespace-nowrap">First Connect</th>
                     <th className="px-3 py-2 text-[11px] font-medium text-slate-500 text-right">Prorated Amt</th>
                   </tr>
                 </thead>
@@ -381,7 +381,7 @@ function ActivationGroup({ group }) {
                         </td>
                         <td className="px-3 py-2 align-middle"><SkuChip skuKey={r.skuKey} /></td>
                         <td className="px-3 py-2 text-xs text-slate-500 align-middle whitespace-nowrap">
-                          {fmtDate(r.billingStartDate)}
+                          {fmtDate(r.activationDate)}
                         </td>
                         <td className="px-3 py-2 text-right align-middle">
                           {r.proration ? (
@@ -730,7 +730,7 @@ export default function Activations() {
                   <th className="px-3 py-2.5 text-xs font-medium text-slate-400">Plan / Code</th>
                   <th className="px-3 py-2.5 text-xs font-medium text-slate-400">Resolved SKU</th>
                   <th className="px-3 py-2.5 text-xs font-medium text-slate-400 whitespace-nowrap">First Connect</th>
-                  <th className="px-3 py-2.5 text-xs font-medium text-slate-400 whitespace-nowrap">Billing Start</th>
+                  <th className="px-3 py-2.5 text-xs font-medium text-slate-400 whitespace-nowrap">First Connect</th>
                   <th className="px-3 py-2.5 text-xs font-medium text-slate-400 text-right whitespace-nowrap">Prorated Amt</th>
                 </tr>
               </thead>
