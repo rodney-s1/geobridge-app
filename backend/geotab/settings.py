@@ -461,7 +461,15 @@ def _parse_item(item_str: str) -> Tuple[str, str, str]:
 def _parse_qb_csv(content: str) -> dict:
     """
     Parse QB invoice CSV (doubled-comma format).
-    Col 5=Type, Col 13=Name, Col 15=Item (full QB path), Col 17=Qty, Col 19=Sales Price
+    Col 5=Type, Col 11=Memo, Col 13=Name, Col 15=Item (full QB path), Col 17=Qty, Col 19=Sales Price
+
+    Line items whose Memo field (col 11 / spreadsheet column L) contains the
+    phrase "new activations" (case-insensitive) are prorated activation charges
+    posted alongside the regular monthly invoice.  They are excluded from the
+    quantity accumulation so they don't inflate QB qty counts and produce false
+    "over-billed" results in Reconciliation.  The SKU catalog and per-customer
+    price overrides are still updated from these rows so catalog coverage is
+    not affected.
 
     Returns {
       skus:       {sku_name: {...}},
@@ -485,11 +493,17 @@ def _parse_qb_csv(content: str) -> dict:
         name_raw  = row[13].strip()
         price_raw = row[19].strip()
         qty_raw   = row[17].strip() if len(row) > 17 else ''
+        memo_raw  = row[11].strip() if len(row) > 11 else ''
 
         if not item_raw or not name_raw:
             continue
         if '%' in price_raw:
             continue
+
+        # Skip prorated "New Activations" line items — these are charged alongside
+        # the regular monthly invoice for devices activated mid-period and must not
+        # be counted toward the reconciliation QB quantity total.
+        is_new_activation = 'new activations' in memo_raw.lower()
 
         try:
             price = float(price_raw.replace(',', ''))
@@ -508,6 +522,9 @@ def _parse_qb_csv(content: str) -> dict:
         if not sku_name:
             continue
 
+        # Always upsert SKU catalog so new SKUs seen only on activation invoices
+        # are still discovered.  Price overrides are skipped for activation rows
+        # because their prorated price is not the standard monthly rate.
         if sku_name not in skus_out:
             skus_out[sku_name] = {
                 'skuKey':        sku_name,
@@ -523,6 +540,13 @@ def _parse_qb_csv(content: str) -> dict:
 
         # Parent customer name (strip child sub-account after ':')
         parent_name = name_raw.split(':')[0].strip()
+
+        # Skip price overrides and quantity accumulation for New Activations rows.
+        # Their prorated price would clobber the standard monthly rate, and their
+        # qty would inflate the QB invoice count vs MyAdmin active devices.
+        if is_new_activation:
+            continue
+
         if parent_name not in customers_out:
             customers_out[parent_name] = {}
         customers_out[parent_name][sku_name] = price
