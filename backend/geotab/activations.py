@@ -30,9 +30,12 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 from typing import Dict, List, Optional
 
+import json as _json
+
+import httpx
 from fastapi import APIRouter, HTTPException, Query
 
-from .auth import myadmin_call, session_store
+from .auth import myadmin_call, session_store, MYADMIN_API_URL
 from .customers import (
     MYADMIN_ACCOUNT,
     _sync_cache,
@@ -191,52 +194,130 @@ def _get_billing_type(company_id: str, raw_name: str) -> str:
 #  Fetch from MyAdmin                                                           #
 # --------------------------------------------------------------------------- #
 
+async def _myadmin_call_raw(method: str, params: dict, timeout: float = 120.0) -> dict:
+    """
+    Like myadmin_call() but reads .text first so we can surface a clean error
+    if MyAdmin returns a non-JSON or malformed-JSON response (e.g. unknown method).
+    """
+    payload = {"method": method, "params": params}
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        response = await client.post(
+            MYADMIN_API_URL,
+            json=payload,
+            headers={"Content-Type": "application/json"},
+        )
+
+    raw_text = response.text.strip()
+
+    # Try to parse JSON
+    try:
+        data = _json.loads(raw_text)
+    except _json.JSONDecodeError as e:
+        # Truncate the raw response for the error message (first 300 chars)
+        snippet = raw_text[:300].replace("\n", " ")
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                f"MyAdmin returned non-JSON for method '{method}': {e}. "
+                f"Raw response: {snippet}"
+            ),
+        )
+
+    # Surface MyAdmin-level errors (JSON-RPC error object)
+    if "error" in data and data["error"]:
+        err = data["error"]
+        if isinstance(err, dict):
+            msg = err.get("message") or err.get("name") or str(err)
+        else:
+            msg = str(err)
+        raise HTTPException(
+            status_code=502,
+            detail=f"MyAdmin API error for method '{method}': {msg}",
+        )
+
+    return data
+
+
 async def _fetch_activation_history(
     from_date: str,
     to_date: str,
-    include_all_types: bool = False,
 ) -> List[dict]:
     """
     Fetch Device Contract Request History from MyAdmin.
-    Uses GetDeviceContractRequestsByPage with date range filter.
 
-    Returns a flat list of raw request records.
-    Paginates automatically (1000 records per page).
+    Tries these method names in order until one succeeds:
+      1. GetDeviceContractRequestsByPage  (most likely)
+      2. GetContractRequestsByPage
+      3. GetDeviceContractRequests
+
+    Returns a flat list of raw request records (paginated automatically).
     """
     if not session_store.get("session_id"):
         raise HTTPException(status_code=401, detail="Not logged in to MyAdmin")
 
-    all_records: List[dict] = []
-    next_id = 0
-    page_num = 0
+    # Candidate method names — we try them in order and use the first that works.
+    # The correct name is discovered at runtime and stored so subsequent pages
+    # use it directly without re-probing.
+    METHOD_CANDIDATES = [
+        "GetDeviceContractRequestsByPage",
+        "GetContractRequestsByPage",
+        "GetDeviceContractRequests",
+    ]
 
-    while True:
-        page_num += 1
-        params: dict = {
+    def _build_params(next_id: int) -> dict:
+        p: dict = {
             "apiKey":     session_store["user_id"],
             "sessionId":  session_store["session_id"],
             "forAccount": MYADMIN_ACCOUNT,
             "nextId":     next_id,
         }
-
-        # Add date range if provided
         if from_date:
-            params["fromDate"] = from_date + "T00:00:00"
+            p["fromDate"] = from_date + "T00:00:00"
         if to_date:
-            params["toDate"] = to_date + "T23:59:59"
+            p["toDate"] = to_date + "T23:59:59"
+        return p
 
-        try:
-            result = await myadmin_call(
-                "GetDeviceContractRequestsByPage",
-                params,
-                timeout=120.0,
-            )
-        except Exception as exc:
-            # If the method doesn't exist or returns an API error, surface it clearly
-            raise HTTPException(
-                status_code=502,
-                detail=f"MyAdmin API error fetching activation history (page {page_num}): {exc}",
-            )
+    all_records: List[dict] = []
+    next_id  = 0
+    page_num = 0
+    confirmed_method: Optional[str] = None
+    last_errors: List[str] = []
+
+    while True:
+        page_num += 1
+        params = _build_params(next_id)
+
+        # On the first page, try each candidate method until one works
+        if page_num == 1:
+            result = None
+            for method_name in METHOD_CANDIDATES:
+                try:
+                    result = await _myadmin_call_raw(method_name, params, timeout=120.0)
+                    confirmed_method = method_name
+                    print(f"[activations] Using MyAdmin method: {method_name}")
+                    break
+                except HTTPException as he:
+                    last_errors.append(f"{method_name}: {he.detail}")
+                    continue
+
+            if result is None:
+                raise HTTPException(
+                    status_code=502,
+                    detail=(
+                        "Could not determine MyAdmin activation history method. "
+                        f"Tried: {METHOD_CANDIDATES}. "
+                        f"Errors: {' | '.join(last_errors)}"
+                    ),
+                )
+        else:
+            # Subsequent pages use the confirmed method
+            try:
+                result = await _myadmin_call_raw(confirmed_method, params, timeout=120.0)
+            except HTTPException as exc:
+                raise HTTPException(
+                    status_code=502,
+                    detail=f"MyAdmin error on page {page_num}: {exc.detail}",
+                )
 
         batch = result.get("result") or []
 
@@ -456,6 +537,81 @@ def _enrich_record(
 # --------------------------------------------------------------------------- #
 #  Endpoints                                                                    #
 # --------------------------------------------------------------------------- #
+
+@router.get("/activations/probe")
+async def probe_activation_method():
+    """
+    Diagnostic endpoint: tries every candidate MyAdmin method name for
+    activation history and returns the raw response (first 500 chars) or
+    the error for each. Use this to discover which method name MyAdmin
+    accepts for the current account credentials.
+    """
+    if not session_store.get("session_id"):
+        raise HTTPException(status_code=401, detail="Not logged in to MyAdmin")
+
+    today = date.today()
+    test_params = {
+        "apiKey":     session_store["user_id"],
+        "sessionId":  session_store["session_id"],
+        "forAccount": MYADMIN_ACCOUNT,
+        "nextId":     0,
+        "fromDate":   (today - timedelta(days=7)).isoformat() + "T00:00:00",
+        "toDate":     today.isoformat() + "T23:59:59",
+    }
+
+    candidates = [
+        "GetDeviceContractRequestsByPage",
+        "GetContractRequestsByPage",
+        "GetDeviceContractRequests",
+        "GetContractRequests",
+        "GetActivationHistoryByPage",
+        "GetActivationHistory",
+    ]
+
+    results = {}
+    for method in candidates:
+        payload = {"method": method, "params": test_params}
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.post(
+                    MYADMIN_API_URL,
+                    json=payload,
+                    headers={"Content-Type": "application/json"},
+                )
+            raw = resp.text.strip()
+            # Try to parse
+            try:
+                parsed = _json.loads(raw)
+                error  = parsed.get("error")
+                result = parsed.get("result")
+                if error:
+                    results[method] = {
+                        "status": "api_error",
+                        "error":  str(error)[:200],
+                    }
+                elif result is not None:
+                    count = len(result) if isinstance(result, list) else "non-list"
+                    results[method] = {
+                        "status": "success",
+                        "recordCount": count,
+                        "firstKeys": list(result[0].keys())[:10] if isinstance(result, list) and result else [],
+                    }
+                else:
+                    results[method] = {
+                        "status": "null_result",
+                        "raw_snippet": raw[:300],
+                    }
+            except _json.JSONDecodeError as je:
+                results[method] = {
+                    "status":      "json_error",
+                    "error":       str(je),
+                    "raw_snippet": raw[:300],
+                }
+        except Exception as exc:
+            results[method] = {"status": "request_error", "error": str(exc)[:200]}
+
+    return {"candidates": results}
+
 
 @router.get("/activations")
 async def get_activations(

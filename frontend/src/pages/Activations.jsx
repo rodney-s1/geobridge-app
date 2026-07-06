@@ -469,10 +469,14 @@ export default function Activations() {
       {error && (
         <div className="bg-red-900/30 border border-red-500/40 rounded-lg p-4 text-sm text-red-300">
           <span className="font-semibold">Error:</span> {error}
-          {error.includes('GetDeviceContractRequestsByPage') && (
-            <p className="mt-1 text-red-400/80 text-xs">
-              The MyAdmin API method may not be available with your account credentials.
-              Please verify you have access to the Activation History page in MyAdmin.
+          {(error.includes('MyAdmin') || error.includes('502') || error.includes('method')) && (
+            <p className="mt-2 text-amber-300/80 text-xs">
+              💡 <strong>Diagnosing method name:</strong> open{' '}
+              <code className="bg-slate-800 px-1 rounded text-amber-200">
+                GET /api/activations/probe
+              </code>{' '}
+              in your browser (while logged in) to see which MyAdmin API method works for your account.
+              The result will show which candidate method name returns data vs. an API error.
             </p>
           )}
         </div>
