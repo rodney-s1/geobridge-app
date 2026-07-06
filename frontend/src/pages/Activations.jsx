@@ -163,68 +163,59 @@ function StatCard({ label, value, sub, color = 'blue' }) {
   )
 }
 
-// ─── Row expand detail ────────────────────────────────────────────────────────
-function ActivationRowDetail({ record }) {
+// ─── Single-device detail panel (shown inside group expand) ──────────────────
+function DeviceDetail({ record }) {
   const p = record.proration
   return (
-    <tr>
-      <td colSpan={8} className="px-4 pb-3 pt-0 bg-slate-800/40">
-        <div className="grid grid-cols-2 gap-4 text-xs border border-slate-700/40 rounded-md p-3 mt-1 bg-slate-900/40">
-
-          {/* Left: contract details */}
-          <div className="space-y-1.5">
-            <p className="text-slate-400 font-semibold uppercase text-[10px] tracking-wider mb-2">Contract Details</p>
-            <Row label="Serial"        value={record.serialNumber}     mono />
-            <Row label="IMEI"          value={record.imei}             mono />
-            <Row label="Rate Plan Code" value={record.ratePlanCode}    mono />
-            <Row label="Active Plan"   value={record.activePlan} />
-            <Row label="Database"      value={record.activeDatabase}   mono />
-            <Row label="First Connect" value={fmtDate(record.firstConnectDate)} />
-            <Row label="Billing Start" value={fmtDate(record.billingStartDate)} />
-            <Row label="Contract Start" value={fmtDate(record.contractStartDate)} />
-            {record.contractEndDate && (
-              <Row label="Contract End" value={fmtDate(record.contractEndDate)} />
-            )}
-            {record.isPilot && (
-              <div className="mt-1 inline-flex items-center gap-1 bg-amber-500/15 text-amber-300 border border-amber-500/30 rounded px-2 py-0.5 text-[11px]">
-                ⚠ PILOT — excluded from prorated invoices
-              </div>
-            )}
+    <div className="grid grid-cols-2 gap-4 text-xs border border-slate-700/40 rounded-md p-3 bg-slate-900/40">
+      {/* Left: contract details */}
+      <div className="space-y-1.5">
+        <p className="text-slate-400 font-semibold uppercase text-[10px] tracking-wider mb-2">Contract Details</p>
+        <Row label="Serial"         value={record.serialNumber}  mono />
+        <Row label="IMEI"           value={record.imei}          mono />
+        <Row label="Rate Plan Code" value={record.ratePlanCode}  mono />
+        <Row label="Active Plan"    value={record.activePlan} />
+        <Row label="Database"       value={record.activeDatabase} mono />
+        <Row label="First Connect"  value={fmtDate(record.firstConnectDate)} />
+        <Row label="Billing Start"  value={fmtDate(record.billingStartDate)} />
+        <Row label="Contract Start" value={fmtDate(record.contractStartDate)} />
+        {record.contractEndDate && <Row label="Contract End" value={fmtDate(record.contractEndDate)} />}
+        {record.isPilot && (
+          <div className="mt-1 inline-flex items-center gap-1 bg-amber-500/15 text-amber-300 border border-amber-500/30 rounded px-2 py-0.5 text-[11px]">
+            ⚠ PILOT — excluded from prorated invoices
           </div>
-
-          {/* Right: proration */}
-          <div className="space-y-1.5">
-            <p className="text-slate-400 font-semibold uppercase text-[10px] tracking-wider mb-2">Proration Preview</p>
-            {p ? (
-              <>
-                <Row label="Billing Month"   value={p.billingMonth} />
-                <Row label="Activation Date" value={fmtDate(p.activationDate)} />
-                <Row label="Days Active"     value={`${p.daysActive} / ${p.daysInMonth}`} />
-                <Row label="Prorate Factor"  value={fmtPct(p.prorateFactor)} />
-                <Row label="Monthly Rate"    value={fmt$(p.monthlyRate)} />
-                <div className="flex gap-2 mt-1 pt-1 border-t border-slate-700/40">
-                  <span className="text-slate-500 w-28 flex-shrink-0">Prorated Charge</span>
-                  <span className="text-emerald-300 font-bold text-sm">{fmt$(p.proratedCharge)}</span>
-                </div>
-                <Row label="Price Source"    value={p.priceSource} dim />
-                <Row label="QB Item Code"    value={record.itemCode} mono dim />
-              </>
-            ) : (
-              <div className="text-slate-500 italic text-xs">
-                {record.skuKey === 'UNMAPPED'
-                  ? '⚠ SKU unmapped — add a rate plan mapping in Settings → SKU Mappings'
-                  : record.excludedCategory
-                    ? '⊘ Excluded category — billed through separate system (e.g. Digital Matter)'
-                    : record.isPilot
-                      ? '⊘ PILOT rate plan — not billed'
-                      : '— Proration not available (no monthly rate found)'}
-              </div>
-            )}
+        )}
+      </div>
+      {/* Right: proration */}
+      <div className="space-y-1.5">
+        <p className="text-slate-400 font-semibold uppercase text-[10px] tracking-wider mb-2">Proration Preview</p>
+        {p ? (
+          <>
+            <Row label="Billing Month"  value={p.billingMonth} />
+            <Row label="Activation Date" value={fmtDate(p.activationDate)} />
+            <Row label="Days Active"    value={`${p.daysActive} / ${p.daysInMonth}`} />
+            <Row label="Prorate Factor" value={fmtPct(p.prorateFactor)} />
+            <Row label="Monthly Rate"   value={fmt$(p.monthlyRate)} />
+            <div className="flex gap-2 mt-1 pt-1 border-t border-slate-700/40">
+              <span className="text-slate-500 w-28 flex-shrink-0">Prorated Charge</span>
+              <span className="text-emerald-300 font-bold text-sm">{fmt$(p.proratedCharge)}</span>
+            </div>
+            <Row label="Price Source" value={p.priceSource} dim />
+            <Row label="QB Item Code" value={record.itemCode} mono dim />
+          </>
+        ) : (
+          <div className="text-slate-500 italic text-xs">
+            {record.skuKey === 'UNMAPPED'
+              ? '⚠ SKU unmapped — add a rate plan mapping in Settings → SKU Mappings'
+              : record.excludedCategory
+                ? '⊘ Excluded category — billed through separate system (e.g. Digital Matter)'
+                : record.isPilot
+                  ? '⊘ PILOT rate plan — not billed'
+                  : '— Proration not available (no monthly rate found)'}
           </div>
-
-        </div>
-      </td>
-    </tr>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -239,86 +230,198 @@ function Row({ label, value, mono, dim }) {
   )
 }
 
-// ─── Table row ────────────────────────────────────────────────────────────────
-function ActivationRow({ record }) {
-  const [expanded, setExpanded] = useState(false)
+// ─── Group row (1 or more devices sharing customer + activation date) ─────────
+function ActivationGroup({ group }) {
+  const [expanded,       setExpanded]       = useState(false)
+  const [expandedDevice, setExpandedDevice] = useState(null) // serial of the device whose detail is open
+
+  const { records, customerName, billingType, activationDate, totalProrated, skuSummary } = group
+  const isMulti = records.length > 1
+
+  function toggleDevice(serial) {
+    setExpandedDevice(d => d === serial ? null : serial)
+  }
 
   return (
     <>
+      {/* ── Group header row ── */}
       <tr
         className="border-b border-slate-700/40 hover:bg-slate-700/20 cursor-pointer transition-colors"
-        onClick={() => setExpanded(e => !e)}
+        onClick={() => { setExpanded(e => !e); setExpandedDevice(null) }}
       >
-        {/* Serial */}
-        <td className="px-3 py-2.5 align-top">
+        {/* Serial / count */}
+        <td className="px-3 py-2.5 align-middle">
           <div className="flex items-center gap-1.5">
             <span className={`text-slate-500 text-xs transition-transform ${expanded ? 'rotate-90' : ''}`}>▶</span>
-            <span className="text-xs font-mono text-slate-200">{record.serialNumber || '—'}</span>
+            {isMulti ? (
+              <span className="inline-flex items-center gap-1 bg-blue-500/15 text-blue-300 border border-blue-500/30
+                               rounded px-2 py-0.5 text-[11px] font-medium whitespace-nowrap">
+                {records.length} devices
+              </span>
+            ) : (
+              <span className="text-xs font-mono text-slate-200">{records[0].serialNumber || '—'}</span>
+            )}
           </div>
         </td>
 
         {/* Customer */}
-        <td className="px-3 py-2.5 align-top">
-          <div className="text-xs text-slate-200 font-medium max-w-[190px] truncate" title={record.customerName}>
-            {record.customerName || '—'}
+        <td className="px-3 py-2.5 align-middle">
+          <div className="text-xs text-slate-200 font-medium max-w-[190px] truncate" title={customerName}>
+            {customerName || '—'}
           </div>
-          {record.activeDatabase && (
+          {!isMulti && records[0].activeDatabase && (
             <div className="text-[11px] text-slate-500 font-mono mt-0.5 truncate max-w-[190px]">
-              {record.activeDatabase}
+              {records[0].activeDatabase}
             </div>
           )}
         </td>
 
         {/* Billing Type */}
-        <td className="px-3 py-2.5 align-top">
-          <BillingTypeBadge billingType={record.billingType} />
+        <td className="px-3 py-2.5 align-middle">
+          <BillingTypeBadge billingType={billingType} />
         </td>
 
-        {/* Plan / Rate Plan Code */}
-        <td className="px-3 py-2.5 align-top">
-          <div className="text-xs text-slate-300 max-w-[160px] truncate" title={record.activePlan}>
-            {record.activePlan || '—'}
-          </div>
-          {record.ratePlanCode && (
-            <div className="text-[11px] font-mono text-slate-500 mt-0.5">{record.ratePlanCode}</div>
+        {/* Plan / Code — for multi show SKU summary; for single show plan */}
+        <td className="px-3 py-2.5 align-middle">
+          {isMulti ? (
+            <div className="flex flex-wrap gap-1">
+              {skuSummary.map(({ sku, count }) => (
+                <span key={sku} className="text-[11px] text-slate-400 bg-slate-700/50 rounded px-1.5 py-0.5
+                                           border border-slate-600/40 whitespace-nowrap">
+                  {count > 1 && <span className="text-slate-300 font-medium mr-1">{count}×</span>}
+                  {sku}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <div>
+              <div className="text-xs text-slate-300 max-w-[160px] truncate" title={records[0].activePlan}>
+                {records[0].activePlan || '—'}
+              </div>
+              {records[0].ratePlanCode && (
+                <div className="text-[11px] font-mono text-slate-500 mt-0.5">{records[0].ratePlanCode}</div>
+              )}
+            </div>
           )}
         </td>
 
-        {/* Resolved SKU */}
-        <td className="px-3 py-2.5 align-top">
-          <SkuChip skuKey={record.skuKey} />
+        {/* Resolved SKU — single only; multi shows summary above */}
+        <td className="px-3 py-2.5 align-middle">
+          {isMulti ? (
+            <span className="text-[11px] text-slate-500">{records.length} SKUs</span>
+          ) : (
+            <SkuChip skuKey={records[0].skuKey} />
+          )}
         </td>
 
-        {/* First Connect Date (the activation date) */}
-        <td className="px-3 py-2.5 text-xs text-slate-300 align-top whitespace-nowrap">
-          {fmtDate(record.activationDate)}
+        {/* First Connect (activation date) */}
+        <td className="px-3 py-2.5 text-xs text-slate-300 align-middle whitespace-nowrap">
+          {fmtDate(activationDate)}
         </td>
 
-        {/* Billing Start */}
-        <td className="px-3 py-2.5 text-xs text-slate-500 align-top whitespace-nowrap">
-          {fmtDate(record.billingStartDate)}
+        {/* Billing Start — single only */}
+        <td className="px-3 py-2.5 text-xs text-slate-500 align-middle whitespace-nowrap">
+          {isMulti ? '—' : fmtDate(records[0].billingStartDate)}
         </td>
 
         {/* Prorated Amount */}
-        <td className="px-3 py-2.5 text-right align-top">
-          {record.proration ? (
+        <td className="px-3 py-2.5 text-right align-middle">
+          {totalProrated != null ? (
             <div>
-              <div className="text-xs font-semibold text-emerald-400">
-                {fmt$(record.proration.proratedCharge)}
-              </div>
-              <div className="text-[11px] text-slate-500 mt-0.5">
-                {record.proration.daysActive}/{record.proration.daysInMonth}d
-              </div>
+              <div className="text-xs font-semibold text-emerald-400">{fmt$(totalProrated)}</div>
+              {isMulti && (
+                <div className="text-[11px] text-slate-500 mt-0.5">{records.length} devices</div>
+              )}
+              {!isMulti && records[0].proration && (
+                <div className="text-[11px] text-slate-500 mt-0.5">
+                  {records[0].proration.daysActive}/{records[0].proration.daysInMonth}d
+                </div>
+              )}
             </div>
           ) : (
             <span className="text-xs text-slate-600">
-              {record.skuKey === 'UNMAPPED' ? '⚠' : record.isPilot ? 'PILOT' : '—'}
+              {records[0].skuKey === 'UNMAPPED' ? '⚠' : records[0].isPilot ? 'PILOT' : '—'}
             </span>
           )}
         </td>
       </tr>
 
-      {expanded && <ActivationRowDetail record={record} />}
+      {/* ── Expanded: device sub-rows (multi) or detail panel (single) ── */}
+      {expanded && isMulti && (
+        <tr>
+          <td colSpan={8} className="px-4 pb-3 pt-0 bg-slate-800/40">
+            <div className="mt-2 rounded-md border border-slate-700/40 overflow-hidden">
+              <table className="w-full text-left">
+                <thead>
+                  <tr className="bg-slate-800/80 border-b border-slate-700/40">
+                    <th className="px-3 py-2 text-[11px] font-medium text-slate-500">Serial</th>
+                    <th className="px-3 py-2 text-[11px] font-medium text-slate-500">Plan / Code</th>
+                    <th className="px-3 py-2 text-[11px] font-medium text-slate-500">Resolved SKU</th>
+                    <th className="px-3 py-2 text-[11px] font-medium text-slate-500 whitespace-nowrap">Billing Start</th>
+                    <th className="px-3 py-2 text-[11px] font-medium text-slate-500 text-right">Prorated Amt</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {records.map(r => (
+                    <React.Fragment key={r.serialNumber}>
+                      <tr
+                        className="border-b border-slate-700/30 hover:bg-slate-700/20 cursor-pointer transition-colors"
+                        onClick={() => toggleDevice(r.serialNumber)}
+                      >
+                        <td className="px-3 py-2 align-middle">
+                          <div className="flex items-center gap-1.5">
+                            <span className={`text-slate-500 text-[10px] transition-transform
+                                             ${expandedDevice === r.serialNumber ? 'rotate-90' : ''}`}>▶</span>
+                            <span className="text-xs font-mono text-slate-200">{r.serialNumber}</span>
+                          </div>
+                        </td>
+                        <td className="px-3 py-2 align-middle">
+                          <div className="text-xs text-slate-300 max-w-[180px] truncate">{r.activePlan || '—'}</div>
+                          {r.ratePlanCode && <div className="text-[11px] font-mono text-slate-500">{r.ratePlanCode}</div>}
+                        </td>
+                        <td className="px-3 py-2 align-middle"><SkuChip skuKey={r.skuKey} /></td>
+                        <td className="px-3 py-2 text-xs text-slate-500 align-middle whitespace-nowrap">
+                          {fmtDate(r.billingStartDate)}
+                        </td>
+                        <td className="px-3 py-2 text-right align-middle">
+                          {r.proration ? (
+                            <div>
+                              <div className="text-xs font-semibold text-emerald-400">{fmt$(r.proration.proratedCharge)}</div>
+                              <div className="text-[11px] text-slate-500">{r.proration.daysActive}/{r.proration.daysInMonth}d</div>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-600">
+                              {r.skuKey === 'UNMAPPED' ? '⚠' : r.isPilot ? 'PILOT' : '—'}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                      {expandedDevice === r.serialNumber && (
+                        <tr key={r.serialNumber + '-detail'}>
+                          <td colSpan={5} className="px-4 pb-3 pt-1 bg-slate-900/40">
+                            <DeviceDetail record={r} />
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </td>
+        </tr>
+      )}
+
+      {/* Single-device: show full detail panel */}
+      {expanded && !isMulti && (
+        <tr>
+          <td colSpan={8} className="px-4 pb-3 pt-0 bg-slate-800/40">
+            <div className="mt-1">
+              <DeviceDetail record={records[0]} />
+            </div>
+          </td>
+        </tr>
+      )}
     </>
   )
 }
@@ -367,7 +470,8 @@ export default function Activations() {
     'Standard':               3,
   }
 
-  const records = React.useMemo(() => {
+  // Build groups: same customer + same activation date → one row
+  const groups = React.useMemo(() => {
     if (!data?.records) return []
     const q = search.toLowerCase()
     const filtered = search
@@ -380,18 +484,58 @@ export default function Activations() {
           (r.activeDatabase || '').toLowerCase().includes(q)
         )
       : data.records
-    // Sort: billing type group first (CUA → Hanover → Han-CS → Standard → unknown),
-    // then customer name A→Z within each group.
-    return [...filtered].sort((a, b) => {
+
+    // Sort flat records first: billing type → customer name → activation date
+    const sorted = [...filtered].sort((a, b) => {
       const aOrder = BT_ORDER[a.billingType] ?? 99
       const bOrder = BT_ORDER[b.billingType] ?? 99
       if (aOrder !== bOrder) return aOrder - bOrder
-      return (a.customerName || '').localeCompare(b.customerName || '', undefined, { sensitivity: 'base' })
+      const nameCmp = (a.customerName || '').localeCompare(b.customerName || '', undefined, { sensitivity: 'base' })
+      if (nameCmp !== 0) return nameCmp
+      return (a.activationDate || '').localeCompare(b.activationDate || '')
+    })
+
+    // Group by customerName + activationDate + billingType
+    const groupMap = new Map()
+    for (const r of sorted) {
+      const key = `${r.customerName}||${r.activationDate}||${r.billingType}`
+      if (!groupMap.has(key)) {
+        groupMap.set(key, {
+          key,
+          customerName:   r.customerName,
+          billingType:    r.billingType,
+          activationDate: r.activationDate,
+          records:        [],
+        })
+      }
+      groupMap.get(key).records.push(r)
+    }
+
+    // Compute derived fields per group
+    return Array.from(groupMap.values()).map(g => {
+      const proratedValues = g.records
+        .map(r => r.proration?.proratedCharge)
+        .filter(v => v != null)
+      const totalProrated = proratedValues.length
+        ? proratedValues.reduce((s, v) => s + v, 0)
+        : null
+
+      // SKU summary: [{sku, count}] sorted by count desc
+      const skuCounts = {}
+      for (const r of g.records) {
+        const s = r.skuKey || 'UNMAPPED'
+        skuCounts[s] = (skuCounts[s] || 0) + 1
+      }
+      const skuSummary = Object.entries(skuCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([sku, count]) => ({ sku, count }))
+
+      return { ...g, totalProrated, skuSummary }
     })
   }, [data, search])
 
-  const totalPages  = Math.ceil(records.length / pageSize) || 1
-  const pageRecords = records.slice((page - 1) * pageSize, page * pageSize)
+  const totalPages  = Math.ceil(groups.length / pageSize) || 1
+  const pageGroups  = groups.slice((page - 1) * pageSize, page * pageSize)
 
   const cacheLabel = data?.cacheAgeHours != null
     ? (data.cacheAgeHours < 1
@@ -532,7 +676,10 @@ export default function Activations() {
                            placeholder-slate-500 focus:outline-none focus:border-blue-500
                            focus:ring-1 focus:ring-blue-500/30 w-64" />
               <span className="text-xs text-slate-500">
-                {records.length.toLocaleString()} record{records.length !== 1 ? 's' : ''}
+                {groups.length.toLocaleString()} row{groups.length !== 1 ? 's' : ''}
+                {data && groups.length !== data.records.length
+                  ? ` (${data.records.length} devices)`
+                  : ''}
                 {search ? ' (filtered)' : ''}
               </span>
             </div>
@@ -587,8 +734,8 @@ export default function Activations() {
                         : `No devices with a first-connect date between ${fmtDate(data.fromDate)} and ${fmtDate(data.toDate)}.`}
                     </td>
                   </tr>
-                ) : pageRecords.map((r, i) => (
-                  <ActivationRow key={r.serialNumber + i} record={r} />
+                ) : pageGroups.map(g => (
+                  <ActivationGroup key={g.key} group={g} />
                 ))}
               </tbody>
             </table>
@@ -597,7 +744,7 @@ export default function Activations() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-slate-700/50 bg-slate-800/40">
               <span className="text-xs text-slate-500">
-                Showing {((page-1)*pageSize)+1}–{Math.min(page*pageSize, records.length)} of {records.length}
+                Showing {((page-1)*pageSize)+1}–{Math.min(page*pageSize, groups.length)} of {groups.length} rows
               </span>
               <div className="flex items-center gap-2 text-xs text-slate-400">
                 <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1}
