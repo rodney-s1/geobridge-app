@@ -74,6 +74,10 @@ app.include_router(reconciliation_router, prefix="/api", tags=["Reconciliation"]
 from geotab.invoices import router as invoices_router
 app.include_router(invoices_router, prefix="/api", tags=["Invoices"])
 
+# Activations Routes
+from geotab.activations import router as activations_router
+app.include_router(activations_router, prefix="/api", tags=["Activations"])
+
 
 # ============================================================
 #  S3 BACKUP  endpoints + startup restore

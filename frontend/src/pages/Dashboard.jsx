@@ -4,6 +4,7 @@ import CustomerDetail from './CustomerDetail'
 import Settings from './Settings'
 import Reconciliation from './Reconciliation'
 import Invoices from './Invoices'
+import Activations from './Activations'
 
 const API = 'http://127.0.0.1:8001'
 
@@ -63,6 +64,12 @@ function Dashboard({ sessionData, onLogout }) {
           />
           <NavItem
             icon="&#9632;"
+            label="Activations"
+            active={activePage === 'activations'}
+            onClick={() => setActivePage('activations')}
+          />
+          <NavItem
+            icon="&#9632;"
             label="Sync Status"
             active={activePage === 'sync'}
             onClick={() => setActivePage('sync')}
@@ -111,6 +118,7 @@ function Dashboard({ sessionData, onLogout }) {
             {activePage === 'customers' && (detailCustomerId ? detailCustomerName || 'Customer Detail' : 'Customers')}
             {activePage === 'reconciliation' && 'Reconciliation'}
             {activePage === 'invoices' && 'Invoices'}
+            {activePage === 'activations' && 'Activations'}
             {activePage === 'sync' && 'Sync Status'}
             {activePage === 'reports' && 'Reports'}
             {activePage === 'settings' && 'Settings'}
@@ -139,6 +147,7 @@ function Dashboard({ sessionData, onLogout }) {
           </div>
           {activePage === 'reconciliation' && <Reconciliation />}
           {activePage === 'invoices' && <Invoices />}
+          {activePage === 'activations' && <Activations />}
           {activePage === 'sync' && <ComingSoon page="Sync Status" />}
           {activePage === 'reports' && <ComingSoon page="Reports" />}
           {activePage === 'settings' && <Settings />}
