@@ -60,6 +60,18 @@ HAN_CS_CUST_SKU = "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hano
 # is emitted as "match" with myAdminCount == qbQty so the UI shows it neutrally.
 QB_AUTHORITATIVE_SKUS: frozenset = frozenset({
     "BlueArrow Fuel Service",
+
+    # --- Rosco camera service fees (sourced from Rosco platform, not MyAdmin) ---
+    "Service Fee Rosco (Basic)",
+    "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
+
+    # --- VisionTrack camera service fees (sourced from VisionTrack platform) ---
+    "VisionTrack Service Plan",
+
+    # --- IFTA Plus (sourced from IFTA reporting platform, not MyAdmin) ----------
+    "IFTA Plus",
+
     # NOTE: "Geotab Service Fee (HANOVER)" is intentionally NOT listed here.
     # It is handled in two places:
     #   1. Per Hanover customer (billing_type=="Hanover"): hanoverConsolidated branch
