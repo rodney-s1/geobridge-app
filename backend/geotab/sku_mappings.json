@@ -15,18 +15,18 @@
   },
   {
     "ratePlanCode": "BUNDLE-GO",
-    "planLevel": "GO CORE",
-    "skuKey": "GO Core Bundle Plan",
+    "planLevel": "GO",
+    "skuKey": "Geotab Service (GO Bundle-SB)",
     "defaultPrice": 17.95,
-    "notes": "Safety Bundle on GO Core plan. Tier 1.5: (GO CORE, BUNDLE-GO) → this SKU. Flat promoCode lookup (Tier 3) also resolves here as default.",
+    "notes": "Safety Bundle on GO plan. Tier 1.5: (GO, BUNDLE-GO) → this SKU. Tier 3 flat default also resolves here (first-entry-wins). MyAdmin returns 'GO Core: Live' as activeDevicePlan.name for GO9-series hardware even on plain GO rate plan, so GO Core devices (Tier 1.5) are the exception, not the default.",
     "cost": 8.0
   },
   {
     "ratePlanCode": "BUNDLE-GO",
-    "planLevel": "GO",
-    "skuKey": "Geotab Service (GO Bundle-SB)",
+    "planLevel": "GO CORE",
+    "skuKey": "GO Core Bundle Plan",
     "defaultPrice": 17.95,
-    "notes": "Safety Bundle on GO plan. Tier 1.5: (GO, BUNDLE-GO) → this SKU.",
+    "notes": "Safety Bundle on true GO Core rate plan. Tier 1.5 only: (GO CORE, BUNDLE-GO) → this SKU. Must NOT be the Tier 3 default — no QB invoices use this SKU key; all BUNDLE-GO devices invoice as Geotab Service (GO Bundle-SB).",
     "cost": 8.0
   },
   {
