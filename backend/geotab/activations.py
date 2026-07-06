@@ -2,25 +2,23 @@
 activations.py — Activations tab backend
 =========================================
 
-Provides the /api/activations endpoint that fetches Device Contract Request
-History from MyAdmin (the "Activation History" page) and enriches each record
-with:
-  - Resolved QB SKU key (same tier logic as invoices.py / reconciliation.py)
-  - Prorated charge calculation (same engine as _generate_prorated_invoice)
-  - Billing type for the customer
-  - Links to proration preview
+Provides the /api/activations endpoint showing devices that came online
+(firstDeviceActivationDate) within a requested date range.
 
-This becomes the source of truth for:
-  1. Generating prorated invoices (feeds the existing invoices.py proration engine)
-  2. Updating QB Recurrences (future QB sync tool will consume this data)
+Data source: the existing MyAdmin contract sync cache (_sync_cache["contracts"])
+— no separate API call needed. The same data that powers Customers, Invoices,
+and Reconciliation is filtered here by firstDeviceActivationDate date range.
 
-MyAdmin API method: GetDeviceContractRequestsByPage
-  - Accepts: apiKey, sessionId, forAccount, fromDate, toDate, nextId
-  - Returns paginated list of DeviceContractRequest objects with fields:
-      device.serialNumber, device.imei, sim, account
-      activeDatabase / activeCustomer
-      requestedPlan, requestType, requestedOn, processedOn
-      activeFeatures, status, comments
+This makes the Activations tab:
+  - Instant  (reads from the in-memory cache, zero extra API calls)
+  - Accurate (same contracts, same SKU resolution logic as invoices.py)
+  - Complete (has full contract context: customer, plan, promoCode, dates)
+
+Each record is enriched with:
+  - Resolved QB SKU key (same 4-tier logic as invoices.py)
+  - Proration details (daysActive, prorateFactor, proratedCharge)
+  - Customer billing type
+  - All contract fields visible on the MyAdmin Activation History page
 """
 
 from __future__ import annotations
@@ -30,12 +28,9 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 from typing import Dict, List, Optional
 
-import json as _json
-
-import httpx
 from fastapi import APIRouter, HTTPException, Query
 
-from .auth import myadmin_call, session_store, MYADMIN_API_URL
+from .auth import session_store
 from .customers import (
     MYADMIN_ACCOUNT,
     _sync_cache,
@@ -43,6 +38,8 @@ from .customers import (
     _strip_han_cs,
     _strip_sub_account_suffix,
     billing_type_overrides,
+    billing_date_overrides,
+    first_connect_date_overrides,
     qb_customers,
 )
 from .invoices import (
@@ -54,7 +51,6 @@ from .invoices import (
     _GE_GF_BASE_SKU,
     _GF_SKU_REMAP,
     EXCLUDED_CATEGORIES,
-    DM_SERIAL_PREFIXES,
 )
 from .reconciliation import _normalize, _resolve_price
 
@@ -65,7 +61,7 @@ router = APIRouter()
 # --------------------------------------------------------------------------- #
 
 def _safe_date_str(raw) -> str:
-    """Trim ISO datetime to YYYY-MM-DD; return '' for sentinel 0001-01-01."""
+    """Trim ISO datetime to YYYY-MM-DD; return '' for .NET sentinel 0001-01-01."""
     s = (raw or "")[:10]
     return "" if s.startswith("0001") else s
 
@@ -78,40 +74,8 @@ def _parse_date(s: str) -> Optional[date]:
         return None
 
 
-def _days_in_month(year: int, month: int) -> int:
-    import calendar
-    return calendar.monthrange(year, month)[1]
-
-
 # --------------------------------------------------------------------------- #
-#  Request type helpers                                                         #
-# --------------------------------------------------------------------------- #
-
-# Request types that represent a new device coming online (activation).
-# All other types (Terminate, Plan Change, etc.) are non-activation events.
-ACTIVATION_REQUEST_TYPES: frozenset = frozenset({
-    "activate",
-    "new activation",
-    "new device",
-    "add device",
-    "device activation",
-    "activated",
-    "activation",
-})
-
-
-def _is_activation(request_type: str) -> bool:
-    """Return True if this request type represents a new activation."""
-    rt = (request_type or "").strip().lower()
-    # Check for exact match or substring match
-    for at in ACTIVATION_REQUEST_TYPES:
-        if at in rt or rt in at:
-            return True
-    return False
-
-
-# --------------------------------------------------------------------------- #
-#  SKU resolution for activation records                                        #
+#  SKU resolution (mirrors invoices.py _generate_prorated_invoice)             #
 # --------------------------------------------------------------------------- #
 
 def _resolve_activation_sku(
@@ -123,33 +87,18 @@ def _resolve_activation_sku(
     cust_map_index: dict,
     plan_promo_index: dict,
 ) -> str:
-    """
-    Resolve the QB SKU for an activation record using the same tier logic
-    as invoices.py _generate_prorated_invoice():
-      0.5: Serial-prefix OEM / Surfsight check
-      1.5: GE/GF with no promoCode → base hardware SKU
-      1:   Customer-specific promoCode mapping
-      1.5: Plan+promoCode compound lookup (Tier 1.5)
-      3:   Global flat promoCode mapping
-      4:   Billing plan fallback
-      ?: UNMAPPED
-    """
     serial_upper = (serial or "").strip().upper()
     _gf_serial   = serial_upper.startswith("GF")
     _ge_serial   = serial_upper.startswith("GE")
 
-    # Step 0.5: DM devices are excluded (never on prorated invoices)
     if _is_dm_serial(serial):
         return "EXCLUDED (Digital Matter)"
 
-    # Step 1.5: GE/GF with no promoCode → base hardware SKU directly
     if not rate_plan_code and (_gf_serial or _ge_serial):
         return _GE_GF_BASE_SKU["GF" if _gf_serial else "GE"]
 
-    # Step 1: Serial-prefix check (OEM + Surfsight)
     sku = _sku_from_serial(serial)
 
-    # Step 2-4: Plan/promo resolution
     if not sku:
         sku = (
             _resolve_sku(customer_norm, rate_plan_code, mapping_index, cust_map_index,
@@ -158,7 +107,6 @@ def _resolve_activation_sku(
             or "UNMAPPED"
         )
 
-    # GF serial post-correction: remap Focus Plus → Focus
     if _gf_serial and sku in _GF_SKU_REMAP:
         sku = _GF_SKU_REMAP[sku]
 
@@ -166,18 +114,10 @@ def _resolve_activation_sku(
 
 
 # --------------------------------------------------------------------------- #
-#  Customer billing-type lookup (same logic as invoices.py)                    #
+#  Customer billing-type lookup                                                 #
 # --------------------------------------------------------------------------- #
 
 def _get_billing_type(company_id: str, raw_name: str) -> str:
-    """
-    Derive billing type for a company using the same priority chain as
-    invoices.py get_prorated_invoices():
-      1. Manual override (billing_type_overrides)
-      2. QB record billingType (via normalized suffix-stripped name)
-      3. {Han-CS} suffix in MyAdmin name
-      4. "Unknown"
-    """
     clean_name     = _clean_name(raw_name)
     _after_sub     = _strip_sub_account_suffix(clean_name)
     qb_lookup_name = _strip_han_cs(_after_sub)
@@ -191,159 +131,13 @@ def _get_billing_type(company_id: str, raw_name: str) -> str:
 
 
 # --------------------------------------------------------------------------- #
-#  Fetch from MyAdmin                                                           #
+#  Enrich a single contract record into an activation row                      #
 # --------------------------------------------------------------------------- #
 
-async def _myadmin_call_raw(method: str, params: dict, timeout: float = 120.0) -> dict:
-    """
-    Like myadmin_call() but reads .text first so we can surface a clean error
-    if MyAdmin returns a non-JSON or malformed-JSON response (e.g. unknown method).
-    """
-    payload = {"method": method, "params": params}
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        response = await client.post(
-            MYADMIN_API_URL,
-            json=payload,
-            headers={"Content-Type": "application/json"},
-        )
-
-    raw_text = response.text.strip()
-
-    # Try to parse JSON
-    try:
-        data = _json.loads(raw_text)
-    except _json.JSONDecodeError as e:
-        # Truncate the raw response for the error message (first 300 chars)
-        snippet = raw_text[:300].replace("\n", " ")
-        raise HTTPException(
-            status_code=502,
-            detail=(
-                f"MyAdmin returned non-JSON for method '{method}': {e}. "
-                f"Raw response: {snippet}"
-            ),
-        )
-
-    # Surface MyAdmin-level errors (JSON-RPC error object)
-    if "error" in data and data["error"]:
-        err = data["error"]
-        if isinstance(err, dict):
-            msg = err.get("message") or err.get("name") or str(err)
-        else:
-            msg = str(err)
-        raise HTTPException(
-            status_code=502,
-            detail=f"MyAdmin API error for method '{method}': {msg}",
-        )
-
-    return data
-
-
-async def _fetch_activation_history(
-    from_date: str,
-    to_date: str,
-) -> List[dict]:
-    """
-    Fetch Device Contract Request History from MyAdmin.
-
-    Tries these method names in order until one succeeds:
-      1. GetDeviceContractRequestsByPage  (most likely)
-      2. GetContractRequestsByPage
-      3. GetDeviceContractRequests
-
-    Returns a flat list of raw request records (paginated automatically).
-    """
-    if not session_store.get("session_id"):
-        raise HTTPException(status_code=401, detail="Not logged in to MyAdmin")
-
-    # Candidate method names — we try them in order and use the first that works.
-    # The correct name is discovered at runtime and stored so subsequent pages
-    # use it directly without re-probing.
-    METHOD_CANDIDATES = [
-        "GetDeviceContractRequestsByPage",
-        "GetContractRequestsByPage",
-        "GetDeviceContractRequests",
-    ]
-
-    def _build_params(next_id: int) -> dict:
-        p: dict = {
-            "apiKey":     session_store["user_id"],
-            "sessionId":  session_store["session_id"],
-            "forAccount": MYADMIN_ACCOUNT,
-            "nextId":     next_id,
-        }
-        if from_date:
-            p["fromDate"] = from_date + "T00:00:00"
-        if to_date:
-            p["toDate"] = to_date + "T23:59:59"
-        return p
-
-    all_records: List[dict] = []
-    next_id  = 0
-    page_num = 0
-    confirmed_method: Optional[str] = None
-    last_errors: List[str] = []
-
-    while True:
-        page_num += 1
-        params = _build_params(next_id)
-
-        # On the first page, try each candidate method until one works
-        if page_num == 1:
-            result = None
-            for method_name in METHOD_CANDIDATES:
-                try:
-                    result = await _myadmin_call_raw(method_name, params, timeout=120.0)
-                    confirmed_method = method_name
-                    print(f"[activations] Using MyAdmin method: {method_name}")
-                    break
-                except HTTPException as he:
-                    last_errors.append(f"{method_name}: {he.detail}")
-                    continue
-
-            if result is None:
-                raise HTTPException(
-                    status_code=502,
-                    detail=(
-                        "Could not determine MyAdmin activation history method. "
-                        f"Tried: {METHOD_CANDIDATES}. "
-                        f"Errors: {' | '.join(last_errors)}"
-                    ),
-                )
-        else:
-            # Subsequent pages use the confirmed method
-            try:
-                result = await _myadmin_call_raw(confirmed_method, params, timeout=120.0)
-            except HTTPException as exc:
-                raise HTTPException(
-                    status_code=502,
-                    detail=f"MyAdmin error on page {page_num}: {exc.detail}",
-                )
-
-        batch = result.get("result") or []
-
-        if not batch:
-            break
-
-        all_records.extend(batch)
-
-        # Stop if last page (< 1000 records)
-        if len(batch) < 1000:
-            break
-
-        # Advance cursor
-        next_id = batch[-1].get("id") or batch[-1].get("Id") or 0
-        if not next_id:
-            break
-
-    return all_records
-
-
-# --------------------------------------------------------------------------- #
-#  Enrich a single activation record                                            #
-# --------------------------------------------------------------------------- #
-
-def _enrich_record(
-    rec: dict,
+def _enrich_contract(
+    contract: dict,
+    activation_date_str: str,
+    activation_date_obj: date,
     catalog_index: dict,
     ovr_index: dict,
     mapping_index: dict,
@@ -353,124 +147,68 @@ def _enrich_record(
     category_index: dict,
     plan_promo_index: dict,
 ) -> dict:
-    """
-    Enrich a raw MyAdmin contract request record with:
-      - Normalised field names
-      - Resolved SKU key + billing metadata
-      - Proration details (if activation date is in a complete billing month)
-      - Customer billing type
-    """
-    # --- Device fields ---
-    device = rec.get("device") or {}
+    # --- Device ---
+    device    = contract.get("device") or {}
     serial    = device.get("serialNumber") or ""
-    imei      = device.get("imei") or str(device.get("id") or "")
+    imei      = str(device.get("id") or "")
 
-    # --- SIM ---
-    sim_obj = rec.get("sim") or {}
-    sim = sim_obj.get("serialNumber") or sim_obj.get("number") or ""
+    # --- Customer ---
+    uc         = contract.get("userContact") or {}
+    company    = uc.get("userCompany") or {}
+    company_id = str(company.get("id") or "")
+    company_name = company.get("name") or ""
 
-    # --- Account / Customer ---
-    user_contact = rec.get("userContact") or {}
-    user_company = user_contact.get("userCompany") or {}
-    company_id   = str(user_company.get("id") or "")
-    company_name = user_company.get("name") or ""
+    # --- Database ---
+    ldd = contract.get("latestDeviceDatabase") or {}
+    active_db = ldd.get("databaseName") or ""
 
-    # Active Database
-    active_db = ""
-    ldd = rec.get("latestDeviceDatabase") or rec.get("activeDatabase") or {}
-    if isinstance(ldd, dict):
-        active_db = ldd.get("databaseName") or ldd.get("name") or ""
-    elif isinstance(ldd, str):
-        active_db = ldd
+    # --- Plan ---
+    adp          = contract.get("activeDevicePlan") or {}
+    active_plan  = adp.get("name") or ""
+    rate_plan    = (contract.get("promoCode") or "").upper()
 
-    # --- Plan / Request info ---
-    # The requested plan is in requestedDevicePlan or similar
-    requested_plan_obj = rec.get("requestedDevicePlan") or rec.get("newDevicePlan") or {}
-    requested_plan = ""
-    if isinstance(requested_plan_obj, dict):
-        requested_plan = requested_plan_obj.get("name") or ""
-    elif isinstance(requested_plan_obj, str):
-        requested_plan = requested_plan_obj
+    # Strip ": Live" / ": Demo" suffix for billing plan
+    billing_plan = active_plan.split(":")[0].strip() if active_plan else ""
 
-    # Active/current plan
-    active_plan_obj = rec.get("activeDevicePlan") or {}
-    if isinstance(active_plan_obj, dict):
-        active_plan = active_plan_obj.get("name") or ""
-    else:
-        active_plan = str(active_plan_obj) if active_plan_obj else ""
+    # --- Dates (raw from contract) ---
+    raw_fcd = _safe_date_str(contract.get("firstDeviceActivationDate"))
+    raw_bsd = _safe_date_str(contract.get("billingStartDate"))
+    raw_start = _safe_date_str(contract.get("startDate"))
+    raw_end   = _safe_date_str(contract.get("endDate"))
 
-    # Rate plan code (promoCode in MyAdmin)
-    rate_plan_code = (rec.get("promoCode") or rec.get("ratePlanCode") or "").upper()
-
-    # Request type (e.g. "Activate", "Terminate", "Mo Plan Change")
-    request_type_raw = rec.get("requestType") or rec.get("type") or ""
-    if isinstance(request_type_raw, dict):
-        request_type = request_type_raw.get("name") or str(request_type_raw)
-    else:
-        request_type = str(request_type_raw)
-
-    is_activation_event = _is_activation(request_type)
-
-    # Status
-    status_raw = rec.get("status") or {}
-    if isinstance(status_raw, dict):
-        status = status_raw.get("name") or str(status_raw)
-    else:
-        status = str(status_raw)
-
-    # Comments
-    comments = rec.get("comments") or ""
-
-    # Active features
-    active_features_raw = rec.get("activeFeatures") or []
-    if isinstance(active_features_raw, list):
-        active_features = ", ".join(
-            f.get("name") if isinstance(f, dict) else str(f)
-            for f in active_features_raw
-        )
-    else:
-        active_features = str(active_features_raw)
-
-    # --- Dates ---
-    requested_on   = _safe_date_str(rec.get("requestedOn") or rec.get("createdOn"))
-    processed_on   = _safe_date_str(rec.get("processedOn") or rec.get("completedOn"))
-    first_connect  = _safe_date_str(rec.get("firstDeviceActivationDate"))
-    billing_start  = _safe_date_str(rec.get("billingStartDate"))
-
-    # Use the best available activation date for proration
-    activation_date_str = first_connect or billing_start or processed_on or requested_on
-    activation_date_obj = _parse_date(activation_date_str)
+    # Apply manual overrides (same as customers.py display logic)
+    serial_key = serial.strip().upper()
+    fcd_override = first_connect_date_overrides.get(serial_key)
+    bsd_override = billing_date_overrides.get(serial_key)
+    display_fcd  = fcd_override or raw_fcd
+    display_bsd  = bsd_override or raw_bsd
 
     # --- Billing type ---
     billing_type = _get_billing_type(company_id, company_name)
-
-    # Determine billing plan (strip ": Live" suffix same as reconciliation)
-    billing_plan_full = active_plan or requested_plan
-    billing_plan = billing_plan_full.split(":")[0].strip() if billing_plan_full else ""
 
     # --- SKU resolution ---
     customer_norm = _normalize(company_name)
     sku_key = _resolve_activation_sku(
         serial=serial,
         customer_norm=customer_norm,
-        rate_plan_code=rate_plan_code,
+        rate_plan_code=rate_plan,
         billing_plan=billing_plan,
         mapping_index=mapping_index,
         cust_map_index=cust_map_index,
         plan_promo_index=plan_promo_index,
     )
 
-    # Category check
-    sku_category = category_index.get(sku_key, "")
+    sku_category     = category_index.get(sku_key, "")
     excluded_category = sku_category in EXCLUDED_CATEGORIES
-
-    # Full QB item path and description
-    item_code = full_path_index.get(sku_key, sku_key)
-    sku_desc  = sku_desc_index.get(sku_key, sku_key)
+    item_code        = full_path_index.get(sku_key, sku_key)
+    sku_desc         = sku_desc_index.get(sku_key, sku_key)
 
     # --- Proration ---
     proration = None
-    if activation_date_obj and not excluded_category and sku_key not in ("UNMAPPED", "EXCLUDED (Digital Matter)"):
+    is_pilot  = "PILOT" in rate_plan
+    if (not excluded_category
+            and sku_key not in ("UNMAPPED", "EXCLUDED (Digital Matter)")
+            and not is_pilot):
         b_year  = activation_date_obj.year
         b_month = activation_date_obj.month
         monthly_rate, price_source = _resolve_price(
@@ -480,24 +218,21 @@ def _enrich_record(
             days_active, days_in_month, factor = _prorate_factor(
                 activation_date_obj, b_year, b_month
             )
-            prorated_charge = round(monthly_rate * factor, 2)
             proration = {
-                "billingMonth":    f"{b_year}-{b_month:02d}",
-                "activationDate":  activation_date_str,
-                "daysActive":      days_active,
-                "daysInMonth":     days_in_month,
-                "prorateFactor":   round(factor, 6),
-                "monthlyRate":     monthly_rate,
-                "proratedCharge":  prorated_charge,
-                "priceSource":     price_source,
+                "billingMonth":   f"{b_year}-{b_month:02d}",
+                "activationDate": activation_date_str,
+                "daysActive":     days_active,
+                "daysInMonth":    days_in_month,
+                "prorateFactor":  round(factor, 6),
+                "monthlyRate":    monthly_rate,
+                "proratedCharge": round(monthly_rate * factor, 2),
+                "priceSource":    price_source,
             }
 
     return {
-        # Identity
-        "id":               rec.get("id") or rec.get("Id") or "",
+        # Device identity
         "serialNumber":     serial,
         "imei":             imei,
-        "sim":              sim,
 
         # Customer
         "companyId":        company_id,
@@ -505,22 +240,17 @@ def _enrich_record(
         "activeDatabase":   active_db,
         "billingType":      billing_type,
 
-        # Plan / Request
-        "requestedPlan":    requested_plan,
+        # Plan info
         "activePlan":       active_plan,
-        "ratePlanCode":     rate_plan_code,
-        "requestType":      request_type,
-        "isActivation":     is_activation_event,
-        "status":           status,
-        "activeFeatures":   active_features,
-        "comments":         comments,
+        "ratePlanCode":     rate_plan,
+        "isPilot":          is_pilot,
 
         # Dates
-        "requestedOn":      requested_on,
-        "processedOn":      processed_on,
-        "firstConnectDate": first_connect,
-        "billingStartDate": billing_start,
-        "activationDate":   activation_date_str,
+        "firstConnectDate":   display_fcd,
+        "billingStartDate":   display_bsd,
+        "contractStartDate":  raw_start,
+        "contractEndDate":    raw_end,
+        "activationDate":     activation_date_str,
 
         # SKU
         "skuKey":           sku_key,
@@ -535,89 +265,34 @@ def _enrich_record(
 
 
 # --------------------------------------------------------------------------- #
-#  Endpoints                                                                    #
+#  Main activation derivation from cached contracts                            #
 # --------------------------------------------------------------------------- #
 
-@router.get("/activations/probe")
-async def probe_activation_method():
+def _get_activation_date(contract: dict) -> Optional[str]:
     """
-    Diagnostic endpoint: tries every candidate MyAdmin method name for
-    activation history and returns the raw response (first 500 chars) or
-    the error for each. Use this to discover which method name MyAdmin
-    accepts for the current account credentials.
+    Return the best activation date string for a contract, applying the same
+    override priority as invoices.py:
+      1. first_connect_date_overrides (user-set)
+      2. firstDeviceActivationDate from API
+      Returns None if no valid date.
     """
-    if not session_store.get("session_id"):
-        raise HTTPException(status_code=401, detail="Not logged in to MyAdmin")
+    device    = contract.get("device") or {}
+    serial    = (device.get("serialNumber") or "").strip().upper()
 
-    today = date.today()
-    test_params = {
-        "apiKey":     session_store["user_id"],
-        "sessionId":  session_store["session_id"],
-        "forAccount": MYADMIN_ACCOUNT,
-        "nextId":     0,
-        "fromDate":   (today - timedelta(days=7)).isoformat() + "T00:00:00",
-        "toDate":     today.isoformat() + "T23:59:59",
-    }
+    fcd_override = first_connect_date_overrides.get(serial)
+    api_fcd      = _safe_date_str(contract.get("firstDeviceActivationDate"))
+    return fcd_override or api_fcd or None
 
-    candidates = [
-        "GetDeviceContractRequestsByPage",
-        "GetContractRequestsByPage",
-        "GetDeviceContractRequests",
-        "GetContractRequests",
-        "GetActivationHistoryByPage",
-        "GetActivationHistory",
-    ]
 
-    results = {}
-    for method in candidates:
-        payload = {"method": method, "params": test_params}
-        try:
-            async with httpx.AsyncClient(timeout=15.0) as client:
-                resp = await client.post(
-                    MYADMIN_API_URL,
-                    json=payload,
-                    headers={"Content-Type": "application/json"},
-                )
-            raw = resp.text.strip()
-            # Try to parse
-            try:
-                parsed = _json.loads(raw)
-                error  = parsed.get("error")
-                result = parsed.get("result")
-                if error:
-                    results[method] = {
-                        "status": "api_error",
-                        "error":  str(error)[:200],
-                    }
-                elif result is not None:
-                    count = len(result) if isinstance(result, list) else "non-list"
-                    results[method] = {
-                        "status": "success",
-                        "recordCount": count,
-                        "firstKeys": list(result[0].keys())[:10] if isinstance(result, list) and result else [],
-                    }
-                else:
-                    results[method] = {
-                        "status": "null_result",
-                        "raw_snippet": raw[:300],
-                    }
-            except _json.JSONDecodeError as je:
-                results[method] = {
-                    "status":      "json_error",
-                    "error":       str(je),
-                    "raw_snippet": raw[:300],
-                }
-        except Exception as exc:
-            results[method] = {"status": "request_error", "error": str(exc)[:200]}
-
-    return {"candidates": results}
-
+# --------------------------------------------------------------------------- #
+#  Endpoints                                                                    #
+# --------------------------------------------------------------------------- #
 
 @router.get("/activations")
 async def get_activations(
     from_date: str = Query(
         default="",
-        description="Start date YYYY-MM-DD (defaults to 30 days ago)",
+        description="Start date YYYY-MM-DD (defaults to first day of current month)",
         alias="fromDate",
     ),
     to_date: str = Query(
@@ -625,66 +300,95 @@ async def get_activations(
         description="End date YYYY-MM-DD (defaults to today)",
         alias="toDate",
     ),
-    request_type: str = Query(
+    billing_type: str = Query(
         default="",
-        description="Filter by request type substring (e.g. 'activate', 'terminate'). "
+        description="Filter by billing type (e.g. 'Charge Upon Activation', 'Hanover'). "
                     "Empty = all types.",
-        alias="requestType",
-    ),
-    activations_only: bool = Query(
-        default=False,
-        description="When true, return only records that represent new activations.",
-        alias="activationsOnly",
+        alias="billingType",
     ),
     customer_id: str = Query(
         default="",
         description="Filter to a specific MyAdmin company ID.",
         alias="customerId",
     ),
+    include_terminated: bool = Query(
+        default=False,
+        description="Include terminated contracts. Default false.",
+        alias="includeTerminated",
+    ),
 ):
     """
-    Fetch Device Contract Request History from MyAdmin (Activation History page).
+    Returns devices that had their first activation (firstDeviceActivationDate)
+    within the requested date range, enriched with SKU resolution and proration.
 
-    Returns a list of enriched activation records with:
-      - Device / customer / plan / request metadata
-      - Resolved QB SKU key
-      - Proration details (activationDate, daysActive, proratedCharge, etc.)
-      - Customer billing type
+    Data source: cached MyAdmin contracts (_sync_cache). Run a MyAdmin sync
+    first if the cache is empty or stale.
 
-    Date defaults: last 30 days.
+    Date defaults: first day of the current month → today.
     """
     if not session_store.get("session_id"):
         raise HTTPException(status_code=401, detail="Not logged in to MyAdmin")
 
-    # Default date range: last 30 days
+    all_contracts: List[dict] = _sync_cache.get("contracts") or []
+    if not all_contracts:
+        raise HTTPException(
+            status_code=503,
+            detail="No contract data cached. Please run a MyAdmin sync first.",
+        )
+
+    # Default date range: first of current month → today
     today = date.today()
     if not from_date:
-        from_date = (today - timedelta(days=30)).isoformat()
+        from_date = date(today.year, today.month, 1).isoformat()
     if not to_date:
         to_date = today.isoformat()
 
-    # Validate dates
     from_dt = _parse_date(from_date)
     to_dt   = _parse_date(to_date)
     if not from_dt or not to_dt:
         raise HTTPException(status_code=400, detail="Dates must be YYYY-MM-DD")
     if from_dt > to_dt:
-        raise HTTPException(status_code=400, detail="fromDate must be <= toDate")
+        raise HTTPException(status_code=400, detail="fromDate must be ≤ toDate")
 
-    # Fetch raw records from MyAdmin
-    raw_records = await _fetch_activation_history(from_date, to_date)
-
-    # Build SKU resolution indices (same as invoices.py)
+    # Build SKU indices
     (catalog_index, ovr_index, mapping_index,
      cust_map_index, full_path_index, sku_desc_index,
      category_index, plan_promo_index) = _build_indices()
 
-    # Enrich each record
-    enriched: List[dict] = []
-    for rec in raw_records:
+    results: List[dict] = []
+
+    for contract in all_contracts:
+        # Terminated filter
+        is_terminated = contract.get("isTerminated", False)
+        if is_terminated and not include_terminated:
+            continue
+
+        # Get the activation date
+        act_str = _get_activation_date(contract)
+        if not act_str:
+            continue  # Never activated — no firstDeviceActivationDate
+
+        act_obj = _parse_date(act_str)
+        if not act_obj:
+            continue
+
+        # Date range filter
+        if not (from_dt <= act_obj <= to_dt):
+            continue
+
+        # Company ID filter
+        if customer_id:
+            uc  = contract.get("userContact") or {}
+            cid = str((uc.get("userCompany") or {}).get("id") or "")
+            if cid != customer_id:
+                continue
+
+        # Enrich
         try:
-            row = _enrich_record(
-                rec,
+            row = _enrich_contract(
+                contract,
+                activation_date_str=act_str,
+                activation_date_obj=act_obj,
                 catalog_index=catalog_index,
                 ovr_index=ovr_index,
                 mapping_index=mapping_index,
@@ -695,40 +399,45 @@ async def get_activations(
                 plan_promo_index=plan_promo_index,
             )
         except Exception:
-            # Don't let one bad record abort the whole response
             continue
 
-        # Apply filters
-        if activations_only and not row["isActivation"]:
-            continue
-        if request_type and request_type.lower() not in row["requestType"].lower():
-            continue
-        if customer_id and row["companyId"] != customer_id:
+        # Billing type filter
+        if billing_type and row["billingType"] != billing_type:
             continue
 
-        enriched.append(row)
+        results.append(row)
 
-    # Sort: most recent first (by requestedOn desc)
-    enriched.sort(key=lambda r: r.get("requestedOn") or "", reverse=True)
+    # Sort: earliest activation date first
+    results.sort(key=lambda r: r.get("activationDate") or "")
 
     # Summary stats
-    total           = len(enriched)
-    activation_cnt  = sum(1 for r in enriched if r["isActivation"])
-    total_prorated  = sum(
+    total         = len(results)
+    total_prorated = round(sum(
         (r["proration"] or {}).get("proratedCharge", 0.0)
-        for r in enriched
-        if r.get("proration")
+        for r in results if r.get("proration")
+    ), 2)
+    unmapped_cnt  = sum(1 for r in results if r["skuKey"] == "UNMAPPED")
+    excluded_cnt  = sum(1 for r in results if r["excludedCategory"])
+    pilot_cnt     = sum(1 for r in results if r.get("isPilot"))
+
+    # Cache age info
+    cache_fetched_at = _sync_cache.get("fetched_at")
+    cache_age_hours  = (
+        round((__import__("time").time() - cache_fetched_at) / 3600, 1)
+        if cache_fetched_at else None
     )
-    unmapped_cnt    = sum(1 for r in enriched if r["skuKey"] == "UNMAPPED")
 
     return {
-        "fromDate":        from_date,
-        "toDate":          to_date,
-        "totalRecords":    total,
-        "activationCount": activation_cnt,
-        "totalProratedAmount": round(total_prorated, 2),
-        "unmappedCount":   unmapped_cnt,
-        "records":         enriched,
+        "fromDate":           from_date,
+        "toDate":             to_date,
+        "totalRecords":       total,
+        "totalProratedAmount": total_prorated,
+        "unmappedCount":      unmapped_cnt,
+        "excludedCount":      excluded_cnt,
+        "pilotCount":         pilot_cnt,
+        "cacheAgeHours":      cache_age_hours,
+        "totalContractsInCache": len(all_contracts),
+        "records":            results,
     }
 
 
@@ -738,13 +447,12 @@ async def get_activations_summary(
     to_date:   str = Query(default="", alias="toDate"),
 ):
     """
-    Lightweight summary of activation counts and prorated amounts
-    grouped by customer and billing month. Useful for dashboard widgets.
+    Activations grouped by customer — count + total prorated amount.
+    Useful for a dashboard overview.
     """
     result = await get_activations(
         from_date=from_date,
         to_date=to_date,
-        activations_only=True,
     )
 
     by_customer: Dict[str, dict] = defaultdict(lambda: {
@@ -752,36 +460,35 @@ async def get_activations_summary(
         "billingType":  "",
         "count":        0,
         "totalProrated": 0.0,
-        "skus": defaultdict(int),
+        "skus": {},
     })
 
     for r in result["records"]:
         cid = r["companyId"] or r["customerName"]
-        by_customer[cid]["customerName"]  = r["customerName"]
-        by_customer[cid]["billingType"]   = r["billingType"]
-        by_customer[cid]["count"]        += 1
+        by_customer[cid]["customerName"]   = r["customerName"]
+        by_customer[cid]["billingType"]    = r["billingType"]
+        by_customer[cid]["count"]         += 1
         if r.get("proration"):
             by_customer[cid]["totalProrated"] += r["proration"].get("proratedCharge", 0.0)
-        by_customer[cid]["skus"][r["skuKey"]] = (
-            by_customer[cid]["skus"].get(r["skuKey"], 0) + 1
-        )
+        sku = r["skuKey"]
+        by_customer[cid]["skus"][sku] = by_customer[cid]["skus"].get(sku, 0) + 1
 
-    # Convert defaultdict(int) inside skus to plain dict
-    summary_list = []
-    for cid, data in by_customer.items():
-        summary_list.append({
-            "companyId":     cid,
-            "customerName":  data["customerName"],
-            "billingType":   data["billingType"],
-            "activationCount": data["count"],
-            "totalProrated": round(data["totalProrated"], 2),
-            "skus":          dict(data["skus"]),
-        })
-
+    summary_list = [
+        {
+            "companyId":       cid,
+            "customerName":    d["customerName"],
+            "billingType":     d["billingType"],
+            "activationCount": d["count"],
+            "totalProrated":   round(d["totalProrated"], 2),
+            "skus":            d["skus"],
+        }
+        for cid, d in by_customer.items()
+    ]
     summary_list.sort(key=lambda x: x["activationCount"], reverse=True)
 
     return {
         "fromDate":  result["fromDate"],
         "toDate":    result["toDate"],
+        "cacheAgeHours": result["cacheAgeHours"],
         "customers": summary_list,
     }

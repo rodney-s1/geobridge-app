@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useCallback } from 'react'
 
 const API = 'http://127.0.0.1:8001'
 
@@ -17,46 +17,23 @@ function fmtPct(f) {
 
 function fmtDate(s) {
   if (!s) return '—'
-  // Convert YYYY-MM-DD to Mon DD, YYYY
   try {
     const [y, m, d] = s.split('-').map(Number)
     return new Date(y, m - 1, d).toLocaleDateString('en-US', {
       month: 'short', day: 'numeric', year: 'numeric',
     })
-  } catch {
-    return s
-  }
+  } catch { return s }
 }
 
-// Default date range: last 30 days
+// Default: first of current month → today
 function defaultDates() {
   const today = new Date()
-  const from  = new Date(today)
-  from.setDate(from.getDate() - 30)
-  const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+  const from  = new Date(today.getFullYear(), today.getMonth(), 1)
+  const fmt   = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
   return { from: fmt(from), to: fmt(today) }
 }
 
-// ─── Request type chip ────────────────────────────────────────────────────────
-const RT_COLORS = {
-  activate:    'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-  terminate:   'bg-red-500/15     text-red-300     border-red-500/30',
-  'plan change':'bg-blue-500/15   text-blue-300    border-blue-500/30',
-}
-
-function RequestTypeChip({ requestType, isActivation }) {
-  const rt = (requestType || '').toLowerCase()
-  let cls = 'bg-slate-700/50 text-slate-400 border-slate-600/30'
-  if (isActivation) cls = RT_COLORS.activate
-  else if (rt.includes('terminat')) cls = RT_COLORS.terminate
-  else if (rt.includes('plan change') || rt.includes('mo plan')) cls = RT_COLORS['plan change']
-  return (
-    <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[11px] font-medium ${cls}`}>
-      {requestType || '—'}
-    </span>
-  )
-}
-
+// ─── Chips ───────────────────────────────────────────────────────────────────
 function BillingTypeBadge({ billingType }) {
   const bt = billingType || ''
   let cls = 'bg-slate-700/50 text-slate-400 border-slate-600/30'
@@ -65,7 +42,7 @@ function BillingTypeBadge({ billingType }) {
   else if (bt === 'Han-CS')            cls = 'bg-cyan-500/15   text-cyan-300   border-cyan-500/30'
   else if (bt === 'Standard')          cls = 'bg-slate-600/50  text-slate-300  border-slate-500/30'
   return (
-    <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[11px] font-medium ${cls}`}>
+    <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[11px] font-medium whitespace-nowrap ${cls}`}>
       {bt || 'Unknown'}
     </span>
   )
@@ -74,8 +51,8 @@ function BillingTypeBadge({ billingType }) {
 function SkuChip({ skuKey }) {
   const sku = skuKey || ''
   let cls = 'bg-slate-700/50 text-slate-300 border-slate-600/30'
-  if (sku === 'UNMAPPED')                    cls = 'bg-amber-500/15  text-amber-300  border-amber-500/30'
-  else if (sku.startsWith('EXCLUDED'))       cls = 'bg-slate-600/40  text-slate-400  border-slate-500/20'
+  if (sku === 'UNMAPPED')              cls = 'bg-amber-500/15  text-amber-300  border-amber-500/30'
+  else if (sku.startsWith('EXCLUDED')) cls = 'bg-slate-600/40  text-slate-400  border-slate-500/20'
   return (
     <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[11px] font-mono ${cls} max-w-[220px] truncate`}
           title={sku}>
@@ -87,11 +64,11 @@ function SkuChip({ skuKey }) {
 // ─── Stat card ────────────────────────────────────────────────────────────────
 function StatCard({ label, value, sub, color = 'blue' }) {
   const C = {
-    blue:   { num: 'text-blue-400',   bg: 'bg-blue-500/10',   border: 'border-blue-500/20'   },
-    green:  { num: 'text-emerald-400',bg: 'bg-emerald-500/10',border: 'border-emerald-500/20' },
-    amber:  { num: 'text-amber-400',  bg: 'bg-amber-500/10',  border: 'border-amber-500/20'  },
-    purple: { num: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/20' },
-    red:    { num: 'text-red-400',    bg: 'bg-red-500/10',    border: 'border-red-500/20'    },
+    blue:   { num: 'text-blue-400',    bg: 'bg-blue-500/10',    border: 'border-blue-500/20'    },
+    green:  { num: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20' },
+    amber:  { num: 'text-amber-400',   bg: 'bg-amber-500/10',   border: 'border-amber-500/20'   },
+    purple: { num: 'text-purple-400',  bg: 'bg-purple-500/10',  border: 'border-purple-500/20'  },
+    red:    { num: 'text-red-400',     bg: 'bg-red-500/10',     border: 'border-red-500/20'     },
   }[color] || {}
   return (
     <div className={`rounded-lg border p-4 ${C.bg} ${C.border}`}>
@@ -102,118 +79,93 @@ function StatCard({ label, value, sub, color = 'blue' }) {
   )
 }
 
-// ─── Row detail expand panel ──────────────────────────────────────────────────
+// ─── Row expand detail ────────────────────────────────────────────────────────
 function ActivationRowDetail({ record }) {
   const p = record.proration
   return (
     <tr>
-      <td colSpan={10} className="px-4 pb-3 pt-0 bg-slate-800/40">
+      <td colSpan={8} className="px-4 pb-3 pt-0 bg-slate-800/40">
         <div className="grid grid-cols-2 gap-4 text-xs border border-slate-700/40 rounded-md p-3 mt-1 bg-slate-900/40">
 
-          {/* Left: Device + plan details */}
+          {/* Left: contract details */}
           <div className="space-y-1.5">
-            <p className="text-slate-400 font-semibold uppercase text-[10px] tracking-wider mb-2">Device Details</p>
-            <div className="flex gap-2">
-              <span className="text-slate-500 w-28 flex-shrink-0">Serial Number</span>
-              <span className="text-slate-200 font-mono">{record.serialNumber || '—'}</span>
-            </div>
-            <div className="flex gap-2">
-              <span className="text-slate-500 w-28 flex-shrink-0">IMEI</span>
-              <span className="text-slate-300 font-mono">{record.imei || '—'}</span>
-            </div>
-            <div className="flex gap-2">
-              <span className="text-slate-500 w-28 flex-shrink-0">SIM</span>
-              <span className="text-slate-300 font-mono">{record.sim || '—'}</span>
-            </div>
-            <div className="flex gap-2">
-              <span className="text-slate-500 w-28 flex-shrink-0">Rate Plan Code</span>
-              <span className="text-slate-200 font-mono">{record.ratePlanCode || '—'}</span>
-            </div>
-            <div className="flex gap-2">
-              <span className="text-slate-500 w-28 flex-shrink-0">Active Plan</span>
-              <span className="text-slate-300">{record.activePlan || record.requestedPlan || '—'}</span>
-            </div>
-            {record.activeFeatures && (
-              <div className="flex gap-2">
-                <span className="text-slate-500 w-28 flex-shrink-0">Features</span>
-                <span className="text-slate-400">{record.activeFeatures}</span>
-              </div>
+            <p className="text-slate-400 font-semibold uppercase text-[10px] tracking-wider mb-2">Contract Details</p>
+            <Row label="Serial"        value={record.serialNumber}     mono />
+            <Row label="IMEI"          value={record.imei}             mono />
+            <Row label="Rate Plan Code" value={record.ratePlanCode}    mono />
+            <Row label="Active Plan"   value={record.activePlan} />
+            <Row label="Database"      value={record.activeDatabase}   mono />
+            <Row label="First Connect" value={fmtDate(record.firstConnectDate)} />
+            <Row label="Billing Start" value={fmtDate(record.billingStartDate)} />
+            <Row label="Contract Start" value={fmtDate(record.contractStartDate)} />
+            {record.contractEndDate && (
+              <Row label="Contract End" value={fmtDate(record.contractEndDate)} />
             )}
-            {record.comments && (
-              <div className="flex gap-2">
-                <span className="text-slate-500 w-28 flex-shrink-0">Comments</span>
-                <span className="text-slate-400 italic">{record.comments}</span>
+            {record.isPilot && (
+              <div className="mt-1 inline-flex items-center gap-1 bg-amber-500/15 text-amber-300 border border-amber-500/30 rounded px-2 py-0.5 text-[11px]">
+                ⚠ PILOT — excluded from prorated invoices
               </div>
             )}
           </div>
 
-          {/* Right: Proration details */}
+          {/* Right: proration */}
           <div className="space-y-1.5">
             <p className="text-slate-400 font-semibold uppercase text-[10px] tracking-wider mb-2">Proration Preview</p>
             {p ? (
               <>
-                <div className="flex gap-2">
-                  <span className="text-slate-500 w-28 flex-shrink-0">Billing Month</span>
-                  <span className="text-slate-200">{p.billingMonth}</span>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-slate-500 w-28 flex-shrink-0">Activation Date</span>
-                  <span className="text-slate-200">{fmtDate(p.activationDate)}</span>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-slate-500 w-28 flex-shrink-0">Days Active</span>
-                  <span className="text-slate-200">{p.daysActive} / {p.daysInMonth}</span>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-slate-500 w-28 flex-shrink-0">Prorate Factor</span>
-                  <span className="text-slate-200">{fmtPct(p.prorateFactor)}</span>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-slate-500 w-28 flex-shrink-0">Monthly Rate</span>
-                  <span className="text-slate-200">{fmt$(p.monthlyRate)}</span>
-                </div>
-                <div className="flex gap-2">
+                <Row label="Billing Month"   value={p.billingMonth} />
+                <Row label="Activation Date" value={fmtDate(p.activationDate)} />
+                <Row label="Days Active"     value={`${p.daysActive} / ${p.daysInMonth}`} />
+                <Row label="Prorate Factor"  value={fmtPct(p.prorateFactor)} />
+                <Row label="Monthly Rate"    value={fmt$(p.monthlyRate)} />
+                <div className="flex gap-2 mt-1 pt-1 border-t border-slate-700/40">
                   <span className="text-slate-500 w-28 flex-shrink-0">Prorated Charge</span>
-                  <span className="text-emerald-300 font-semibold">{fmt$(p.proratedCharge)}</span>
+                  <span className="text-emerald-300 font-bold text-sm">{fmt$(p.proratedCharge)}</span>
                 </div>
-                <div className="flex gap-2">
-                  <span className="text-slate-500 w-28 flex-shrink-0">Price Source</span>
-                  <span className="text-slate-400 text-[11px]">{p.priceSource || '—'}</span>
-                </div>
-                <div className="flex gap-2 mt-1">
-                  <span className="text-slate-500 w-28 flex-shrink-0">QB Item Code</span>
-                  <span className="text-blue-400 font-mono text-[11px] break-all">{record.itemCode || '—'}</span>
-                </div>
+                <Row label="Price Source"    value={p.priceSource} dim />
+                <Row label="QB Item Code"    value={record.itemCode} mono dim />
               </>
             ) : (
               <div className="text-slate-500 italic text-xs">
                 {record.skuKey === 'UNMAPPED'
-                  ? '⚠ SKU unmapped — proration not available'
+                  ? '⚠ SKU unmapped — add a rate plan mapping in Settings → SKU Mappings'
                   : record.excludedCategory
-                    ? '⊘ Excluded category (Digital Matter / non-prorated)'
-                    : '— No proration data available'}
+                    ? '⊘ Excluded category — billed through separate system (e.g. Digital Matter)'
+                    : record.isPilot
+                      ? '⊘ PILOT rate plan — not billed'
+                      : '— Proration not available (no monthly rate found)'}
               </div>
             )}
           </div>
+
         </div>
       </td>
     </tr>
   )
 }
 
-// ─── Main activation table row ────────────────────────────────────────────────
-function ActivationRow({ record, idx }) {
+function Row({ label, value, mono, dim }) {
+  return (
+    <div className="flex gap-2">
+      <span className="text-slate-500 w-28 flex-shrink-0">{label}</span>
+      <span className={`${mono ? 'font-mono' : ''} ${dim ? 'text-slate-400' : 'text-slate-200'} break-all`}>
+        {value || '—'}
+      </span>
+    </div>
+  )
+}
+
+// ─── Table row ────────────────────────────────────────────────────────────────
+function ActivationRow({ record }) {
   const [expanded, setExpanded] = useState(false)
 
   return (
     <>
       <tr
-        className={`border-b border-slate-700/40 transition-colors hover:bg-slate-700/20 cursor-pointer ${
-          record.isActivation ? '' : 'opacity-80'
-        }`}
+        className="border-b border-slate-700/40 hover:bg-slate-700/20 cursor-pointer transition-colors"
         onClick={() => setExpanded(e => !e)}
       >
-        {/* Expand toggle + Serial */}
+        {/* Serial */}
         <td className="px-3 py-2.5 align-top">
           <div className="flex items-center gap-1.5">
             <span className={`text-slate-500 text-xs transition-transform ${expanded ? 'rotate-90' : ''}`}>▶</span>
@@ -223,11 +175,11 @@ function ActivationRow({ record, idx }) {
 
         {/* Customer */}
         <td className="px-3 py-2.5 align-top">
-          <div className="text-xs text-slate-200 font-medium max-w-[180px] truncate" title={record.customerName}>
+          <div className="text-xs text-slate-200 font-medium max-w-[190px] truncate" title={record.customerName}>
             {record.customerName || '—'}
           </div>
           {record.activeDatabase && (
-            <div className="text-[11px] text-slate-500 font-mono mt-0.5 truncate max-w-[180px]">
+            <div className="text-[11px] text-slate-500 font-mono mt-0.5 truncate max-w-[190px]">
               {record.activeDatabase}
             </div>
           )}
@@ -238,39 +190,32 @@ function ActivationRow({ record, idx }) {
           <BillingTypeBadge billingType={record.billingType} />
         </td>
 
-        {/* Request Type */}
+        {/* Plan / Rate Plan Code */}
         <td className="px-3 py-2.5 align-top">
-          <RequestTypeChip requestType={record.requestType} isActivation={record.isActivation} />
-        </td>
-
-        {/* Requested Plan */}
-        <td className="px-3 py-2.5 align-top">
-          <div className="text-xs text-slate-300 max-w-[160px] truncate" title={record.requestedPlan}>
-            {record.requestedPlan || record.activePlan || '—'}
+          <div className="text-xs text-slate-300 max-w-[160px] truncate" title={record.activePlan}>
+            {record.activePlan || '—'}
           </div>
           {record.ratePlanCode && (
-            <div className="text-[11px] font-mono text-slate-500 mt-0.5">
-              {record.ratePlanCode}
-            </div>
+            <div className="text-[11px] font-mono text-slate-500 mt-0.5">{record.ratePlanCode}</div>
           )}
         </td>
 
-        {/* SKU */}
+        {/* Resolved SKU */}
         <td className="px-3 py-2.5 align-top">
           <SkuChip skuKey={record.skuKey} />
         </td>
 
-        {/* Requested On */}
-        <td className="px-3 py-2.5 text-xs text-slate-400 align-top whitespace-nowrap">
-          {fmtDate(record.requestedOn)}
+        {/* First Connect Date (the activation date) */}
+        <td className="px-3 py-2.5 text-xs text-slate-300 align-top whitespace-nowrap">
+          {fmtDate(record.activationDate)}
         </td>
 
-        {/* Processed On */}
-        <td className="px-3 py-2.5 text-xs text-slate-400 align-top whitespace-nowrap">
-          {fmtDate(record.processedOn)}
+        {/* Billing Start */}
+        <td className="px-3 py-2.5 text-xs text-slate-500 align-top whitespace-nowrap">
+          {fmtDate(record.billingStartDate)}
         </td>
 
-        {/* Proration */}
+        {/* Prorated Amount */}
         <td className="px-3 py-2.5 text-right align-top">
           {record.proration ? (
             <div>
@@ -282,19 +227,10 @@ function ActivationRow({ record, idx }) {
               </div>
             </div>
           ) : (
-            <span className="text-xs text-slate-600">—</span>
+            <span className="text-xs text-slate-600">
+              {record.skuKey === 'UNMAPPED' ? '⚠' : record.isPilot ? 'PILOT' : '—'}
+            </span>
           )}
-        </td>
-
-        {/* Status */}
-        <td className="px-3 py-2.5 align-top">
-          <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[11px] font-medium ${
-            (record.status || '').toLowerCase() === 'completed'
-              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-              : 'bg-slate-700/50 text-slate-400 border-slate-600/30'
-          }`}>
-            {record.status || '—'}
-          </span>
         </td>
       </tr>
 
@@ -303,22 +239,20 @@ function ActivationRow({ record, idx }) {
   )
 }
 
-// ─── Main Activations page ────────────────────────────────────────────────────
+// ─── Main page ────────────────────────────────────────────────────────────────
 export default function Activations() {
   const defaults = defaultDates()
 
-  const [fromDate,        setFromDate]        = useState(defaults.from)
-  const [toDate,          setToDate]          = useState(defaults.to)
-  const [activationsOnly, setActivationsOnly] = useState(false)
-  const [filterType,      setFilterType]      = useState('')
-  const [search,          setSearch]          = useState('')
+  const [fromDate,    setFromDate]    = useState(defaults.from)
+  const [toDate,      setToDate]      = useState(defaults.to)
+  const [btFilter,    setBtFilter]    = useState('')
+  const [search,      setSearch]      = useState('')
 
   const [data,    setData]    = useState(null)
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState(null)
 
-  // Pagination
-  const [page,     setPage]     = useState(1)
+  const [page, setPage] = useState(1)
   const PAGE_SIZE = 50
 
   async function fetchActivations() {
@@ -326,19 +260,14 @@ export default function Activations() {
     setError(null)
     setPage(1)
     try {
-      const params = new URLSearchParams({
-        fromDate: fromDate,
-        toDate:   toDate,
-        activationsOnly: activationsOnly ? 'true' : 'false',
-      })
-      if (filterType) params.set('requestType', filterType)
+      const params = new URLSearchParams({ fromDate, toDate })
+      if (btFilter) params.set('billingType', btFilter)
       const res = await fetch(`${API}/api/activations?${params}`)
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         throw new Error(body.detail || `HTTP ${res.status}`)
       }
-      const json = await res.json()
-      setData(json)
+      setData(await res.json())
     } catch (e) {
       setError(e.message || 'Unknown error')
     } finally {
@@ -346,287 +275,255 @@ export default function Activations() {
     }
   }
 
-  // Filter records by search box
   const records = React.useMemo(() => {
     if (!data?.records) return []
     if (!search) return data.records
     const q = search.toLowerCase()
     return data.records.filter(r =>
-      (r.serialNumber || '').toLowerCase().includes(q) ||
-      (r.customerName || '').toLowerCase().includes(q) ||
-      (r.ratePlanCode || '').toLowerCase().includes(q) ||
-      (r.skuKey || '').toLowerCase().includes(q) ||
-      (r.requestType || '').toLowerCase().includes(q) ||
-      (r.requestedPlan || '').toLowerCase().includes(q) ||
+      (r.serialNumber   || '').toLowerCase().includes(q) ||
+      (r.customerName   || '').toLowerCase().includes(q) ||
+      (r.ratePlanCode   || '').toLowerCase().includes(q) ||
+      (r.skuKey         || '').toLowerCase().includes(q) ||
+      (r.activePlan     || '').toLowerCase().includes(q) ||
       (r.activeDatabase || '').toLowerCase().includes(q)
     )
   }, [data, search])
 
-  // Pagination slice
-  const totalPages = Math.ceil(records.length / PAGE_SIZE) || 1
+  const totalPages  = Math.ceil(records.length / PAGE_SIZE) || 1
   const pageRecords = records.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
 
-  // Request type options from loaded data
-  const requestTypes = React.useMemo(() => {
-    if (!data?.records) return []
-    const seen = new Set()
-    data.records.forEach(r => { if (r.requestType) seen.add(r.requestType) })
-    return [...seen].sort()
-  }, [data])
+  const cacheLabel = data?.cacheAgeHours != null
+    ? (data.cacheAgeHours < 1
+        ? `Cache: ${Math.round(data.cacheAgeHours * 60)}m old`
+        : `Cache: ${data.cacheAgeHours}h old`)
+    : null
 
   return (
     <div className="p-6 space-y-5 text-slate-100">
 
-      {/* ── Header ── */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-slate-100">Activations</h2>
-          <p className="text-sm text-slate-400 mt-1">
-            Device Contract Request History from MyAdmin — source of truth for prorated invoices and QB Recurrence updates.
-          </p>
-        </div>
+      {/* Header */}
+      <div>
+        <h2 className="text-xl font-semibold text-slate-100">Activations</h2>
+        <p className="text-sm text-slate-400 mt-1">
+          Devices that came online (first connect date) within the selected date range —
+          source of truth for prorated invoices and QB Recurrence updates.
+        </p>
       </div>
 
-      {/* ── Filters bar ── */}
+      {/* Filters */}
       <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-4">
         <div className="flex flex-wrap items-end gap-3">
 
-          {/* From date */}
           <div className="flex flex-col gap-1">
             <label className="text-xs text-slate-400 font-medium">From Date</label>
-            <input
-              type="date"
-              value={fromDate}
+            <input type="date" value={fromDate}
               onChange={e => setFromDate(e.target.value)}
               className="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-200
-                         focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
-            />
+                         focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30" />
           </div>
 
-          {/* To date */}
           <div className="flex flex-col gap-1">
             <label className="text-xs text-slate-400 font-medium">To Date</label>
-            <input
-              type="date"
-              value={toDate}
+            <input type="date" value={toDate}
               onChange={e => setToDate(e.target.value)}
               className="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-200
-                         focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
-            />
+                         focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30" />
           </div>
 
-          {/* Request type filter */}
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-slate-400 font-medium">Request Type</label>
-            <select
-              value={filterType}
-              onChange={e => setFilterType(e.target.value)}
+            <label className="text-xs text-slate-400 font-medium">Billing Type</label>
+            <select value={btFilter} onChange={e => setBtFilter(e.target.value)}
               className="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-200
-                         focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
-            >
+                         focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30">
               <option value="">All Types</option>
-              {requestTypes.map(rt => (
-                <option key={rt} value={rt}>{rt}</option>
-              ))}
+              <option value="Charge Upon Activation">Charge Upon Activation</option>
+              <option value="Hanover">Hanover</option>
+              <option value="Han-CS">Han-CS</option>
+              <option value="Standard">Standard</option>
             </select>
           </div>
 
-          {/* Activations only toggle */}
-          <div className="flex flex-col gap-1">
-            <label className="text-xs text-slate-400 font-medium invisible">Filter</label>
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <div
-                onClick={() => setActivationsOnly(v => !v)}
-                className={`relative w-9 h-5 rounded-full transition-colors ${
-                  activationsOnly ? 'bg-blue-600' : 'bg-slate-600'
-                }`}
-              >
-                <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
-                  activationsOnly ? 'translate-x-4' : 'translate-x-0'
-                }`} />
-              </div>
-              <span className="text-sm text-slate-300">Activations only</span>
-            </label>
-          </div>
-
-          {/* Load button */}
           <div className="flex flex-col gap-1">
             <label className="text-xs text-slate-400 font-medium invisible">Load</label>
-            <button
-              onClick={fetchActivations}
-              disabled={loading}
+            <button onClick={fetchActivations} disabled={loading}
               className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 disabled:text-blue-400
-                         text-white text-sm font-medium rounded transition-colors"
-            >
-              {loading ? 'Loading…' : 'Load History'}
+                         text-white text-sm font-medium rounded transition-colors">
+              {loading ? 'Loading…' : 'Load Activations'}
             </button>
+          </div>
+
+          {/* Quick range shortcuts */}
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-slate-400 font-medium">Quick Range</label>
+            <div className="flex gap-1.5">
+              {[
+                { label: 'This Month', fn: () => {
+                    const t = new Date(); const f = new Date(t.getFullYear(), t.getMonth(), 1)
+                    const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+                    setFromDate(fmt(f)); setToDate(fmt(t))
+                }},
+                { label: 'Last Month', fn: () => {
+                    const t = new Date(); const f = new Date(t.getFullYear(), t.getMonth()-1, 1)
+                    const l = new Date(t.getFullYear(), t.getMonth(), 0)
+                    const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+                    setFromDate(fmt(f)); setToDate(fmt(l))
+                }},
+                { label: 'Last 30d', fn: () => {
+                    const t = new Date(); const f = new Date(t); f.setDate(f.getDate()-30)
+                    const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+                    setFromDate(fmt(f)); setToDate(fmt(t))
+                }},
+              ].map(({ label, fn }) => (
+                <button key={label} onClick={fn}
+                  className="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-300
+                             text-xs rounded border border-slate-600/50 transition-colors">
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
 
         </div>
       </div>
 
-      {/* ── Error ── */}
+      {/* Error */}
       {error && (
         <div className="bg-red-900/30 border border-red-500/40 rounded-lg p-4 text-sm text-red-300">
           <span className="font-semibold">Error:</span> {error}
-          {(error.includes('MyAdmin') || error.includes('502') || error.includes('method')) && (
-            <p className="mt-2 text-amber-300/80 text-xs">
-              💡 <strong>Diagnosing method name:</strong> open{' '}
-              <code className="bg-slate-800 px-1 rounded text-amber-200">
-                GET /api/activations/probe
-              </code>{' '}
-              in your browser (while logged in) to see which MyAdmin API method works for your account.
-              The result will show which candidate method name returns data vs. an API error.
+          {error.includes('sync') || error.includes('cached') ? (
+            <p className="mt-1 text-amber-300/80 text-xs">
+              💡 Go to <strong>Customers</strong> and run a MyAdmin sync first — the Activations tab reads from the sync cache.
             </p>
-          )}
+          ) : null}
         </div>
       )}
 
-      {/* ── Summary stats ── */}
+      {/* Stats */}
       {data && !loading && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <StatCard
-            label="Total Records"
+            label="New Activations"
             value={data.totalRecords.toLocaleString()}
-            sub={`${data.fromDate} → ${data.toDate}`}
+            sub={`${fmtDate(data.fromDate)} → ${fmtDate(data.toDate)}`}
             color="blue"
-          />
-          <StatCard
-            label="Activations"
-            value={data.activationCount.toLocaleString()}
-            sub={`${data.totalRecords > 0 ? Math.round(data.activationCount / data.totalRecords * 100) : 0}% of records`}
-            color="green"
           />
           <StatCard
             label="Total Prorated"
             value={fmt$(data.totalProratedAmount)}
             sub="Combined proration preview"
-            color="purple"
+            color="green"
           />
           <StatCard
             label="Unmapped SKUs"
             value={data.unmappedCount.toLocaleString()}
-            sub={data.unmappedCount > 0 ? 'Need mapping in Settings' : 'All mapped ✓'}
+            sub={data.unmappedCount > 0 ? 'Check Settings → SKU Mappings' : 'All mapped ✓'}
             color={data.unmappedCount > 0 ? 'amber' : 'green'}
+          />
+          <StatCard
+            label="Cache"
+            value={cacheLabel || '—'}
+            sub={`${(data.totalContractsInCache || 0).toLocaleString()} contracts loaded`}
+            color="purple"
           />
         </div>
       )}
 
-      {/* ── Table ── */}
+      {/* Table */}
       {data && !loading && (
         <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg overflow-hidden">
 
-          {/* Search + count bar */}
+          {/* Search + pagination header */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700/50">
             <div className="flex items-center gap-3">
-              <input
-                type="text"
-                value={search}
+              <input type="text" value={search}
                 onChange={e => { setSearch(e.target.value); setPage(1) }}
                 placeholder="Search serial, customer, SKU, plan…"
                 className="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-200
                            placeholder-slate-500 focus:outline-none focus:border-blue-500
-                           focus:ring-1 focus:ring-blue-500/30 w-64"
-              />
+                           focus:ring-1 focus:ring-blue-500/30 w-64" />
               <span className="text-xs text-slate-500">
                 {records.length.toLocaleString()} record{records.length !== 1 ? 's' : ''}
                 {search ? ' (filtered)' : ''}
               </span>
             </div>
-
-            {/* Pagination controls */}
             {totalPages > 1 && (
               <div className="flex items-center gap-2 text-xs text-slate-400">
-                <button
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40"
-                >← Prev</button>
+                <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1}
+                  className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40">← Prev</button>
                 <span>Page {page} / {totalPages}</span>
-                <button
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40"
-                >Next →</button>
+                <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page===totalPages}
+                  className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40">Next →</button>
               </div>
             )}
           </div>
 
-          {/* Table */}
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
                 <tr className="border-b border-slate-700/50 bg-slate-800/80">
-                  <th className="px-3 py-2.5 text-xs font-medium text-slate-400 whitespace-nowrap">Serial / Device</th>
+                  <th className="px-3 py-2.5 text-xs font-medium text-slate-400">Serial</th>
                   <th className="px-3 py-2.5 text-xs font-medium text-slate-400">Customer</th>
                   <th className="px-3 py-2.5 text-xs font-medium text-slate-400 whitespace-nowrap">Billing Type</th>
-                  <th className="px-3 py-2.5 text-xs font-medium text-slate-400 whitespace-nowrap">Request Type</th>
                   <th className="px-3 py-2.5 text-xs font-medium text-slate-400">Plan / Code</th>
                   <th className="px-3 py-2.5 text-xs font-medium text-slate-400">Resolved SKU</th>
-                  <th className="px-3 py-2.5 text-xs font-medium text-slate-400 whitespace-nowrap">Requested On</th>
-                  <th className="px-3 py-2.5 text-xs font-medium text-slate-400 whitespace-nowrap">Processed On</th>
+                  <th className="px-3 py-2.5 text-xs font-medium text-slate-400 whitespace-nowrap">First Connect</th>
+                  <th className="px-3 py-2.5 text-xs font-medium text-slate-400 whitespace-nowrap">Billing Start</th>
                   <th className="px-3 py-2.5 text-xs font-medium text-slate-400 text-right whitespace-nowrap">Prorated Amt</th>
-                  <th className="px-3 py-2.5 text-xs font-medium text-slate-400">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {pageRecords.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="px-4 py-8 text-center text-slate-500 text-sm">
-                      {search ? 'No records match your search.' : 'No records found for the selected date range.'}
+                    <td colSpan={8} className="px-4 py-8 text-center text-slate-500 text-sm">
+                      {search
+                        ? 'No records match your search.'
+                        : `No devices with a first-connect date between ${fmtDate(data.fromDate)} and ${fmtDate(data.toDate)}.`}
                     </td>
                   </tr>
-                ) : (
-                  pageRecords.map((r, i) => (
-                    <ActivationRow key={r.id || i} record={r} idx={i} />
-                  ))
-                )}
+                ) : pageRecords.map((r, i) => (
+                  <ActivationRow key={r.serialNumber + i} record={r} />
+                ))}
               </tbody>
             </table>
           </div>
 
-          {/* Bottom pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-slate-700/50 bg-slate-800/40">
               <span className="text-xs text-slate-500">
                 Showing {((page-1)*PAGE_SIZE)+1}–{Math.min(page*PAGE_SIZE, records.length)} of {records.length}
               </span>
               <div className="flex items-center gap-2 text-xs text-slate-400">
-                <button
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40"
-                >← Prev</button>
+                <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1}
+                  className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40">← Prev</button>
                 <span>Page {page} / {totalPages}</span>
-                <button
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40"
-                >Next →</button>
+                <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page===totalPages}
+                  className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40">Next →</button>
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* ── Empty initial state ── */}
+      {/* Empty initial state */}
       {!data && !loading && !error && (
         <div className="bg-slate-800/40 border border-slate-700/40 rounded-lg p-10 text-center">
           <div className="text-4xl mb-3">📋</div>
-          <p className="text-slate-300 font-medium mb-1">Device Contract Request History</p>
+          <p className="text-slate-300 font-medium mb-1">New Device Activations</p>
           <p className="text-slate-500 text-sm max-w-md mx-auto">
-            Select a date range and click <strong className="text-slate-400">Load History</strong> to fetch
-            activation records from MyAdmin. Use this data to generate prorated invoices and prepare
-            QB Recurrence updates.
+            Select a date range and click <strong className="text-slate-400">Load Activations</strong> to see
+            devices whose first-connect date falls in that window — with resolved QB SKU and proration preview.
+          </p>
+          <p className="text-slate-600 text-xs mt-3">
+            Data reads from the MyAdmin sync cache. Requires an active sync.
           </p>
         </div>
       )}
 
-      {/* ── Loading state ── */}
+      {/* Loading */}
       {loading && (
         <div className="bg-slate-800/40 border border-slate-700/40 rounded-lg p-10 text-center">
           <div className="inline-block w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
-          <p className="text-slate-400 text-sm">Fetching activation history from MyAdmin…</p>
+          <p className="text-slate-400 text-sm">Filtering activations from sync cache…</p>
         </div>
       )}
 
