@@ -147,7 +147,10 @@ function Dashboard({ sessionData, onLogout }) {
           </div>
           {activePage === 'reconciliation' && <Reconciliation />}
           {activePage === 'invoices' && <Invoices />}
-          {activePage === 'activations' && <Activations />}
+          {/* Activations is always mounted so loaded data survives tab switches */}
+          <div style={{ display: activePage === 'activations' ? 'contents' : 'none' }}>
+            <Activations />
+          </div>
           {activePage === 'sync' && <ComingSoon page="Sync Status" />}
           {activePage === 'reports' && <ComingSoon page="Reports" />}
           {activePage === 'settings' && <Settings />}
