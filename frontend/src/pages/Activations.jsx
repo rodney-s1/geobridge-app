@@ -360,18 +360,34 @@ export default function Activations() {
     }
   }
 
+  const BT_ORDER = {
+    'Charge Upon Activation': 0,
+    'Hanover':                1,
+    'Han-CS':                 2,
+    'Standard':               3,
+  }
+
   const records = React.useMemo(() => {
     if (!data?.records) return []
-    if (!search) return data.records
     const q = search.toLowerCase()
-    return data.records.filter(r =>
-      (r.serialNumber   || '').toLowerCase().includes(q) ||
-      (r.customerName   || '').toLowerCase().includes(q) ||
-      (r.ratePlanCode   || '').toLowerCase().includes(q) ||
-      (r.skuKey         || '').toLowerCase().includes(q) ||
-      (r.activePlan     || '').toLowerCase().includes(q) ||
-      (r.activeDatabase || '').toLowerCase().includes(q)
-    )
+    const filtered = search
+      ? data.records.filter(r =>
+          (r.serialNumber   || '').toLowerCase().includes(q) ||
+          (r.customerName   || '').toLowerCase().includes(q) ||
+          (r.ratePlanCode   || '').toLowerCase().includes(q) ||
+          (r.skuKey         || '').toLowerCase().includes(q) ||
+          (r.activePlan     || '').toLowerCase().includes(q) ||
+          (r.activeDatabase || '').toLowerCase().includes(q)
+        )
+      : data.records
+    // Sort: billing type group first (CUA → Hanover → Han-CS → Standard → unknown),
+    // then customer name A→Z within each group.
+    return [...filtered].sort((a, b) => {
+      const aOrder = BT_ORDER[a.billingType] ?? 99
+      const bOrder = BT_ORDER[b.billingType] ?? 99
+      if (aOrder !== bOrder) return aOrder - bOrder
+      return (a.customerName || '').localeCompare(b.customerName || '', undefined, { sensitivity: 'base' })
+    })
   }, [data, search])
 
   const totalPages  = Math.ceil(records.length / PAGE_SIZE) || 1
