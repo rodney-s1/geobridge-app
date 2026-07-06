@@ -735,7 +735,7 @@ export default function Activations() {
                 </tr>
               </thead>
               <tbody>
-                {pageRecords.length === 0 ? (
+                {pageGroups.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="px-4 py-8 text-center text-slate-500 text-sm">
                       {search
