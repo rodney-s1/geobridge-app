@@ -337,8 +337,8 @@ export default function Activations() {
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState(null)
 
-  const [page, setPage] = useState(1)
-  const PAGE_SIZE = 50
+  const [page,     setPage]     = useState(1)
+  const [pageSize, setPageSize] = useState(100)
 
   async function fetchActivations() {
     setLoading(true)
@@ -390,8 +390,8 @@ export default function Activations() {
     })
   }, [data, search])
 
-  const totalPages  = Math.ceil(records.length / PAGE_SIZE) || 1
-  const pageRecords = records.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const totalPages  = Math.ceil(records.length / pageSize) || 1
+  const pageRecords = records.slice((page - 1) * pageSize, page * pageSize)
 
   const cacheLabel = data?.cacheAgeHours != null
     ? (data.cacheAgeHours < 1
@@ -536,15 +536,32 @@ export default function Activations() {
                 {search ? ' (filtered)' : ''}
               </span>
             </div>
-            {totalPages > 1 && (
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1}
-                  className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40">← Prev</button>
-                <span>Page {page} / {totalPages}</span>
-                <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page===totalPages}
-                  className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40">Next →</button>
+            <div className="flex items-center gap-3 text-xs text-slate-400">
+              {/* Rows-per-page picker */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-slate-500">Rows:</span>
+                <select
+                  value={pageSize}
+                  onChange={e => { setPageSize(Number(e.target.value)); setPage(1) }}
+                  className="bg-slate-700 border border-slate-600 rounded px-2 py-1 text-xs text-slate-200
+                             focus:outline-none focus:border-blue-500">
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                  <option value={250}>250</option>
+                  <option value={500}>500</option>
+                  <option value={1000}>1000</option>
+                </select>
               </div>
-            )}
+              {totalPages > 1 && (
+                <div className="flex items-center gap-2">
+                  <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1}
+                    className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40">← Prev</button>
+                  <span>Page {page} / {totalPages}</span>
+                  <button onClick={() => setPage(p => Math.min(totalPages, p+1))} disabled={page===totalPages}
+                    className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 disabled:opacity-40">Next →</button>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -580,7 +597,7 @@ export default function Activations() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between px-4 py-3 border-t border-slate-700/50 bg-slate-800/40">
               <span className="text-xs text-slate-500">
-                Showing {((page-1)*PAGE_SIZE)+1}–{Math.min(page*PAGE_SIZE, records.length)} of {records.length}
+                Showing {((page-1)*pageSize)+1}–{Math.min(page*pageSize, records.length)} of {records.length}
               </span>
               <div className="flex items-center gap-2 text-xs text-slate-400">
                 <button onClick={() => setPage(p => Math.max(1, p-1))} disabled={page===1}
