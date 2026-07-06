@@ -72,6 +72,10 @@ QB_AUTHORITATIVE_SKUS: frozenset = frozenset({
     # --- IFTA Plus (sourced from IFTA reporting platform, not MyAdmin) ----------
     "IFTA Plus",
 
+    # --- Predictive Coach (sourced from Predictive Coach platform, not MyAdmin) -
+    "Predictive Coach",
+    "Predictive Coach Service Fee (Predictive Coach Service Fee - Automated Driver C...",
+
     # NOTE: "Geotab Service Fee (HANOVER)" is intentionally NOT listed here.
     # It is handled in two places:
     #   1. Per Hanover customer (billing_type=="Hanover"): hanoverConsolidated branch
