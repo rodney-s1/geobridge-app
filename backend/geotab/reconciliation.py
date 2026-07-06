@@ -490,6 +490,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         if ":" in billing_plan:
             billing_plan = billing_plan.split(":")[0].strip()
 
+
+
         # Detect never-activated devices: MyAdmin sets activeDevicePlan.name to
         # "NEVER ACTIVATED" (or leaves it blank) and billingStatus = "Never billed".
         adp_upper        = billing_plan.upper()
@@ -872,6 +874,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 if sku_key is not None:
                     mapping_tier = "plan_promo"
                     lookup_code  = promo_code
+
 
             # Tier 3: global mapping on promoCode
             if sku_key is None and promo_code:
