@@ -633,13 +633,21 @@ export default function Activations() {
       )}
 
       {/* Stats */}
-      {data && !loading && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {data && !loading && (() => {
+        const uniqueCustomers = new Set(groups.map(g => g.customerName)).size
+        return (
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <StatCard
             label="New Activations"
             value={data.totalRecords.toLocaleString()}
             sub={`${fmtDate(data.fromDate)} → ${fmtDate(data.toDate)}`}
             color="blue"
+          />
+          <StatCard
+            label="Customers"
+            value={uniqueCustomers.toLocaleString()}
+            sub={uniqueCustomers === 1 ? '1 unique customer' : `${uniqueCustomers} unique customers`}
+            color="purple"
           />
           <StatCard
             label="Total Prorated"
@@ -660,7 +668,8 @@ export default function Activations() {
             color="purple"
           />
         </div>
-      )}
+        )
+      })()}
 
       {/* Table */}
       {data && !loading && (
