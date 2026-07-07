@@ -562,6 +562,31 @@ async def get_activations(
 
         results.append(row)
 
+    # Deduplicate by serialNumber: the API can return multiple request records
+    # for the same device in a date range (e.g. activate + plan change, or
+    # duplicate bulk-request entries). Keep only one row per serial, preferring:
+    #   1. Earliest activationDate (the original activation event)
+    #   2. On tie: record with a resolved SKU over UNMAPPED
+    seen: dict = {}   # serial_upper -> best row so far
+    for row in results:
+        serial_key = (row.get("serialNumber") or "").upper()
+        if not serial_key:
+            continue
+        if serial_key not in seen:
+            seen[serial_key] = row
+        else:
+            existing = seen[serial_key]
+            # Prefer earlier activationDate
+            new_date = row.get("activationDate") or ""
+            old_date = existing.get("activationDate") or ""
+            if new_date < old_date:
+                seen[serial_key] = row
+            elif new_date == old_date:
+                # Tie-break: prefer mapped SKU over UNMAPPED
+                if existing.get("skuKey") == "UNMAPPED" and row.get("skuKey") != "UNMAPPED":
+                    seen[serial_key] = row
+    results = list(seen.values())
+
     # Sort: by processDate / activationDate ascending
     results.sort(key=lambda r: r.get("activationDate") or "")
 
