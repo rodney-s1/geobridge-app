@@ -519,9 +519,24 @@ async def get_activations(
         print(f"[activations] ERROR in _build_indices: {exc}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Failed to load SKU indices: {exc}")
 
+    _EXCLUSION_TERMS = ("terminat", "cancel", "deactivat", "suspend", "remove")
     results: List[dict] = []
 
     for req in raw_requests:
+        # Pre-enrichment fast-path: skip obvious termination records by checking
+        # the raw requestInfo name and devicePlan name before full enrichment.
+        _raw_req_info = req.get("requestInfo") or {}
+        _raw_req_type = (
+            (_raw_req_info.get("name") or _raw_req_info.get("description") or "")
+            if isinstance(_raw_req_info, dict) else str(_raw_req_info)
+        ).lower()
+        _raw_plan = ((req.get("devicePlan") or {}).get("name") or "").lower()
+        _raw_adc_plan = (((req.get("appliedDeviceContract") or {}).get("activeDevicePlan") or {}).get("name") or "").lower()
+        if any(t in _raw_req_type  for t in _EXCLUSION_TERMS) or \
+           any(t in _raw_plan      for t in _EXCLUSION_TERMS) or \
+           any(t in _raw_adc_plan  for t in _EXCLUSION_TERMS):
+            continue
+
         try:
             row = _enrich_request(
                 req,
@@ -552,9 +567,15 @@ async def get_activations(
         if row_date and not (from_dt <= row_date <= to_dt):
             continue
 
-        # Exclude termination / cancellation events — these are not activations
-        _req_type_lower = (row.get("requestType") or "").lower()
-        if any(t in _req_type_lower for t in ("terminat", "cancel", "deactivat", "suspend", "remove")):
+        # Exclude termination / cancellation events — these are not activations.
+        # Check requestType, activePlan, AND status since "Terminate Mode" can
+        # appear in the plan name rather than the request type field.
+        _req_type_lower    = (row.get("requestType") or "").lower()
+        _active_plan_lower = (row.get("activePlan") or "").lower()
+        _status_lower      = (row.get("status") or "").lower()
+        if any(t in _req_type_lower    for t in _EXCLUSION_TERMS) or \
+           any(t in _active_plan_lower  for t in _EXCLUSION_TERMS) or \
+           any(t in _status_lower       for t in _EXCLUSION_TERMS):
             continue
 
         # Billing type filter
