@@ -12,6 +12,17 @@ import sys
 import os
 import subprocess
 
+# ── UTF-8 stdout/stderr on Windows ──────────────────────────────────────────
+# Python on Windows defaults to the system code page (e.g. cp1252) which
+# cannot encode Unicode characters like → ≤ — that appear in log output.
+# Setting PYTHONUTF8=1 forces UTF-8 I/O for all child processes.
+# reconfigure() handles the *current* process immediately.
+os.environ.setdefault("PYTHONUTF8", "1")
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 # Force sys.path to THIS directory (backend/)
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)

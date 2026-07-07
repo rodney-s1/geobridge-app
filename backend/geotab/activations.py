@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 activations.py — Activations tab backend
 =========================================
@@ -465,7 +466,7 @@ async def get_activations(
 
     # Fetch raw contract request history from MyAdmin
     print(f"[activations] Fetching contract requests: "
-          f"{from_date} → {to_date} | account={MYADMIN_ACCOUNT} | "
+          f"{from_date} to {to_date} | account={MYADMIN_ACCOUNT} | "
           f"session_id={'SET' if session_store.get('session_id') else 'MISSING'} | "
           f"user_id={'SET' if session_store.get('user_id') else 'MISSING'}")
     try:

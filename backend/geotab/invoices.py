@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """
 invoices.py — Prorated invoice generation engine
 =================================================
