@@ -2,6 +2,52 @@ import React, { useState, useCallback } from 'react'
 
 const API = 'http://127.0.0.1:8001'
 
+// ─── Copy-to-clipboard button ─────────────────────────────────────────────────
+function CopyButton({ serials, label }) {
+  const [copied, setCopied] = useState(false)
+
+  function handleCopy(e) {
+    e.stopPropagation()   // don't expand/collapse the group row
+    const text = Array.isArray(serials) ? serials.join('\n') : serials
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    }).catch(() => {
+      // Fallback for older Electron builds without clipboard API
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.focus()
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    })
+  }
+
+  return (
+    <button
+      onClick={handleCopy}
+      title={copied ? 'Copied!' : `Copy ${Array.isArray(serials) ? serials.length + ' serial' + (serials.length !== 1 ? 's' : '') : 'serial'}`}
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium
+                  border transition-all duration-150 select-none
+                  ${copied
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                    : 'bg-slate-700/60 text-slate-400 border-slate-600/50 hover:bg-slate-600/60 hover:text-slate-200 hover:border-slate-500/60'
+                  }`}
+    >
+      {copied ? (
+        <>✓ Copied</>
+      ) : (
+        <>{label ?? '⎘ Copy'}</>
+      )}
+    </button>
+  )
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 function fmt$(n) {
   if (n == null) return '—'
@@ -304,6 +350,12 @@ function ActivationGroup({ group }) {
                 AUTO
               </span>
             )}
+            {isMulti && (
+              <CopyButton serials={records.map(r => r.serialNumber).filter(Boolean)} />
+            )}
+            {!isMulti && records[0].serialNumber && (
+              <CopyButton serials={[records[0].serialNumber]} />
+            )}
           </div>
         </td>
 
@@ -397,7 +449,15 @@ function ActivationGroup({ group }) {
               <table className="w-full text-left">
                 <thead>
                   <tr className="bg-slate-800/80 border-b border-slate-700/40">
-                    <th className="px-3 py-2 text-[11px] font-medium text-slate-500">Serial</th>
+                    <th className="px-3 py-2 text-[11px] font-medium text-slate-500">
+                      <div className="flex items-center gap-2">
+                        Serial
+                        <CopyButton
+                          serials={records.map(r => r.serialNumber).filter(Boolean)}
+                          label={`⎘ Copy all ${records.length}`}
+                        />
+                      </div>
+                    </th>
                     <th className="px-3 py-2 text-[11px] font-medium text-slate-500">Plan / Code</th>
                     <th className="px-3 py-2 text-[11px] font-medium text-slate-500">Resolved SKU</th>
                     <th className="px-3 py-2 text-[11px] font-medium text-slate-500 whitespace-nowrap">First Connect</th>
@@ -422,6 +482,7 @@ function ActivationGroup({ group }) {
                                 AUTO
                               </span>
                             )}
+                            <CopyButton serials={[r.serialNumber]} />
                           </div>
                         </td>
                         <td className="px-3 py-2 align-middle">
