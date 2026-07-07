@@ -675,9 +675,10 @@ export default function Activations() {
       {error && (
         <div className="bg-red-900/30 border border-red-500/40 rounded-lg p-4 text-sm text-red-300">
           <span className="font-semibold">Error:</span> {error}
-          {error.includes('login') || error.includes('session') || error.includes('401') ? (
+          {(error.toLowerCase().includes('login') || error.toLowerCase().includes('session') ||
+            error.includes('401') || error.toLowerCase().includes('not logged')) ? (
             <p className="mt-1 text-amber-300/80 text-xs">
-              💡 Please log in to MyAdmin first — Activations queries the MyAdmin API directly.
+              💡 Your MyAdmin session has expired — please log out and log back in to GeoBridge, then try again.
             </p>
           ) : null}
         </div>

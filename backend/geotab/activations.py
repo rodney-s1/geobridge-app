@@ -186,7 +186,17 @@ async def _fetch_contract_requests(
             params,
             timeout=120.0,
         )
-        batch = response.get("result") or []
+        # Debug: log raw response shape so we can diagnose empty results
+        raw_result = response.get("result")
+        raw_error  = response.get("error")
+        batch = raw_result or []
+        print(f"[activations] GetDeviceContractAutoRequests "
+              f"{chunk_from}→{chunk_to}: "
+              f"{len(batch)} records | error={raw_error!r} | "
+              f"response_keys={list(response.keys())}")
+        if batch and len(batch) > 0:
+            # Log the first record's keys so we know the field names
+            print(f"[activations] First record keys: {list(batch[0].keys())}")
         all_results.extend(batch)
 
     return all_results
@@ -446,6 +456,10 @@ async def get_activations(
         raise HTTPException(status_code=400, detail="fromDate must be ≤ toDate")
 
     # Fetch raw contract request history from MyAdmin
+    print(f"[activations] Fetching contract requests: "
+          f"{from_date} → {to_date} | account={MYADMIN_ACCOUNT} | "
+          f"session_id={'SET' if session_store.get('session_id') else 'MISSING'} | "
+          f"user_id={'SET' if session_store.get('user_id') else 'MISSING'}")
     try:
         raw_requests = await _fetch_contract_requests(
             from_dt=from_dt,
@@ -454,6 +468,7 @@ async def get_activations(
             user_company_id=customer_id,
         )
     except Exception as exc:
+        print(f"[activations] ERROR from _fetch_contract_requests: {exc}")
         raise HTTPException(
             status_code=502,
             detail=f"MyAdmin API error fetching contract requests: {exc}",

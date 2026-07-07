@@ -12,6 +12,23 @@ function Dashboard({ sessionData, onLogout }) {
   const [activePage,       setActivePage]       = useState('home')
   const [detailCustomerId, setDetailCustomerId] = useState(null)
   const [detailCustomerName, setDetailCustomerName] = useState('')
+  const [sessionAlive,     setSessionAlive]     = useState(true)
+
+  // Poll /api/session every 30 s to detect backend restarts / session expiry
+  useEffect(() => {
+    let cancelled = false
+    async function checkSession() {
+      try {
+        const r = await fetch(`${API}/api/session`)
+        if (!cancelled) setSessionAlive(r.ok)
+      } catch {
+        if (!cancelled) setSessionAlive(false)
+      }
+    }
+    checkSession()
+    const id = setInterval(checkSession, 30_000)
+    return () => { cancelled = true; clearInterval(id) }
+  }, [])
 
   function handleOpenDetail(id, name) {
     setDetailCustomerId(id)
@@ -124,9 +141,15 @@ function Dashboard({ sessionData, onLogout }) {
             {activePage === 'settings' && 'Settings'}
           </h2>
           <div style={styles.topbarRight}>
-            <div style={styles.statusBadge}>
-              Connected to MyAdmin
-            </div>
+            {sessionAlive ? (
+              <div style={styles.statusBadge}>
+                Connected to MyAdmin
+              </div>
+            ) : (
+              <div style={{...styles.statusBadge, background: 'rgba(239,68,68,0.15)', color: '#f87171', border: '1px solid rgba(239,68,68,0.3)'}}>
+                ⚠ Session Expired — Please Sign Out &amp; Back In
+              </div>
+            )}
           </div>
         </div>
 
