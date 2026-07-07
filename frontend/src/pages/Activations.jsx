@@ -562,7 +562,7 @@ export default function Activations() {
           <div className="flex flex-col gap-1">
             <label className="text-xs text-slate-400 font-medium">From Date</label>
             <input type="date" value={fromDate}
-              onChange={e => setFromDate(e.target.value)}
+              onChange={e => { setFromDate(e.target.value); setQuickRange('') }}
               className="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-200
                          focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30" />
           </div>
@@ -570,7 +570,7 @@ export default function Activations() {
           <div className="flex flex-col gap-1">
             <label className="text-xs text-slate-400 font-medium">To Date</label>
             <input type="date" value={toDate}
-              onChange={e => setToDate(e.target.value)}
+              onChange={e => { setToDate(e.target.value); setQuickRange('') }}
               className="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-200
                          focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30" />
           </div>
@@ -594,10 +594,9 @@ export default function Activations() {
               value={quickRange}
               onChange={e => {
                 const chosen = e.target.value
-                if (!chosen) return
                 const match = buildRanges(setFromDate, setToDate).find(r => r.label === chosen)
                 if (match) match.fn()
-                setQuickRange('')
+                setQuickRange(chosen)
               }}
               className="bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-200
                          focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30">
