@@ -291,9 +291,26 @@ def _enrich_request(
     raw_start = _safe_date_str(adc.get("startDate"))
     raw_end   = _safe_date_str(adc.get("endDate"))
 
-    # ── Activation date = ProcessDate (authoritative event date from MyAdmin) ──
-    # Fall back to RequestDate, then to firstDeviceActivationDate, then billingStartDate.
-    activation_date_str = process_date or request_date or raw_fcd or raw_bsd
+    # ── Activation date ────────────────────────────────────────────────────
+    # Priority (per-device dates beat the bulk request event date):
+    #
+    #   1. Manual override  (highest priority)
+    #   2. firstDeviceActivationDate — actual day the device first connected
+    #   3. billingStartDate          — billing anchor (used for auto-activated)
+    #   4. processDate               — when the contract request was processed
+    #                                  (batch requests all share one processDate;
+    #                                   using this as primary collapses all devices
+    #                                   in a bulk request onto the same date — wrong)
+    #   5. requestDate               — last resort
+    #
+    # Note: for auto-activated devices, fcd may be absent or in the future;
+    # billingStartDate is the correct anchor in that case (see auto_activated logic below).
+    activation_date_str = (
+        raw_fcd                 # firstDeviceActivationDate (or manual override)
+        or raw_bsd              # billingStartDate (or manual override)
+        or process_date         # batch processDate — fallback only
+        or request_date         # last resort
+    )
     if not activation_date_str:
         return None
     activation_date_obj = _parse_date(activation_date_str)
@@ -311,6 +328,13 @@ def _enrich_request(
         auto_activated = bool(fcd_obj and bsd_obj and bsd_obj < fcd_obj)
     else:
         auto_activated = False
+
+    # For auto-activated devices, billingStartDate is the correct activation
+    # anchor (billing begins before the device physically connects).
+    # Re-apply here after we know auto_activated, overriding the fcd-first priority.
+    if auto_activated and raw_bsd:
+        activation_date_str = raw_bsd
+        activation_date_obj = _parse_date(raw_bsd) or activation_date_obj
 
     # ── Active database ───────────────────────────────────────────────────
     ldd = adc.get("latestDeviceDatabase") or {}
