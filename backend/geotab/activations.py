@@ -140,6 +140,7 @@ def _enrich_contract(
     contract: dict,
     activation_date_str: str,
     activation_date_obj: date,
+    auto_activated: bool,
     catalog_index: dict,
     ovr_index: dict,
     mapping_index: dict,
@@ -246,6 +247,7 @@ def _enrich_contract(
         "activePlan":       active_plan,
         "ratePlanCode":     rate_plan,
         "isPilot":          is_pilot,
+        "autoActivated":    auto_activated,
 
         # Dates
         "firstConnectDate":   display_fcd,
@@ -270,20 +272,50 @@ def _enrich_contract(
 #  Main activation derivation from cached contracts                            #
 # --------------------------------------------------------------------------- #
 
-def _get_activation_date(contract: dict) -> Optional[str]:
+def _get_activation_date(contract: dict) -> Optional[tuple]:
     """
-    Return the best activation date string for a contract, applying the same
-    override priority as invoices.py:
-      1. first_connect_date_overrides (user-set)
-      2. firstDeviceActivationDate from API
-      Returns None if no valid date.
+    Return (activation_date_str, auto_activated) for a contract, mirroring
+    all four qualification rules from invoices.py:
+
+      Rule 3: firstDeviceActivationDate exists (and bsd is absent or >= fcd)
+              → (fcd, False)  — genuine new activation
+      Rule 2: firstDeviceActivationDate exists AND billingStartDate < fcd
+              → (fcd, True)   — auto-activated before first connect;
+                                show in Activations but mark as auto-activated
+      Rule 4: no firstDeviceActivationDate, billingStartDate (or startDate)
+              exists → (bsd, True)  — auto-activated with no first connect
+      Rule 1: nothing at all → None (truly never activated, skip entirely)
+
+    Returns None if no usable date found.
     """
-    device    = contract.get("device") or {}
-    serial    = (device.get("serialNumber") or "").strip().upper()
+    device     = contract.get("device") or {}
+    serial     = (device.get("serialNumber") or "").strip().upper()
 
     fcd_override = first_connect_date_overrides.get(serial)
     api_fcd      = _safe_date_str(contract.get("firstDeviceActivationDate"))
-    return fcd_override or api_fcd or None
+    fcd_str      = fcd_override or api_fcd
+
+    bsd_override = billing_date_overrides.get(serial)
+    api_bsd      = _safe_date_str(contract.get("billingStartDate"))
+    bsd_str      = bsd_override or api_bsd
+
+    if fcd_str:
+        fcd_obj = _parse_date(fcd_str)
+        bsd_obj = _parse_date(bsd_str) if bsd_str else None
+        # Rule 2: bsd predates fcd → auto-activated
+        auto = bool(bsd_obj and bsd_obj < fcd_obj)
+        return (fcd_str, auto)
+
+    # No firstDeviceActivationDate — try billingStartDate then startDate (Rule 4)
+    if not bsd_str:
+        raw_sd = _safe_date_str(contract.get("startDate"))
+        if raw_sd:
+            bsd_str = raw_sd
+
+    if bsd_str:
+        return (bsd_str, True)   # Rule 4: auto-activated, no first connect
+
+    return None  # Rule 1b: truly never activated
 
 
 # --------------------------------------------------------------------------- #
@@ -365,11 +397,21 @@ async def get_activations(
         if is_terminated and not include_terminated:
             continue
 
-        # Get the activation date
-        act_str = _get_activation_date(contract)
-        if not act_str:
-            continue  # Never activated — no firstDeviceActivationDate
+        # Skip "Never Activated" plan names (no date at all, device never used)
+        _adp_name = ((contract.get("activeDevicePlan") or {}).get("name") or "").upper()
+        if _adp_name in ("NEVER ACTIVATED", "") and not contract.get("firstDeviceActivationDate"):
+            # Only skip if there is truly no billing date either
+            _has_bsd = _safe_date_str(contract.get("billingStartDate"))
+            _has_sd  = _safe_date_str(contract.get("startDate"))
+            if not _has_bsd and not _has_sd:
+                continue
 
+        # Resolve activation date (Rules 2, 3, 4 from invoices.py)
+        result = _get_activation_date(contract)
+        if not result:
+            continue  # Rule 1b: truly never activated
+
+        act_str, auto_activated = result
         act_obj = _parse_date(act_str)
         if not act_obj:
             continue
@@ -377,19 +419,6 @@ async def get_activations(
         # Date range filter
         if not (from_dt <= act_obj <= to_dt):
             continue
-
-        # ── Rule 2 (mirrors invoices.py): if billingStartDate exists and
-        #    predates the firstDeviceActivationDate, the device was already
-        #    auto-activated / billed before this first-connect date.
-        #    Exclude it — it is NOT a new activation for proration purposes.
-        device      = contract.get("device") or {}
-        serial_key  = (device.get("serialNumber") or "").strip().upper()
-        _raw_bsd = (billing_date_overrides.get(serial_key)
-                    or _safe_date_str(contract.get("billingStartDate")))
-        if _raw_bsd:
-            _bsd_obj = _parse_date(_raw_bsd)
-            if _bsd_obj and _bsd_obj < act_obj:
-                continue  # Previously billed — not a new activation
 
         # Company ID filter
         if customer_id:
@@ -404,6 +433,7 @@ async def get_activations(
                 contract,
                 activation_date_str=act_str,
                 activation_date_obj=act_obj,
+                auto_activated=auto_activated,
                 catalog_index=catalog_index,
                 ovr_index=ovr_index,
                 mapping_index=mapping_index,

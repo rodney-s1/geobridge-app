@@ -185,6 +185,11 @@ function DeviceDetail({ record }) {
             ⚠ PILOT — excluded from prorated invoices
           </div>
         )}
+        {record.autoActivated && (
+          <div className="mt-1 inline-flex items-center gap-1 bg-yellow-500/15 text-yellow-300 border border-yellow-500/30 rounded px-2 py-0.5 text-[11px]">
+            ⚡ Auto-activated — billingStartDate used as activation date
+          </div>
+        )}
       </div>
       {/* Right: proration */}
       <div className="space-y-1.5">
@@ -235,7 +240,7 @@ function ActivationGroup({ group }) {
   const [expanded,       setExpanded]       = useState(false)
   const [expandedDevice, setExpandedDevice] = useState(null) // serial of the device whose detail is open
 
-  const { records, customerName, billingType, activationDate, totalProrated, skuSummary } = group
+  const { records, customerName, billingType, activationDate, totalProrated, skuSummary, autoActivated } = group
   const isMulti = records.length > 1
 
   function toggleDevice(serial) {
@@ -260,6 +265,12 @@ function ActivationGroup({ group }) {
               </span>
             ) : (
               <span className="text-xs font-mono text-slate-200">{records[0].serialNumber || '—'}</span>
+            )}
+            {autoActivated && (
+              <span className="inline-flex items-center gap-1 bg-yellow-500/15 text-yellow-300 border border-yellow-500/30
+                               rounded px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap">
+                AUTO
+              </span>
             )}
           </div>
         </td>
@@ -373,6 +384,12 @@ function ActivationGroup({ group }) {
                             <span className={`text-slate-500 text-[10px] transition-transform
                                              ${expandedDevice === r.serialNumber ? 'rotate-90' : ''}`}>▶</span>
                             <span className="text-xs font-mono text-slate-200">{r.serialNumber}</span>
+                            {r.autoActivated && (
+                              <span className="inline-flex items-center bg-yellow-500/15 text-yellow-300 border border-yellow-500/30
+                                               rounded px-1.5 py-0.5 text-[10px] font-medium whitespace-nowrap">
+                                AUTO
+                              </span>
+                            )}
                           </div>
                         </td>
                         <td className="px-3 py-2 align-middle">
@@ -530,7 +547,10 @@ export default function Activations() {
         .sort((a, b) => b[1] - a[1])
         .map(([sku, count]) => ({ sku, count }))
 
-      return { ...g, totalProrated, skuSummary }
+      // Group is auto-activated if any device in it is auto-activated
+      const autoActivated = g.records.some(r => r.autoActivated)
+
+      return { ...g, totalProrated, skuSummary, autoActivated }
     })
   }, [data, search])
 
