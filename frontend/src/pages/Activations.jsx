@@ -663,7 +663,7 @@ export default function Activations() {
       <div>
         <h2 className="text-xl font-semibold text-slate-100">Activations</h2>
         <p className="text-sm text-slate-400 mt-1">
-          Devices that came online (first connect date) within the selected date range —
+          Devices whose activation date (billing start or first connect) falls within the selected date range —
           source of truth for prorated invoices and QB Recurrence updates.
         </p>
       </div>
@@ -853,7 +853,7 @@ export default function Activations() {
                     <td colSpan={8} className="px-4 py-8 text-center text-slate-500 text-sm">
                       {search
                         ? 'No records match your search.'
-                        : `No devices with a first-connect date between ${fmtDate(data.fromDate)} and ${fmtDate(data.toDate)}.`}
+                        : `No activations with a date between ${fmtDate(data.fromDate)} and ${fmtDate(data.toDate)}.`}
                     </td>
                   </tr>
                 ) : pageGroups.map(g => (

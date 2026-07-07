@@ -543,6 +543,15 @@ async def get_activations(
         if row is None:
             continue
 
+        # Date range filter: only keep records whose per-device activationDate
+        # falls within the requested window.
+        # (The API returns all requests processed in the window, but a bulk
+        # request may include devices whose individual activation dates predate
+        # the window — those should not appear.)
+        row_date = _parse_date(row.get("activationDate") or "")
+        if row_date and not (from_dt <= row_date <= to_dt):
+            continue
+
         # Billing type filter
         if billing_type and row["billingType"] != billing_type:
             continue
