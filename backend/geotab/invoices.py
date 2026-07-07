@@ -44,7 +44,9 @@ from .reconciliation import _normalize, _resolve_price
 from .customers import (_sync_cache, _clean_name, _strip_han_cs, _strip_sub_account_suffix,
                         billing_overrides,
                         billing_date_overrides, BILLING_DATE_OVERRIDES_FILE,
-                        first_connect_date_overrides, FIRST_CONNECT_OVERRIDES_FILE, _save_json)
+                        first_connect_date_overrides, FIRST_CONNECT_OVERRIDES_FILE, _save_json,
+                        MYADMIN_ACCOUNT)
+from .auth import myadmin_call, session_store
 
 # --------------------------------------------------------------------------- #
 #  File paths (same dir as all other geotab data files)                        #
@@ -296,6 +298,93 @@ def _is_hanover_sku(sku_key: str) -> bool:
 
 
 # --------------------------------------------------------------------------- #
+#  Contract request history helper                                              #
+# --------------------------------------------------------------------------- #
+
+def _safe_date_str_inv(raw) -> str:
+    """Trim ISO datetime to YYYY-MM-DD; return '' for .NET sentinel 0001-01-01."""
+    s = (raw or "")[:10]
+    return "" if s.startswith("0001") else s
+
+
+async def _get_contract_requests_map_for_month(
+    billing_year: int,
+    billing_month: int,
+) -> Optional[dict]:
+    """
+    Fetch GetDeviceContractAutoRequests for the given billing month and return
+    a dict of {serial_upper: process_date_str} for all completed requests whose
+    ProcessDate falls within the month.
+
+    Returns None (not an empty dict) if the API call fails, so callers can fall
+    back to the 4-rule inference when the API is unavailable.
+    """
+    import calendar as _cal
+    from datetime import date as _date, timedelta as _td
+
+    if not session_store.get("session_id"):
+        return None
+
+    month_start = _date(billing_year, billing_month, 1)
+    month_end   = _date(billing_year, billing_month,
+                        _cal.monthrange(billing_year, billing_month)[1])
+
+    try:
+        response = await myadmin_call(
+            "GetDeviceContractAutoRequests",
+            {
+                "apiKey":      session_store["user_id"],
+                "sessionId":   session_store["session_id"],
+                "forAccount":  MYADMIN_ACCOUNT,
+                "fromDate":    month_start.isoformat(),
+                "toDate":      month_end.isoformat(),
+            },
+            timeout=120.0,
+        )
+    except Exception as exc:
+        print(f"[invoices] GetDeviceContractAutoRequests failed (falling back to inference): {exc}")
+        return None
+
+    raw_list = response.get("result") or []
+    result: dict = {}
+
+    for req in raw_list:
+        # Only include completed/processed requests
+        status = (req.get("status") or "").lower()
+        if status and status not in ("completed", "processed", "complete", ""):
+            continue
+
+        device = req.get("device") or {}
+        serial = (device.get("serialNumber") or "").strip().upper()
+        if not serial:
+            continue
+
+        process_date_str = _safe_date_str_inv(req.get("processDate"))
+        if not process_date_str:
+            process_date_str = _safe_date_str_inv(req.get("requestDate"))
+        if not process_date_str:
+            continue
+
+        try:
+            pd = _date.fromisoformat(process_date_str)
+        except ValueError:
+            continue
+
+        if month_start <= pd <= month_end:
+            # If a device has multiple requests in the month, keep the earliest
+            if serial not in result:
+                result[serial] = process_date_str
+            else:
+                existing = result[serial]
+                if process_date_str < existing:
+                    result[serial] = process_date_str
+
+    print(f"[invoices] Contract requests map: {len(result)} devices for "
+          f"{billing_year}-{billing_month:02d} (from {len(raw_list)} raw requests)")
+    return result
+
+
+# --------------------------------------------------------------------------- #
 #  Core invoice engine                                                          #
 # --------------------------------------------------------------------------- #
 
@@ -444,10 +533,18 @@ def _generate_prorated_invoice(
     category_index: dict,
     sku_overrides: Optional[dict] = None,
     plan_promo_index: Optional[dict] = None,
+    contract_requests_map: Optional[dict] = None,
 ) -> Optional[dict]:
     """
     Build a prorated invoice for a single customer for the given billing month.
     Returns None if the customer has no qualifying devices.
+
+    contract_requests_map: optional {serial_upper: process_date_str} dict built
+    from GetDeviceContractAutoRequests for the billing month.  When provided,
+    a device's activation date is taken directly from that map (the authoritative
+    MyAdmin contract request history) rather than inferred from contract fields.
+    Devices NOT in the map are skipped — they have no contract request event in
+    this billing month and are not new activations.
 
     A device qualifies if its activation date falls within the billing month,
     it is not terminated, and it has a resolvable SKU.
@@ -496,64 +593,88 @@ def _generate_prorated_invoice(
         device_serial_raw = (contract.get("device") or {}).get("serialNumber") or ""
         _serial_key       = device_serial_raw.strip().upper()
 
-        # First-connect-date override: user-set date that feeds raw_fcd directly.
-        # Use when MyAdmin sync ran before the device's first connection, leaving
-        # firstDeviceActivationDate as 0001-01-01 sentinel (empty after _safe_date).
-        override_fcd = first_connect_date_overrides.get(_serial_key)
-
-        # Billing-start-date override: replaces billingStartDate from API.
-        # Note: fcd override takes precedence — if both are set, fcd override wins
-        # and is used as the proration anchor (Rule 3).
-        override_bsd = billing_date_overrides.get(_serial_key)
-
-        # Apply overrides: fcd_override > API firstDeviceActivationDate
-        raw_fcd = override_fcd or _safe_date(contract.get("firstDeviceActivationDate"))
-        # If override present it replaces billingStartDate; firstConnectDate
-        # from the API is preserved so Rule 2 still applies.
-        raw_bsd = override_bsd or _safe_date(contract.get("billingStartDate"))
-
-        # Rule 1a: neither date → try startDate ("Assignment Date" in MyAdmin)
-        # as a last-resort activation date for active devices that have no
-        # firstDeviceActivationDate and no billingStartDate.
-        if not raw_fcd and not raw_bsd:
-            raw_sd = _safe_date(contract.get("startDate"))
-            if raw_sd:
-                raw_bsd = raw_sd   # treat it exactly like billingStartDate (Rule 4 below)
-            else:
-                continue           # Rule 1b: truly no date at all → skip (Never Activated)
-
-        if raw_fcd:
+        # ── Contract request history override ─────────────────────────────
+        # When contract_requests_map is provided, only devices with a known
+        # request event in this billing month qualify — and their activation
+        # date is the ProcessDate from that event (authoritative).
+        if contract_requests_map is not None:
+            if _serial_key not in contract_requests_map:
+                continue   # no request event this month → not a new activation
+            _req_date_str = contract_requests_map[_serial_key]
             try:
-                fcd = date.fromisoformat(raw_fcd)
+                activation_date     = date.fromisoformat(_req_date_str)
+                raw_activation_date = _req_date_str
             except ValueError:
                 continue
+            # Only devices whose request ProcessDate falls in this billing month
+            if not (month_start <= activation_date <= month_end):
+                continue
+            # Skip the 4-rule inference below — jump straight to SKU resolution
+            _skip_rule_inference = True
+        else:
+            _skip_rule_inference = False
 
-            # Rule 2: billingStartDate exists and predates firstConnectDate
-            # → already auto-activated on its own, skip
-            if raw_bsd:
+        if _skip_rule_inference:
+            pass   # activation_date / raw_activation_date already set above
+        else:
+            # First-connect-date override: user-set date that feeds raw_fcd directly.
+            # Use when MyAdmin sync ran before the device's first connection, leaving
+            # firstDeviceActivationDate as 0001-01-01 sentinel (empty after _safe_date).
+            override_fcd = first_connect_date_overrides.get(_serial_key)
+
+            # Billing-start-date override: replaces billingStartDate from API.
+            # Note: fcd override takes precedence — if both are set, fcd override wins
+            # and is used as the proration anchor (Rule 3).
+            override_bsd = billing_date_overrides.get(_serial_key)
+
+            # Apply overrides: fcd_override > API firstDeviceActivationDate
+            raw_fcd = override_fcd or _safe_date(contract.get("firstDeviceActivationDate"))
+            # If override present it replaces billingStartDate; firstConnectDate
+            # from the API is preserved so Rule 2 still applies.
+            raw_bsd = override_bsd or _safe_date(contract.get("billingStartDate"))
+
+            # Rule 1a: neither date → try startDate ("Assignment Date" in MyAdmin)
+            # as a last-resort activation date for active devices that have no
+            # firstDeviceActivationDate and no billingStartDate.
+            if not raw_fcd and not raw_bsd:
+                raw_sd = _safe_date(contract.get("startDate"))
+                if raw_sd:
+                    raw_bsd = raw_sd   # treat it exactly like billingStartDate (Rule 4 below)
+                else:
+                    continue           # Rule 1b: truly no date at all → skip (Never Activated)
+
+            if raw_fcd:
+                try:
+                    fcd = date.fromisoformat(raw_fcd)
+                except ValueError:
+                    continue
+
+                # Rule 2: billingStartDate exists and predates firstConnectDate
+                # → already auto-activated on its own, skip
+                if raw_bsd:
+                    try:
+                        bsd = date.fromisoformat(raw_bsd)
+                    except ValueError:
+                        bsd = None
+                    if bsd and bsd < fcd:
+                        continue
+
+                # Rule 3: normal new activation — use firstDeviceActivationDate
+                activation_date     = fcd
+                raw_activation_date = raw_fcd
+
+            else:
+                # Rule 4: no firstConnectDate — use billingStartDate as activation
                 try:
                     bsd = date.fromisoformat(raw_bsd)
                 except ValueError:
-                    bsd = None
-                if bsd and bsd < fcd:
                     continue
+                activation_date     = bsd
+                raw_activation_date = raw_bsd
 
-            # Rule 3: normal new activation — use firstDeviceActivationDate
-            activation_date     = fcd
-            raw_activation_date = raw_fcd
-
-        else:
-            # Rule 4: no firstConnectDate — use billingStartDate as activation
-            try:
-                bsd = date.fromisoformat(raw_bsd)
-            except ValueError:
+            # Only devices activating THIS billing month
+            if not (month_start <= activation_date <= month_end):
                 continue
-            activation_date     = bsd
-            raw_activation_date = raw_bsd
-
-        # Only devices activating THIS billing month
-        if not (month_start <= activation_date <= month_end):
-            continue
 
         device       = contract.get("device") or {}
         serial       = device.get("serialNumber") or ""
@@ -1232,6 +1353,10 @@ async def get_prorated_invoices(
     excluded_invoices = _load_excluded_invoices()
     sku_overrides     = _load_sku_overrides()
 
+    # Fetch contract request history for this billing month (authoritative activation dates).
+    # Falls back to None (4-rule inference) if the API is unavailable or session expired.
+    contract_requests_map = await _get_contract_requests_map_for_month(b_year, b_month)
+
     # Import billing_type lookup from customers module
     from .customers import billing_type_overrides, billing_overrides, qb_customers
 
@@ -1320,19 +1445,20 @@ async def get_prorated_invoices(
         }
 
         invoice = _generate_prorated_invoice(
-            customer         = fake_customer,
-            contracts        = company_contracts,
-            billing_year     = b_year,
-            billing_month    = b_month,
-            catalog_index    = catalog_index,
-            ovr_index        = ovr_index,
-            mapping_index    = mapping_index,
-            cust_map_index   = cust_map_index,
-            full_path_index  = full_path_index,
-            sku_desc_index   = sku_desc_index,
-            category_index   = category_index,
-            sku_overrides    = sku_overrides,
-            plan_promo_index = plan_promo_index,
+            customer              = fake_customer,
+            contracts             = company_contracts,
+            billing_year          = b_year,
+            billing_month         = b_month,
+            catalog_index         = catalog_index,
+            ovr_index             = ovr_index,
+            mapping_index         = mapping_index,
+            cust_map_index        = cust_map_index,
+            full_path_index       = full_path_index,
+            sku_desc_index        = sku_desc_index,
+            category_index        = category_index,
+            sku_overrides         = sku_overrides,
+            plan_promo_index      = plan_promo_index,
+            contract_requests_map = contract_requests_map,
         )
 
         if invoice is not None:
@@ -1421,6 +1547,9 @@ async def get_prorated_invoice_for_customer(
 
     sku_overrides = _load_sku_overrides()
 
+    # Fetch contract request history map for authoritative activation dates
+    contract_requests_map = await _get_contract_requests_map_for_month(b_year, b_month)
+
     from .customers import billing_type_overrides, billing_overrides, qb_customers
 
     raw_name   = ((company_contracts[0].get("userContact") or {})
@@ -1446,19 +1575,20 @@ async def get_prorated_invoice_for_customer(
     }
 
     invoice = _generate_prorated_invoice(
-        customer         = fake_customer,
-        contracts        = company_contracts,
-        billing_year     = b_year,
-        billing_month    = b_month,
-        catalog_index    = catalog_index,
-        ovr_index        = ovr_index,
-        mapping_index    = mapping_index,
-        cust_map_index   = cust_map_index,
-        full_path_index  = full_path_index,
-        sku_desc_index   = sku_desc_index,
-        category_index   = category_index,
-        sku_overrides    = sku_overrides,
-        plan_promo_index = plan_promo_index,
+        customer              = fake_customer,
+        contracts             = company_contracts,
+        billing_year          = b_year,
+        billing_month         = b_month,
+        catalog_index         = catalog_index,
+        ovr_index             = ovr_index,
+        mapping_index         = mapping_index,
+        cust_map_index        = cust_map_index,
+        full_path_index       = full_path_index,
+        sku_desc_index        = sku_desc_index,
+        category_index        = category_index,
+        sku_overrides         = sku_overrides,
+        plan_promo_index      = plan_promo_index,
+        contract_requests_map = contract_requests_map,
     )
 
     if not invoice:

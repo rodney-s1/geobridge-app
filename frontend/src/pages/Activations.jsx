@@ -167,8 +167,8 @@ function StatCard({ label, value, sub, color = 'blue' }) {
 function DeviceDetail({ record }) {
   const p = record.proration
   return (
-    <div className="grid grid-cols-2 gap-4 text-xs border border-slate-700/40 rounded-md p-3 bg-slate-900/40">
-      {/* Left: contract details */}
+    <div className="grid grid-cols-3 gap-4 text-xs border border-slate-700/40 rounded-md p-3 bg-slate-900/40">
+      {/* Col 1: contract details */}
       <div className="space-y-1.5">
         <p className="text-slate-400 font-semibold uppercase text-[10px] tracking-wider mb-2">Contract Details</p>
         <Row label="Serial"         value={record.serialNumber}  mono />
@@ -191,7 +191,39 @@ function DeviceDetail({ record }) {
           </div>
         )}
       </div>
-      {/* Right: proration */}
+
+      {/* Col 2: request history */}
+      <div className="space-y-1.5">
+        <p className="text-slate-400 font-semibold uppercase text-[10px] tracking-wider mb-2">Request History</p>
+        <Row label="Request Type"  value={record.requestType} />
+        <Row label="Request Date"  value={fmtDate(record.requestDate)} />
+        <Row label="Process Date"  value={fmtDate(record.processDate)} />
+        {record.status && (
+          <div className="flex gap-2">
+            <span className="text-slate-500 w-28 flex-shrink-0">Status</span>
+            <span className={`font-medium ${
+              (record.status || '').toLowerCase() === 'completed'
+                ? 'text-emerald-400'
+                : (record.status || '').toLowerCase() === 'pending'
+                  ? 'text-amber-400'
+                  : 'text-slate-300'
+            }`}>{record.status}</span>
+          </div>
+        )}
+        {record.comments && (
+          <div className="flex gap-2">
+            <span className="text-slate-500 w-28 flex-shrink-0 mt-0.5">Comments</span>
+            <span className="text-slate-300 break-words leading-relaxed">{record.comments}</span>
+          </div>
+        )}
+        {record.errorMessage && (
+          <div className="mt-1 text-rose-400 text-[11px] bg-rose-500/10 border border-rose-500/20 rounded px-2 py-1">
+            ⚠ {record.errorMessage}
+          </div>
+        )}
+      </div>
+
+      {/* Col 3: proration */}
       <div className="space-y-1.5">
         <p className="text-slate-400 font-semibold uppercase text-[10px] tracking-wider mb-2">Proration Preview</p>
         {p ? (
@@ -643,9 +675,9 @@ export default function Activations() {
       {error && (
         <div className="bg-red-900/30 border border-red-500/40 rounded-lg p-4 text-sm text-red-300">
           <span className="font-semibold">Error:</span> {error}
-          {error.includes('sync') || error.includes('cached') ? (
+          {error.includes('login') || error.includes('session') || error.includes('401') ? (
             <p className="mt-1 text-amber-300/80 text-xs">
-              💡 Go to <strong>Customers</strong> and run a MyAdmin sync first — the Activations tab reads from the sync cache.
+              💡 Please log in to MyAdmin first — Activations queries the MyAdmin API directly.
             </p>
           ) : null}
         </div>
@@ -657,7 +689,7 @@ export default function Activations() {
         return (
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <StatCard
-            label="New Activations"
+            label="Contract Requests"
             value={data.totalRecords.toLocaleString()}
             sub={`${fmtDate(data.fromDate)} → ${fmtDate(data.toDate)}`}
             color="blue"
@@ -681,9 +713,9 @@ export default function Activations() {
             color={data.unmappedCount > 0 ? 'amber' : 'green'}
           />
           <StatCard
-            label="Cache"
-            value={cacheLabel || '—'}
-            sub={`${(data.totalContractsInCache || 0).toLocaleString()} contracts loaded`}
+            label="Raw Requests"
+            value={(data.rawRequestCount ?? data.totalRecords).toLocaleString()}
+            sub={cacheLabel ? `Billing types: ${cacheLabel}` : 'From MyAdmin API'}
             color="purple"
           />
         </div>
@@ -796,7 +828,7 @@ export default function Activations() {
             devices whose first-connect date falls in that window — with resolved QB SKU and proration preview.
           </p>
           <p className="text-slate-600 text-xs mt-3">
-            Data reads from the MyAdmin sync cache. Requires an active sync.
+            Data reads directly from the MyAdmin Device Contract Request History API.
           </p>
         </div>
       )}
@@ -805,7 +837,7 @@ export default function Activations() {
       {loading && (
         <div className="bg-slate-800/40 border border-slate-700/40 rounded-lg p-10 text-center">
           <div className="inline-block w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3" />
-          <p className="text-slate-400 text-sm">Filtering activations from sync cache…</p>
+          <p className="text-slate-400 text-sm">Loading contract request history from MyAdmin…</p>
         </div>
       )}
 
