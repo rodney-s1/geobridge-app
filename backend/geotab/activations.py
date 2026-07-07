@@ -378,6 +378,19 @@ async def get_activations(
         if not (from_dt <= act_obj <= to_dt):
             continue
 
+        # ── Rule 2 (mirrors invoices.py): if billingStartDate exists and
+        #    predates the firstDeviceActivationDate, the device was already
+        #    auto-activated / billed before this first-connect date.
+        #    Exclude it — it is NOT a new activation for proration purposes.
+        device      = contract.get("device") or {}
+        serial_key  = (device.get("serialNumber") or "").strip().upper()
+        _raw_bsd = (billing_date_overrides.get(serial_key)
+                    or _safe_date_str(contract.get("billingStartDate")))
+        if _raw_bsd:
+            _bsd_obj = _parse_date(_raw_bsd)
+            if _bsd_obj and _bsd_obj < act_obj:
+                continue  # Previously billed — not a new activation
+
         # Company ID filter
         if customer_id:
             uc  = contract.get("userContact") or {}
