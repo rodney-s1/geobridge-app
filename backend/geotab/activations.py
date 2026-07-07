@@ -552,6 +552,11 @@ async def get_activations(
         if row_date and not (from_dt <= row_date <= to_dt):
             continue
 
+        # Exclude termination / cancellation events — these are not activations
+        _req_type_lower = (row.get("requestType") or "").lower()
+        if any(t in _req_type_lower for t in ("terminat", "cancel", "deactivat", "suspend", "remove")):
+            continue
+
         # Billing type filter
         if billing_type and row["billingType"] != billing_type:
             continue
