@@ -337,8 +337,8 @@ async def _get_contract_requests_map_for_month(
                 "apiKey":      session_store["user_id"],
                 "sessionId":   session_store["session_id"],
                 "forAccount":  MYADMIN_ACCOUNT,
-                "fromDate":    month_start.isoformat(),
-                "toDate":      month_end.isoformat(),
+                "fromDate":    month_start.strftime("%Y-%m-%dT00:00:00Z"),
+                "toDate":      month_end.strftime("%Y-%m-%dT23:59:59Z"),
             },
             timeout=120.0,
         )

@@ -172,8 +172,10 @@ async def _fetch_contract_requests(
             "apiKey":      session_store["user_id"],
             "sessionId":   session_store["session_id"],
             "forAccount":  account,
-            "fromDate":    chunk_from.isoformat(),
-            "toDate":      chunk_to.isoformat(),
+            # MyAdmin requires full ISO 8601 UTC datetime strings.
+            # Date-only strings may miss events; cover the full calendar day.
+            "fromDate":    chunk_from.strftime("%Y-%m-%dT00:00:00Z"),
+            "toDate":      chunk_to.strftime("%Y-%m-%dT23:59:59Z"),
         }
         if user_company_id:
             params["userCompanyIdFilter"] = user_company_id
@@ -613,4 +615,67 @@ async def get_activations_summary(
         "toDate":    result["toDate"],
         "cacheAgeHours": result["cacheAgeHours"],
         "customers": summary_list,
+    }
+
+
+@router.get("/activations/debug-raw")
+async def get_activations_debug_raw(
+    from_date: str = Query(default="", alias="fromDate"),
+    to_date:   str = Query(default="", alias="toDate"),
+):
+    """
+    Diagnostic endpoint — returns the raw MyAdmin API response for
+    GetDeviceContractAutoRequests without any enrichment.
+
+    Useful for confirming what the API actually returns (field names,
+    record count, error messages) before enrichment filters anything out.
+
+    Access at: GET /api/activations/debug-raw?fromDate=YYYY-MM-DD&toDate=YYYY-MM-DD
+    """
+    if not session_store.get("session_id"):
+        raise HTTPException(status_code=401, detail="Not logged in to MyAdmin")
+
+    today = date.today()
+    if not from_date:
+        from_date = date(today.year, today.month, 1).isoformat()
+    if not to_date:
+        to_date = today.isoformat()
+
+    from_dt = _parse_date(from_date)
+    to_dt   = _parse_date(to_date)
+    if not from_dt or not to_dt:
+        raise HTTPException(status_code=400, detail="Dates must be YYYY-MM-DD")
+
+    chunks = []
+    for chunk_from, chunk_to in _chunk_date_range(from_dt, to_dt, max_days=60):
+        params = {
+            "apiKey":    session_store["user_id"],
+            "sessionId": session_store["session_id"],
+            "forAccount": MYADMIN_ACCOUNT,
+            "fromDate":  chunk_from.strftime("%Y-%m-%dT00:00:00Z"),
+            "toDate":    chunk_to.strftime("%Y-%m-%dT23:59:59Z"),
+        }
+        try:
+            response = await myadmin_call("GetDeviceContractAutoRequests", params, timeout=120.0)
+        except Exception as exc:
+            response = {"exception": str(exc)}
+
+        raw_result = response.get("result") or []
+        first_record_keys = list(raw_result[0].keys()) if raw_result else []
+
+        chunks.append({
+            "fromDate":       params["fromDate"],
+            "toDate":         params["toDate"],
+            "recordCount":    len(raw_result),
+            "firstRecordKeys": first_record_keys,
+            "firstRecord":    raw_result[0] if raw_result else None,
+            "error":          response.get("error"),
+            "responseKeys":   list(response.keys()),
+        })
+
+    return {
+        "account":    MYADMIN_ACCOUNT,
+        "sessionSet": bool(session_store.get("session_id")),
+        "chunks":     chunks,
+        "totalRecords": sum(c["recordCount"] for c in chunks),
     }
