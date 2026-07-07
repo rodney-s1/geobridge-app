@@ -190,9 +190,17 @@ async def _fetch_contract_requests(
         raw_result = response.get("result")
         raw_error  = response.get("error")
         batch = raw_result or []
+
+        # Surface API-level errors (e.g. invalid session, permission denied)
+        if raw_error:
+            err_msg = (raw_error.get("message") if isinstance(raw_error, dict) else str(raw_error))
+            print(f"[activations] API error from GetDeviceContractAutoRequests "
+                  f"{chunk_from}→{chunk_to}: {raw_error!r}")
+            raise RuntimeError(f"MyAdmin returned error: {err_msg}")
+
         print(f"[activations] GetDeviceContractAutoRequests "
               f"{chunk_from}→{chunk_to}: "
-              f"{len(batch)} records | error={raw_error!r} | "
+              f"{len(batch)} records | "
               f"response_keys={list(response.keys())}")
         if batch and len(batch) > 0:
             # Log the first record's keys so we know the field names
@@ -475,9 +483,14 @@ async def get_activations(
         )
 
     # Build SKU indices (from local config files — fast, no API call)
-    (catalog_index, ovr_index, mapping_index,
-     cust_map_index, full_path_index, sku_desc_index,
-     category_index, plan_promo_index) = _build_indices()
+    try:
+        (catalog_index, ovr_index, mapping_index,
+         cust_map_index, full_path_index, sku_desc_index,
+         category_index, plan_promo_index) = _build_indices()
+    except Exception as exc:
+        import traceback
+        print(f"[activations] ERROR in _build_indices: {exc}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Failed to load SKU indices: {exc}")
 
     results: List[dict] = []
 
@@ -494,7 +507,10 @@ async def get_activations(
                 category_index=category_index,
                 plan_promo_index=plan_promo_index,
             )
-        except Exception:
+        except Exception as enrich_exc:
+            import traceback
+            print(f"[activations] _enrich_request error on req={req.get('device',{}).get('serialNumber','?')}: "
+                  f"{enrich_exc}\n{traceback.format_exc()}")
             continue
 
         if row is None:

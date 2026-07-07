@@ -19,7 +19,7 @@ function Dashboard({ sessionData, onLogout }) {
     let cancelled = false
     async function checkSession() {
       try {
-        const r = await fetch(`${API}/api/session`)
+        const r = await fetch(`${API}/api/geotab/session`)
         if (!cancelled) setSessionAlive(r.ok)
       } catch {
         if (!cancelled) setSessionAlive(false)
