@@ -350,11 +350,44 @@ async def _get_contract_requests_map_for_month(
     raw_list = response.get("result") or []
     result: dict = {}
 
+    _excl = ("terminat", "cancel", "deactivat", "suspend", "remove")
+
     for req in raw_list:
         # Only include completed/processed requests
         status = (req.get("status") or "").lower()
         if status and status not in ("completed", "processed", "complete", ""):
             continue
+
+        # Skip termination/cancellation/suspension events — these are not new activations
+        _req_info = req.get("requestInfo") or {}
+        _req_type = (
+            (_req_info.get("name") or _req_info.get("description") or "")
+            if isinstance(_req_info, dict) else str(_req_info)
+        ).lower()
+        _dp_name  = ((req.get("devicePlan") or {}).get("name") or "").lower()
+        _adc      = req.get("appliedDeviceContract") or {}
+        _adp_name = ((_adc.get("activeDevicePlan") or {}).get("name") or "").lower()
+        if any(t in _req_type for t in _excl) or \
+           any(t in _dp_name  for t in _excl) or \
+           any(t in _adp_name for t in _excl):
+            continue
+
+        # Skip devices that were already active before the billing month.
+        # firstDeviceActivationDate is the authoritative "first ever connect"
+        # date from the API.  If it exists and predates month_start, this
+        # request is a plan-change or renewal on a long-established device —
+        # NOT a new activation for this billing month.
+        _fcd_raw = _safe_date_str_inv(
+            _adc.get("firstDeviceActivationDate")
+            or (req.get("device") or {}).get("firstDeviceActivationDate")
+        )
+        if _fcd_raw:
+            try:
+                _fcd_obj = _date.fromisoformat(_fcd_raw)
+                if _fcd_obj < month_start:
+                    continue   # activated before this month — not a new activation
+            except ValueError:
+                pass
 
         device = req.get("device") or {}
         serial = (device.get("serialNumber") or "").strip().upper()
