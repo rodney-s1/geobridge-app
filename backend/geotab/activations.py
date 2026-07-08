@@ -280,6 +280,17 @@ def _enrich_request(
         active_plan = dp.get("name") or ""
         billing_plan = active_plan.split(":")[0].strip() if active_plan else ""
 
+    # ── Top-level active billing plan (current device state) ──────────────
+    # req["activeDevicePlan"] is the device's LIVE billing plan as of now —
+    # distinct from appliedDeviceContract.activeDevicePlan which only reflects
+    # the plan assigned by this specific request.  A terminated device will
+    # show "Terminated" here even if its last request event said "Pro Mode".
+    top_adp            = req.get("activeDevicePlan") or {}
+    top_active_plan    = (top_adp.get("name") or "").strip()
+    # If the device's current billing plan contains any exclusion term, bail out.
+    if any(t in top_active_plan.lower() for t in ("terminat", "cancel", "deactivat", "suspend", "remove")):
+        return None
+
     # ── Dates ─────────────────────────────────────────────────────────────
     # Prefer override → applied contract dates → request-level dates
     serial_key   = serial.upper()
@@ -399,6 +410,7 @@ def _enrich_request(
 
         # Plan info
         "activePlan":        active_plan,
+        "topActivePlan":     top_active_plan,   # device's current live billing plan
         "ratePlanCode":      rate_plan,
         "isPilot":           is_pilot,
         "autoActivated":     auto_activated,
@@ -532,9 +544,16 @@ async def get_activations(
         ).lower()
         _raw_plan = ((req.get("devicePlan") or {}).get("name") or "").lower()
         _raw_adc_plan = (((req.get("appliedDeviceContract") or {}).get("activeDevicePlan") or {}).get("name") or "").lower()
+        # Top-level activeDevicePlan on the contract row reflects the device's
+        # CURRENT live billing status (e.g. "Terminated") — distinct from the
+        # appliedDeviceContract.activeDevicePlan which shows the plan for this
+        # specific request event and may still say "Pro Mode" even on a
+        # terminated device.
+        _raw_top_plan = ((req.get("activeDevicePlan") or {}).get("name") or "").lower()
         if any(t in _raw_req_type  for t in _EXCLUSION_TERMS) or \
            any(t in _raw_plan      for t in _EXCLUSION_TERMS) or \
-           any(t in _raw_adc_plan  for t in _EXCLUSION_TERMS):
+           any(t in _raw_adc_plan  for t in _EXCLUSION_TERMS) or \
+           any(t in _raw_top_plan  for t in _EXCLUSION_TERMS):
             continue
 
         try:
@@ -588,9 +607,11 @@ async def get_activations(
         # appear in the plan name rather than the request type field.
         _req_type_lower    = (row.get("requestType") or "").lower()
         _active_plan_lower = (row.get("activePlan") or "").lower()
+        _top_plan_lower    = (row.get("topActivePlan") or "").lower()
         _status_lower      = (row.get("status") or "").lower()
         if any(t in _req_type_lower    for t in _EXCLUSION_TERMS) or \
            any(t in _active_plan_lower  for t in _EXCLUSION_TERMS) or \
+           any(t in _top_plan_lower     for t in _EXCLUSION_TERMS) or \
            any(t in _status_lower       for t in _EXCLUSION_TERMS):
             continue
 
