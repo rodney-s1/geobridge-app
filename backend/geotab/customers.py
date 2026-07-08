@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File, Query
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, Dict, List
@@ -10,7 +10,7 @@ import json
 import os
 import sys
 import time
-from .auth import myadmin_call, session_store
+from .auth import myadmin_call, require_session, session_store
 
 # --- Windows-safe print (avoids CP1252 UnicodeEncodeError on arrow chars) -----
 def _print(*args, **kwargs):
@@ -21,7 +21,7 @@ def _print(*args, **kwargs):
     )
     print(safe, **kwargs)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_session)])
 
 # --- CELU01 is the only MyAdmin account we pull device data for ---------------
 MYADMIN_ACCOUNT = "CELU01"

@@ -8,5 +8,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
 // Expose backend URL to React
 contextBridge.exposeInMainWorld('backendAPI', {
-  baseURL: 'http://127.0.0.1:8000'
+  baseURL: 'http://127.0.0.1:8001'
 })

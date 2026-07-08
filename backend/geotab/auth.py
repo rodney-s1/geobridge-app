@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 import httpx
 import os
@@ -42,6 +42,17 @@ session_store = {
     "accounts": [],
     "account_id": None,   # currently selected accountId for API calls
 }
+
+# ---------------------------------------------------------------------------
+# Auth dependency — import and use in any router that needs protection:
+#   from .auth import require_session
+#   @router.get("/my-route")
+#   async def my_route(_: None = Depends(require_session)):
+# ---------------------------------------------------------------------------
+def require_session():
+    """FastAPI dependency: raises 401 if no active MyAdmin session."""
+    if not session_store.get("session_id"):
+        raise HTTPException(status_code=401, detail="Not logged in to MyAdmin")
 
 # --- Request Models -------------------------------------------
 class LoginRequest(BaseModel):
@@ -88,10 +99,6 @@ async def login(request: LoginRequest):
 
         session_data = result["result"]
 
-        # DEBUG - print full login response to see exact field names
-        print("DEBUG Authenticate response keys:", list(session_data.keys()) if isinstance(session_data, dict) else session_data)
-        print("DEBUG Full session_data:", json.dumps(session_data, indent=2)[:1000])
-
         # Extract accounts list
         accounts = session_data.get("accounts") or []
 
@@ -101,12 +108,10 @@ async def login(request: LoginRequest):
         session_store["username"] = session_data.get("name") or session_data.get("userName")
         session_store["accounts"] = accounts
 
-        print("DEBUG session_store after login:", {k: v for k, v in session_store.items() if k != "accounts"})
+        print(f"[auth] Login successful: user={session_store['username']!r} accounts={len(accounts)}")
 
         return {
             "success": True,
-            "user_id": session_data["userId"],
-            "session_id": session_data["sessionId"],
             "name": session_data["name"],
             "roles": session_data.get("roles", []),
             "accounts": accounts,
@@ -134,7 +139,6 @@ async def get_session():
         raise HTTPException(status_code=401, detail="No active session")
     return {
         "active": True,
-        "user_id": session_store["user_id"],
         "username": session_store["username"]
     }
 
@@ -160,5 +164,5 @@ async def select_account(request: SelectAccountRequest):
     if request.account_id not in valid_ids:
         raise HTTPException(status_code=400, detail=f"Invalid account: {request.account_id}")
     session_store["account_id"] = request.account_id
-    print(f"DEBUG selected account_id: {request.account_id}")
+    print(f"[auth] Account selected: {request.account_id!r}")
     return {"success": True, "account_id": request.account_id}

@@ -23,7 +23,7 @@ Endpoints:
   GET  /api/settings/unmapped-rate-plans       rate plan codes seen in MyAdmin with no mapping
 """
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from typing import Optional, Dict, List, Tuple
 import csv
@@ -40,7 +40,9 @@ except Exception:
     def _s3_push(filename: str) -> None:  # type: ignore
         pass
 
-router = APIRouter()
+from .auth import require_session
+
+router = APIRouter(dependencies=[Depends(require_session)])
 
 # --- Disk paths --------------------------------------------------------------
 _HERE = os.path.dirname(os.path.abspath(__file__))

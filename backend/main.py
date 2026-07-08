@@ -23,6 +23,10 @@ app = FastAPI(
     description="GeoBridge Invoicing Suite - Backend API",
     version="1.0.0",
     lifespan=lifespan,
+    # Disable public Swagger/ReDoc UI — this is a local desktop app;
+    # the API schema should not be browsable without intentional enablement.
+    docs_url=None,
+    redoc_url=None,
 )
 
 # Allow the React frontend to talk to this backend.
@@ -82,9 +86,10 @@ app.include_router(activations_router, prefix="/api", tags=["Activations"])
 # ============================================================
 #  S3 BACKUP  endpoints + startup restore
 # ============================================================
-from fastapi import APIRouter as _APIRouter
+from fastapi import APIRouter as _APIRouter, Depends
+from geotab.auth import require_session
 
-_s3_router = _APIRouter()
+_s3_router = _APIRouter(dependencies=[Depends(require_session)])
 
 @_s3_router.get("/settings/s3-status")
 def s3_status():

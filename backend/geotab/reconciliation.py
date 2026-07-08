@@ -43,13 +43,15 @@ NOTE: sku_mappings.json must contain entries for BOTH promo codes (e.g.
 Billing plan names should be stored uppercase in ratePlanCode.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from typing import Dict, Optional, Tuple
 import html as _html
 import json
 import os
 
-router = APIRouter()
+from .auth import require_session
+
+router = APIRouter(dependencies=[Depends(require_session)])
 
 # SKU key exactly as stored in QB data files (QB item codes are truncated at import)
 HAN_CS_CUST_SKU = "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C..."

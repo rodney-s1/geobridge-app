@@ -36,10 +36,11 @@ from collections import defaultdict
 from datetime import date, datetime
 from typing import Dict, List, Optional, Tuple
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 # Re-use the same normaliser and price-resolver already used in reconciliation
 from .reconciliation import _normalize, _resolve_price
+from .auth import require_session
 
 # Shared in-memory cache populated by customers.py sync
 from .customers import (_sync_cache, _clean_name, _strip_han_cs, _strip_sub_account_suffix,
@@ -87,7 +88,7 @@ def _load_sku_overrides() -> dict:
 def _save_sku_overrides(overrides: dict) -> None:
     _save_json(SKU_OVERRIDES_FILE, overrides)
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_session)])
 
 # --------------------------------------------------------------------------- #
 #  Helpers                                                                      #

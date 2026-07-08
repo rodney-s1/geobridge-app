@@ -32,9 +32,9 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta
 from typing import Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
-from .auth import myadmin_call, session_store
+from .auth import myadmin_call, require_session, session_store
 from .customers import (
     MYADMIN_ACCOUNT,
     _sync_cache,
@@ -59,7 +59,7 @@ from .invoices import (
 )
 from .reconciliation import _normalize, _resolve_price
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_session)])
 
 # --------------------------------------------------------------------------- #
 #  Helpers                                                                      #
