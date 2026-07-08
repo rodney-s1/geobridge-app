@@ -534,7 +534,39 @@ async def get_activations(
     _EXCLUSION_TERMS = ("terminat", "cancel", "deactivat", "suspend", "remove")
     results: List[dict] = []
 
+    # Build a serial → isTerminated lookup from the contracts cache.
+    # GetDeviceContractAutoRequests does NOT reliably return current termination
+    # status — the activeDevicePlan field on those records reflects the plan at
+    # request time, not the device's current live billing state.  The contracts
+    # cache (populated from GetContracts) does include isTerminated:True for
+    # terminated devices.  Cross-referencing here catches cases where a device
+    # has a contract request event in the window but is currently terminated
+    # (e.g. terminated 2026-05-15, then an auto-activation event fires anyway).
+    _terminated_serials: set = set()
+    for _c in (_sync_cache.get("contracts") or []):
+        if _c.get("isTerminated"):
+            _dev = _c.get("device") or {}
+            _sn  = (_dev.get("serialNumber") or "").strip().upper()
+            if _sn:
+                _terminated_serials.add(_sn)
+
+    _DEBUG_SERIALS = {"G4HBP90KY1VA", "GAXD467UPNKH"}
+
     for req in raw_requests:
+        # Temporary debug: dump full raw record for known problem serials
+        _dbg_serial = ((req.get("device") or {}).get("serialNumber") or "").upper()
+        if _dbg_serial in _DEBUG_SERIALS:
+            import json as _json
+            print(f"[activations DEBUG] RAW RECORD for {_dbg_serial}:")
+            print(_json.dumps(req, default=str, indent=2)[:4000])
+
+        # Contracts-cache termination check: if the device is marked isTerminated
+        # in our GetContracts cache, skip it unconditionally — regardless of what
+        # GetDeviceContractAutoRequests says about plan/request type.
+        _req_serial_upper = ((req.get("device") or {}).get("serialNumber") or "").strip().upper()
+        if _req_serial_upper and _req_serial_upper in _terminated_serials:
+            continue
+
         # Pre-enrichment fast-path: skip obvious termination records by checking
         # the raw requestInfo name and devicePlan name before full enrichment.
         _raw_req_info = req.get("requestInfo") or {}
