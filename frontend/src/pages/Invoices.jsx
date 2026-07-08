@@ -639,7 +639,9 @@ export default function Invoices() {
   }, [month, btFilter])
 
   const handleMonthChange = (e) => {
-    setMonth(e.target.value)
+    const newMonth = e.target.value
+    setMonth(newMonth)
+    generate(newMonth, btFilter)   // auto-fetch immediately on month change
   }
 
   const handleGenerate = () => generate(month, btFilter)
@@ -712,7 +714,7 @@ export default function Invoices() {
             ].map(opt => (
               <button
                 key={opt.value}
-                onClick={() => setBtFilter(opt.value)}
+                onClick={() => { setBtFilter(opt.value); generate(month, opt.value) }}
                 className={`px-3 py-1.5 transition-colors ${
                   btFilter === opt.value
                     ? 'bg-blue-600 text-white'
