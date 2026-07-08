@@ -567,6 +567,22 @@ async def get_activations(
         if row_date and not (from_dt <= row_date <= to_dt):
             continue
 
+        # Contract end-date filter: if the device's contract ended BEFORE the
+        # start of the queried window, it was already terminated/inactive when
+        # the window opened and should not appear as a new activation.
+        #
+        # Example: device terminated 2026-05-15, query window 2026-07-01.
+        # The activation request event still exists in the API response (it was
+        # processed inside the 60-day lookback window), but the contract is
+        # long dead — exclude it.
+        #
+        # We only exclude when endDate < from_dt (strictly before window start).
+        # If endDate is within the window or after it, the device was active
+        # for at least part of the queried period and should remain.
+        _contract_end = _parse_date(row.get("contractEndDate") or "")
+        if _contract_end and _contract_end < from_dt:
+            continue
+
         # Exclude termination / cancellation events — these are not activations.
         # Check requestType, activePlan, AND status since "Terminate Mode" can
         # appear in the plan name rather than the request type field.
