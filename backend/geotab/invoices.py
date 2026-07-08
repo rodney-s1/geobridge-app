@@ -565,6 +565,12 @@ def _generate_prorated_invoice(
     customer_id   = str((customer.get("userContact") or {}).get("userCompany", {}).get("id") or "")
     customer_name = (customer.get("userContact") or {}).get("userCompany", {}).get("name") or ""
 
+    # Extract location label from "Customer Name | Location" → "Location"
+    # Used to annotate serial numbers in line item descriptions when multiple
+    # sub-account locations are merged onto a single invoice.
+    _loc_match    = re.search(r'\|\s*(.+)$', customer_name)
+    location_label = _loc_match.group(1).strip() if _loc_match else ""
+
     # Use the normalised name for all price lookups
     cust_norm = _normalize(customer_name)
 
@@ -767,6 +773,7 @@ def _generate_prorated_invoice(
             "itemCode":            full_path_index.get(sku_key, sku_key),
             "skuDesc":             sku_desc_index.get(sku_key, sku_key),
             "skuOverridden":       bool(sku_overrides and f"{customer_id}|{billing_month_str}|{serial_upper}" in sku_overrides),
+            "locationLabel":       location_label,
         })
 
     if not qualifying:
@@ -913,7 +920,12 @@ def _build_invoice_from_pool(
     for (sku_key, fcd_str), devs in sorted(groups.items(), key=_group_sort_key):
         rep     = devs[0]   # all devs in group share same SKU/date/rate
         qty     = len(devs)
-        serials = [d["serialNumber"] for d in devs]
+        # Annotate each serial with its location label when present
+        # e.g. "GA1234 (Richmond)" or just "GA1234" when no location
+        serials = [
+            f"{d['serialNumber']} ({d['locationLabel']})" if d.get("locationLabel") else d["serialNumber"]
+            for d in devs
+        ]
 
         connect_label = _connect_day_label(rep["firstConnectDateObj"])
         description = (
@@ -1177,10 +1189,15 @@ def _base_customer_name(name: str) -> str:
     --------
     "Hoopaugh Grading Company LLC {Cameras}"  → "Hoopaugh Grading Company LLC"
     "ACES Controls LLC {Han-CS}"              → "ACES Controls LLC"
+    "Virginia Green Lawn Care | Richmond"     → "Virginia Green Lawn Care"
+    "Virginia Green Lawn Care | Charlotte"    → "Virginia Green Lawn Care"
     "City of Raleigh"                         → "City of Raleigh"
     """
     # Remove any {...} token at the end (handles {Cameras}, {Han-CS}, etc.)
     cleaned = re.sub(r'\s*\{[^}]+\}\s*$', '', name).strip()
+    # Remove any " | Location" pipe suffix (handles multi-location accounts
+    # like "Virginia Green Lawn Care | Richmond")
+    cleaned = re.sub(r'\s*\|\s*[^|]+$', '', cleaned).strip()
     return cleaned or name
 
 
