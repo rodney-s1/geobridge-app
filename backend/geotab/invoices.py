@@ -925,6 +925,10 @@ def _build_invoice_from_pool(
 ) -> Optional[dict]:
     """Build a single prorated invoice dict from a pool of qualifying devices."""
 
+    # Read billing-frequency settings from the customer dict
+    billing_frequency   = customer.get("billingFrequency", "")   # e.g. "Annual"
+    billing_start_month = customer.get("billingStartMonth")       # e.g. "2027-07"
+
     # ---------------------------------------------------------------------- #
     # Group devices by (skuKey, firstConnectDate) — one QB line item per group #
     # ---------------------------------------------------------------------- #
@@ -964,11 +968,20 @@ def _build_invoice_from_pool(
         ]
 
         connect_label = _connect_day_label(rep["firstConnectDateObj"])
-        description = (
-            f"{rep['skuDesc']} - New Activations\n"
-            f"Prorated {connect_label} through {last_day_label} for devices:\n"
-            + "\n".join(serials)
-        )
+        if billing_frequency == "Annual":
+            # For Annual customers the prorated line is the partial-month charge
+            # for the activation month only — make that explicit in the label.
+            description = (
+                f"{rep['skuDesc']} - New Activations (Partial Month)\n"
+                f"Prorated {connect_label} through {last_day_label} for devices:\n"
+                + "\n".join(serials)
+            )
+        else:
+            description = (
+                f"{rep['skuDesc']} - New Activations\n"
+                f"Prorated {connect_label} through {last_day_label} for devices:\n"
+                + "\n".join(serials)
+            )
 
         line_items.append({
             "type":          "prorated",
@@ -994,9 +1007,12 @@ def _build_invoice_from_pool(
         })
 
     # ---------------------------------------------------------------------- #
-    # "Forward month" full-service line (e.g. "July Service")                 #
-    # Covers all newly activated devices at the full monthly rate for the      #
-    # next billing cycle. Each distinct SKU gets its own forward line.         #
+    # Forward service line(s)                                                  #
+    # • Standard monthly: full monthly rate for the next billing cycle         #
+    # • Annual: full 12-month rate (monthly_rate × 12) for the annual cycle    #
+    #   starting the month after activation.  The prorated partial-month line  #
+    #   above already covers the activation month at daily proration.          #
+    # Each distinct SKU gets its own forward line.                             #
     # ---------------------------------------------------------------------- #
     forward_groups: Dict[str, List[dict]] = defaultdict(list)
     for dev in qualifying:

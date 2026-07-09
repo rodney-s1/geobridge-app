@@ -550,16 +550,7 @@ async def get_activations(
             if _sn:
                 _terminated_serials.add(_sn)
 
-    _DEBUG_SERIALS = {"G4HBP90KY1VA", "GAXD467UPNKH"}
-
     for req in raw_requests:
-        # Temporary debug: dump full raw record for known problem serials
-        _dbg_serial = ((req.get("device") or {}).get("serialNumber") or "").upper()
-        if _dbg_serial in _DEBUG_SERIALS:
-            import json as _json
-            print(f"[activations DEBUG] RAW RECORD for {_dbg_serial}:")
-            print(_json.dumps(req, default=str, indent=2)[:4000])
-
         # Contracts-cache termination check: if the device is marked isTerminated
         # in our GetContracts cache, skip it unconditionally — regardless of what
         # GetDeviceContractAutoRequests says about plan/request type.
