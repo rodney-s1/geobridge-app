@@ -244,10 +244,28 @@ def _resolve_price(customer_name: str, sku_key: str,
     Returns (price, source) where source is 'override' | 'catalog' | 'none'.
     ovr_index  : {(norm_customer, skuKey) -> price}
     catalog_index: {skuKey -> defaultPrice}
+
+    Lookup order:
+      1. Exact normalised customer name match in ovr_index
+      2. Parent-name fallback: strip " - Department" suffix and retry
+         e.g. "City of Raleigh - Solid Waste" → tries "city of raleigh"
+         This allows a single override row keyed to the parent account to apply
+         to all MyAdmin sub-departments without duplicating override entries.
+      3. SKU catalog default price
     """
-    key = (_normalize(customer_name), sku_key)
+    norm = _normalize(customer_name)
+    key = (norm, sku_key)
     if key in ovr_index:
         return ovr_index[key], "override"
+
+    # Parent-name fallback: strip " - <suffix>" department separator
+    _dash_pos = norm.find(" - ")
+    if _dash_pos != -1:
+        parent_norm = norm[:_dash_pos].strip()
+        parent_key = (parent_norm, sku_key)
+        if parent_key in ovr_index:
+            return ovr_index[parent_key], "override"
+
     cat = catalog_index.get(sku_key)
     if cat is not None and cat > 0:
         return cat, "catalog"
