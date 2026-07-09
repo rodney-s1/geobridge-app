@@ -47,7 +47,8 @@ from .customers import (_sync_cache, _clean_name, _strip_han_cs, _strip_sub_acco
                         billing_overrides,
                         billing_date_overrides, BILLING_DATE_OVERRIDES_FILE,
                         first_connect_date_overrides, FIRST_CONNECT_OVERRIDES_FILE, _save_json,
-                        MYADMIN_ACCOUNT)
+                        MYADMIN_ACCOUNT,
+                        billing_frequency_overrides)
 from .auth import myadmin_call, session_store
 
 # --------------------------------------------------------------------------- #
@@ -823,7 +824,9 @@ def _generate_prorated_invoice(
     #   hanover_pool  entry → HAN_CS_HAN_SKU  @ $8                            #
     # Both entries are prorated from $8 (not the device's mapped rate).       #
     # ---------------------------------------------------------------------- #
-    billing_type = customer.get("billingType", "")
+    billing_type      = customer.get("billingType", "")
+    billing_frequency = customer.get("billingFrequency", "")   # e.g. "Annual"
+    billing_start_month = customer.get("billingStartMonth")    # e.g. "2027-07" (next invoice month)
 
     if billing_type == "Han-CS":
         # Han-CS split rules:
@@ -1007,31 +1010,94 @@ def _build_invoice_from_pool(
     for sku_key, devs in sorted(forward_groups.items(), key=_fwd_sort_key):
         rep      = devs[0]
         qty      = len(devs)
-        serials  = [d["serialNumber"] for d in devs]
-        rate     = rep["monthlyRate"]
+        monthly_rate = rep["monthlyRate"]
 
-        description = f"{rep['skuDesc']} - New Activations {next_month_label} Service"
+        if billing_frequency == "Annual":
+            # ---------------------------------------------------------------- #
+            # Annual billing forward line                                        #
+            # The forward line covers a full 12-month annual cycle beginning    #
+            # the month after the device activated.                             #
+            #                                                                   #
+            # billingStartMonth is the YYYY-MM of the NEXT annual invoice       #
+            # (e.g. "2027-07" means the annual cycle covers Aug 2026–Jul 2027). #
+            # If not set, default to the 12 months starting next_month.         #
+            # ---------------------------------------------------------------- #
+            annual_rate  = round(monthly_rate * 12, 2)
 
-        line_items.append({
-            "type":          "forward",
-            "itemCode":      rep["itemCode"],
-            "skuKey":        sku_key,
-            "skuDesc":       rep["skuDesc"],
-            "description":   description,
-            "quantity":      qty,
-            "priceEach":     rate,
-            "amount":        round(rate * qty, 2),
-            "monthlyRate":   rate,
-            "priceSource":   rep["priceSource"],
-            "firstConnectDate": None,
-            "daysActive":    None,
-            "daysInMonth":   None,
-            "prorateFactor": None,
-            "serials":       [],    # serials already listed in prorated section
-            "taxable":       True,
-            "sectionGroup":  rep.get("sectionGroup", "hanover"),
-            "serialTier":    min(d.get("serialTier", 4) for d in devs),
-        })
+            # Determine the annual cycle date range for the description
+            if billing_start_month:
+                try:
+                    _bsm_year  = int(billing_start_month[:4])
+                    _bsm_month = int(billing_start_month[5:7])
+                    # Cycle runs from next_month through (billingStartMonth - 1 month)
+                    # e.g. billingStartMonth=2027-07 → cycle Aug 2026 – Jul 2027
+                    _cycle_end_year  = _bsm_year
+                    _cycle_end_month = _bsm_month - 1
+                    if _cycle_end_month == 0:
+                        _cycle_end_month = 12
+                        _cycle_end_year -= 1
+                except (ValueError, IndexError):
+                    _cycle_end_year, _cycle_end_month = next_year + 1, next_month - 1 or 12
+            else:
+                # Default: 12 months from next_month
+                _cycle_end_month = next_month - 1 or 12
+                _cycle_end_year  = next_year + (1 if next_month == 1 else 0)
+
+            _cycle_start_label = _month_label(next_year, next_month)
+            _cycle_end_label   = _month_label(_cycle_end_year, _cycle_end_month)
+
+            description = (
+                f"{rep['skuDesc']} - New Activations Annual Service\n"
+                f"{_cycle_start_label} through {_cycle_end_label} (12 months)"
+            )
+
+            line_items.append({
+                "type":          "forward",
+                "itemCode":      rep["itemCode"],
+                "skuKey":        sku_key,
+                "skuDesc":       rep["skuDesc"],
+                "description":   description,
+                "quantity":      qty,
+                "priceEach":     annual_rate,
+                "amount":        round(annual_rate * qty, 2),
+                "monthlyRate":   monthly_rate,
+                "priceSource":   rep["priceSource"],
+                "firstConnectDate": None,
+                "daysActive":    None,
+                "daysInMonth":   None,
+                "prorateFactor": None,
+                "serials":       [],
+                "taxable":       True,
+                "sectionGroup":  rep.get("sectionGroup", "hanover"),
+                "serialTier":    min(d.get("serialTier", 4) for d in devs),
+                "isAnnual":      True,
+                "annualMonths":  12,
+            })
+
+        else:
+            # Standard monthly forward line (unchanged)
+            description = f"{rep['skuDesc']} - New Activations {next_month_label} Service"
+
+            line_items.append({
+                "type":          "forward",
+                "itemCode":      rep["itemCode"],
+                "skuKey":        sku_key,
+                "skuDesc":       rep["skuDesc"],
+                "description":   description,
+                "quantity":      qty,
+                "priceEach":     monthly_rate,
+                "amount":        round(monthly_rate * qty, 2),
+                "monthlyRate":   monthly_rate,
+                "priceSource":   rep["priceSource"],
+                "firstConnectDate": None,
+                "daysActive":    None,
+                "daysInMonth":   None,
+                "prorateFactor": None,
+                "serials":       [],    # serials already listed in prorated section
+                "taxable":       True,
+                "sectionGroup":  rep.get("sectionGroup", "hanover"),
+                "serialTier":    min(d.get("serialTier", 4) for d in devs),
+            })
 
     prorated_total = sum(li["amount"] for li in line_items if li["type"] == "prorated")
     forward_total  = sum(li["amount"] for li in line_items if li["type"] == "forward")
@@ -1041,6 +1107,7 @@ def _build_invoice_from_pool(
         "customerId":       customer_id,
         "customerName":     customer_name,
         "billingType":      billing_type,
+        "billingFrequency": billing_frequency,
         "billingMonth":     f"{billing_year}-{billing_month:02d}",
         "billingMonthLabel":month_label,
         "nextMonthLabel":   next_month_label,
@@ -1486,6 +1553,7 @@ async def get_prorated_invoices(
         # Using _after_sub instead ensures both "Acme {Han-CS}" (parent) and
         # "Acme {Han-CS} {Cameras}" (sub) produce display_name = "Acme".
         display_name = _strip_han_cs(_after_sub)
+        _freq_rec = billing_frequency_overrides.get(_normalize(qb_lookup_name)) or {}
         fake_customer = {
             "userContact": {
                 "userCompany": {
@@ -1493,7 +1561,9 @@ async def get_prorated_invoices(
                     "name": display_name,
                 }
             },
-            "billingType": bt,
+            "billingType":       bt,
+            "billingFrequency":  _freq_rec.get("billingFrequency") or "",
+            "billingStartMonth": _freq_rec.get("billingStartMonth") or None,
         }
 
         invoice = _generate_prorated_invoice(
@@ -1620,10 +1690,12 @@ async def get_prorated_invoice_for_customer(
     # Same fix as bulk endpoint: use _after_sub_s (second suffix already stripped)
     # so that double-suffix names like "Acme {Han-CS} {Cameras}" resolve correctly.
     display_name = _strip_han_cs(_after_sub_s)
-
+    _freq_rec_s = billing_frequency_overrides.get(_normalize(qb_lookup_name)) or {}
     fake_customer = {
         "userContact": {"userCompany": {"id": customer_id, "name": display_name}},
-        "billingType": bt,
+        "billingType":       bt,
+        "billingFrequency":  _freq_rec_s.get("billingFrequency") or "",
+        "billingStartMonth": _freq_rec_s.get("billingStartMonth") or None,
     }
 
     invoice = _generate_prorated_invoice(

@@ -450,7 +450,11 @@ function InvoiceDetail({ invoice, onExport, onExclude, onRefresh, skuCatalog }) 
           <div className="text-xl font-bold text-amber-400">{fmt$(invoice.proratedTotal)}</div>
         </div>
         <div className="bg-green-500/5 rounded-lg p-3 border border-green-500/20">
-          <div className="text-xs text-green-500/70 mb-1">Forward ({invoice.nextMonthLabel})</div>
+          <div className="text-xs text-green-500/70 mb-1">
+            {invoice.billingFrequency === 'Annual'
+              ? `Annual Service (${invoice.nextMonthLabel})`
+              : `Forward (${invoice.nextMonthLabel})`}
+          </div>
           <div className="text-xl font-bold text-green-400">{fmt$(invoice.forwardTotal)}</div>
         </div>
       </div>
@@ -499,7 +503,9 @@ function InvoiceDetail({ invoice, onExport, onExclude, onRefresh, skuCatalog }) 
             {forwardLines.length > 0 && (
               <tr className="bg-green-500/5">
                 <td colSpan={8} className="px-3 py-1.5 text-xs font-semibold text-green-400/70 uppercase tracking-wider">
-                  ── Full Month Forward · {invoice.nextMonthLabel}
+                  {invoice.billingFrequency === 'Annual'
+                    ? `── Annual Service Forward · ${invoice.nextMonthLabel}`
+                    : `── Full Month Forward · ${invoice.nextMonthLabel}`}
                 </td>
               </tr>
             )}
@@ -530,7 +536,7 @@ function InvoiceDetail({ invoice, onExport, onExclude, onRefresh, skuCatalog }) 
             <span className="font-mono">{fmt$(invoice.proratedTotal)}</span>
           </div>
           <div className="flex justify-between text-xs text-slate-400">
-            <span>Forward month subtotal</span>
+            <span>{invoice.billingFrequency === 'Annual' ? 'Annual service subtotal' : 'Forward month subtotal'}</span>
             <span className="font-mono">{fmt$(invoice.forwardTotal)}</span>
           </div>
           <div className="flex justify-between text-sm font-bold text-slate-100 border-t border-slate-600 pt-2 mt-2">
