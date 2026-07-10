@@ -82,6 +82,8 @@ app.include_router(invoices_router, prefix="/api", tags=["Invoices"])
 from geotab.activations import router as activations_router
 app.include_router(activations_router, prefix="/api", tags=["Activations"])
 
+from geotab.reports import router as reports_router
+app.include_router(reports_router, prefix="/api", tags=["Reports"])
 
 # ============================================================
 #  S3 BACKUP  endpoints + startup restore
