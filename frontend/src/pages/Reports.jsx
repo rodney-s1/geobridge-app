@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 
-const API = window.__GEOBRIDGE_API__ || ''
+const API = 'http://127.0.0.1:8001'
 
 // ─── Palette ───────────────────────────────────────────────────────────────
 const BILLING_COLORS = {
