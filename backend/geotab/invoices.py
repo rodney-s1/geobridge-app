@@ -1045,19 +1045,26 @@ def _build_invoice_from_pool(
                 try:
                     _bsm_year  = int(billing_start_month[:4])
                     _bsm_month = int(billing_start_month[5:7])
-                    # Cycle runs from next_month through (billingStartMonth - 1 month)
-                    # e.g. billingStartMonth=2027-07 → cycle Aug 2026 – Jul 2027
+                    # billingStartMonth is when the NEXT annual invoice is generated.
+                    # e.g. billingStartMonth=2027-07 means the next invoice fires July 2027.
+                    # The current cycle therefore runs from next_month through billingStartMonth
+                    # inclusive — Aug 2026 through Jul 2027.
+                    # Do NOT subtract 1 from bsm_month: the renewal month IS the last month
+                    # of the current cycle (the invoice covers through end of that month).
                     _cycle_end_year  = _bsm_year
-                    _cycle_end_month = _bsm_month - 1
-                    if _cycle_end_month == 0:
-                        _cycle_end_month = 12
-                        _cycle_end_year -= 1
+                    _cycle_end_month = _bsm_month
                 except (ValueError, IndexError):
                     _cycle_end_year, _cycle_end_month = next_year + 1, next_month - 1 or 12
             else:
-                # Default: 12 months from next_month
-                _cycle_end_month = next_month - 1 or 12
-                _cycle_end_year  = next_year + (1 if next_month == 1 else 0)
+                # Default: exactly 12 months starting next_month.
+                # e.g. next_month=8 (Aug 2026) → ends Jul 2027
+                #      next_month=1 (Jan 2027) → ends Dec 2027 (same year)
+                if next_month == 1:
+                    _cycle_end_month = 12
+                    _cycle_end_year  = next_year          # Jan→Dec same year
+                else:
+                    _cycle_end_month = next_month - 1
+                    _cycle_end_year  = next_year + 1      # Feb–Dec start → always +1 year
 
             _cycle_start_label = _month_label(next_year, next_month)
             _cycle_end_label   = _month_label(_cycle_end_year, _cycle_end_month)
