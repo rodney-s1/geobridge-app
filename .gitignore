@@ -26,6 +26,10 @@ backend/geotab/qb_customers.json
 backend/geotab/billing_overrides.json
 backend/geotab/myadmin_cache.json
 
+# AWS credentials — never commit
+.aws/
+scripts/aws_credentials_setup.sh
+
 # macOS
 .DS_Store
 
