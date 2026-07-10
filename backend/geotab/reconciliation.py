@@ -245,26 +245,35 @@ def _resolve_price(customer_name: str, sku_key: str,
     ovr_index  : {(norm_customer, skuKey) -> price}
     catalog_index: {skuKey -> defaultPrice}
 
-    Lookup order:
-      1. Exact normalised customer name match in ovr_index
-      2. Parent-name fallback: strip " - Department" suffix and retry
-         e.g. "City of Raleigh - Solid Waste" → tries "city of raleigh"
-         This allows a single override row keyed to the parent account to apply
-         to all MyAdmin sub-departments without duplicating override entries.
+    Lookup order for dash-department sub-accounts
+    (names of the form "Parent - Department", e.g. "City of Raleigh - Solid Waste"):
+      1. Parent-name override (strip " - <suffix>" and look up "city of raleigh")
+         A parent override is explicitly configured and is always authoritative.
+         This must beat any QB-imported entry stored under the full sub-account
+         name, which may carry a stale or annual-rate price from a prior import.
+      2. Exact normalised sub-account name match
+         Fallback for sub-accounts that have their own explicitly configured price.
       3. SKU catalog default price
+
+    For names without " - " (the vast majority of customers):
+      1. Exact normalised name match in ovr_index
+      2. SKU catalog default price
     """
     norm = _normalize(customer_name)
-    key = (norm, sku_key)
-    if key in ovr_index:
-        return ovr_index[key], "override"
 
-    # Parent-name fallback: strip " - <suffix>" department separator
+    # For dash-department sub-accounts: parent override takes priority
     _dash_pos = norm.find(" - ")
     if _dash_pos != -1:
         parent_norm = norm[:_dash_pos].strip()
         parent_key = (parent_norm, sku_key)
         if parent_key in ovr_index:
             return ovr_index[parent_key], "override"
+
+    # Exact normalised name lookup (covers all non-dash names and sub-accounts
+    # that have their own entry but no parent override)
+    key = (norm, sku_key)
+    if key in ovr_index:
+        return ovr_index[key], "override"
 
     cat = catalog_index.get(sku_key)
     if cat is not None and cat > 0:

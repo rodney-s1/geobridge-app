@@ -111,16 +111,21 @@ def _build_price_index() -> Tuple[dict, dict]:
 
 def _resolve_monthly_rate(customer_name: str, sku_key: str,
                            ovr_index: dict, catalog_index: dict) -> float:
+    """
+    For dash-department sub-accounts the parent override takes priority over
+    any QB-imported entry stored under the full sub-account name.
+    """
     norm = _normalize(customer_name)
-    key  = (norm, sku_key)
-    if key in ovr_index:
-        return ovr_index[key]
-    # Parent-name fallback (dash-department sub-accounts)
+    # Parent-name check first (covers "City of Raleigh - Solid Waste" → "city of raleigh")
     dash = norm.find(" - ")
     if dash != -1:
         parent_key = (norm[:dash].strip(), sku_key)
         if parent_key in ovr_index:
             return ovr_index[parent_key]
+    # Exact match (non-dash names, or sub-accounts with their own configured price)
+    key = (norm, sku_key)
+    if key in ovr_index:
+        return ovr_index[key]
     return catalog_index.get(sku_key) or 0.0
 
 
