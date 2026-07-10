@@ -500,7 +500,11 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
         STEP2_START_PCT = 20
         STEP2_END_PCT   = 75
         STEP2_PCT_RANGE = STEP2_END_PCT - STEP2_START_PCT
-        EST_PAGES       = max(120, page_num + 10)
+        # Dynamic estimate: starts at the larger of (a) current page + 5 or
+        # (b) 50, and is updated inside the loop so it always stays exactly
+        # 5 pages ahead of reality — preventing the old hard-coded 120-page
+        # floor from pinning the bar far below 100% on a ~103-page sync.
+        EST_PAGES       = max(50, page_num + 5)
 
         _set_progress(
             step="step2",
@@ -513,13 +517,19 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
 
         while True:
             page_num += 1
-            step2_fraction = min(page_num / max(EST_PAGES, page_num + 1), 0.95)
+            # Update the rolling estimate every page (stays 5 ahead).
+            EST_PAGES      = max(EST_PAGES, page_num + 5)
+            # Use a square-root curve so the bar accelerates toward 100% rather
+            # than saturating: sqrt(page/est) grows more linearly than page/est.
+            # Cap at 0.99 so there's always a visible jump when the post-loop
+            # _set_progress(pct=75) fires on completion.
+            step2_fraction = min((page_num / EST_PAGES) ** 0.5, 0.99)
             current_pct    = int(STEP2_START_PCT + step2_fraction * STEP2_PCT_RANGE)
             _set_progress(
                 step="step2",
                 step_label=f"Step 2/2 -- Fetching contracts (page {page_num})...",
                 page=page_num,
-                total_pages_est=max(EST_PAGES, page_num),
+                total_pages_est=EST_PAGES,
                 records=len(all_contracts),
                 pct=current_pct,
                 message=f"Page {page_num} — {len(all_contracts):,} contracts so far...",
