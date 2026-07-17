@@ -536,6 +536,27 @@ function ActivationGroup({ group }) {
   )
 }
 
+// ─── Sortable column header ──────────────────────────────────────────────────
+function SortTh({ label, col, sortConfig, onSort, className = '' }) {
+  const active = sortConfig.col === col
+  return (
+    <th
+      className={`px-3 py-2.5 text-xs font-medium text-slate-400 whitespace-nowrap select-none
+                  cursor-pointer hover:text-slate-200 transition-colors group ${className}`}
+      onClick={() => onSort(col)}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        <span className={`text-[10px] transition-colors ${
+          active ? 'text-blue-400' : 'text-slate-600 group-hover:text-slate-500'
+        }`}>
+          {active ? (sortConfig.dir === 'asc' ? '▲' : '▼') : '⇅'}
+        </span>
+      </span>
+    </th>
+  )
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 export default function Activations() {
   const defaults = defaultDates()
@@ -552,6 +573,19 @@ export default function Activations() {
 
   const [page,     setPage]     = useState(1)
   const [pageSize, setPageSize] = useState(100)
+
+  // sortConfig: col = 'date' | 'customer' | 'amount' | 'billingType' | null
+  // dir  = 'asc' | 'desc'
+  const [sortConfig, setSortConfig] = useState({ col: 'date', dir: 'desc' })
+
+  function handleSort(col) {
+    setSortConfig(prev =>
+      prev.col === col
+        ? { col, dir: prev.dir === 'asc' ? 'desc' : 'asc' }
+        : { col, dir: col === 'date' ? 'desc' : 'asc' }  // date defaults desc (newest first)
+    )
+    setPage(1)
+  }
 
   async function fetchActivations() {
     setLoading(true)
@@ -622,7 +656,7 @@ export default function Activations() {
     }
 
     // Compute derived fields per group
-    return Array.from(groupMap.values()).map(g => {
+    const builtGroups = Array.from(groupMap.values()).map(g => {
       const proratedValues = g.records
         .map(r => r.proration?.proratedCharge)
         .filter(v => v != null)
@@ -645,7 +679,29 @@ export default function Activations() {
 
       return { ...g, totalProrated, skuSummary, autoActivated }
     })
-  }, [data, search])
+
+    // Apply column sort on the groups array
+    const { col, dir } = sortConfig
+    const sign = dir === 'asc' ? 1 : -1
+    builtGroups.sort((a, b) => {
+      if (col === 'date') {
+        return sign * (a.activationDate || '').localeCompare(b.activationDate || '')
+      }
+      if (col === 'customer') {
+        return sign * (a.customerName || '').localeCompare(b.customerName || '', undefined, { sensitivity: 'base' })
+      }
+      if (col === 'amount') {
+        return sign * ((a.totalProrated ?? -1) - (b.totalProrated ?? -1))
+      }
+      if (col === 'billingType') {
+        const aO = BT_ORDER[a.billingType] ?? 99
+        const bO = BT_ORDER[b.billingType] ?? 99
+        return sign * (aO - bO)
+      }
+      return 0
+    })
+    return builtGroups
+  }, [data, search, sortConfig])
 
   const totalPages  = Math.ceil(groups.length / pageSize) || 1
   const pageGroups  = groups.slice((page - 1) * pageSize, page * pageSize)
@@ -838,13 +894,13 @@ export default function Activations() {
               <thead>
                 <tr className="border-b border-slate-700/50 bg-slate-800/80">
                   <th className="px-3 py-2.5 text-xs font-medium text-slate-400">Serial</th>
-                  <th className="px-3 py-2.5 text-xs font-medium text-slate-400">Customer</th>
-                  <th className="px-3 py-2.5 text-xs font-medium text-slate-400 whitespace-nowrap">Billing Type</th>
+                  <SortTh label="Customer"     col="customer"    sortConfig={sortConfig} onSort={handleSort} />
+                  <SortTh label="Billing Type" col="billingType" sortConfig={sortConfig} onSort={handleSort} />
                   <th className="px-3 py-2.5 text-xs font-medium text-slate-400">Plan / Code</th>
                   <th className="px-3 py-2.5 text-xs font-medium text-slate-400">Resolved SKU</th>
+                  <SortTh label="First Connect" col="date" sortConfig={sortConfig} onSort={handleSort} />
                   <th className="px-3 py-2.5 text-xs font-medium text-slate-400 whitespace-nowrap">First Connect</th>
-                  <th className="px-3 py-2.5 text-xs font-medium text-slate-400 whitespace-nowrap">First Connect</th>
-                  <th className="px-3 py-2.5 text-xs font-medium text-slate-400 text-right whitespace-nowrap">Prorated Amt</th>
+                  <SortTh label="Prorated Amt" col="amount" sortConfig={sortConfig} onSort={handleSort} className="text-right" />
                 </tr>
               </thead>
               <tbody>
