@@ -540,8 +540,13 @@ def _parse_qb_csv(content: str) -> dict:
         skus_out[sku_name]['prices'].add(price)
         skus_out[sku_name]['customerCount'] += 1
 
-        # Parent customer name (strip child sub-account after ':')
-        parent_name = name_raw.split(':')[0].strip()
+        # QB Name column format: "Parent:Sub-account" (e.g. "Atrium Health:Atrium Health - Charlotte")
+        # or plain "Customer Name" when there is no sub-account hierarchy.
+        # We want the sub-account (right of colon) because that is the specific
+        # billing entity that matches the MyAdmin company name.  For plain names
+        # (no colon) fall back to the full name unchanged.
+        _name_parts = name_raw.split(':')
+        parent_name = _name_parts[-1].strip() if len(_name_parts) > 1 else _name_parts[0].strip()
 
         # Skip price overrides and quantity accumulation for New Activations rows.
         # Their prorated price would clobber the standard monthly rate, and their
