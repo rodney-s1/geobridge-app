@@ -508,11 +508,18 @@ function BillingFrequencyEditor({ customer, onBillingFrequencyChange, stopPropag
   )
 }
 
-// ─── Shared billing-type editor (used by CustomerRow and SubAccountRow) ───────
+// ─── Shared billing-type editor (used by CustomerRow, SubAccountRow, ParentGroupRow) ──
+// Props:
+//   customer          – object with .id, .billingType, .billingTypeSource
+//   onBillingTypeChange(id, newType, newSource) – callback after save or clear
+//   stopPropagation   – whether clicks bubble up (default true)
 function BillingTypeEditor({ customer, onBillingTypeChange, stopPropagation = true }) {
   const [editingBilling, setEditingBilling] = useState(false)
-  const [selectedType, setSelectedType] = useState(customer.billingType)
-  const [savingType, setSavingType] = useState(false)
+  const [selectedType,   setSelectedType]   = useState(customer.billingType)
+  const [savingType,     setSavingType]     = useState(false)
+  const [clearingType,   setClearingType]   = useState(false)
+
+  const isOverride = customer.billingTypeSource === 'override'
 
   const saveBillingType = async () => {
     setSavingType(true)
@@ -523,13 +530,37 @@ function BillingTypeEditor({ customer, onBillingTypeChange, stopPropagation = tr
         body: JSON.stringify({ billing_type: selectedType }),
       })
       if (res.ok) {
-        onBillingTypeChange(customer.id, selectedType)
+        onBillingTypeChange(customer.id, selectedType, 'override')
         setEditingBilling(false)
       }
     } catch (e) {
       console.error('Failed to save billing type:', e)
     } finally {
       setSavingType(false)
+    }
+  }
+
+  // Clears the manual override → QB / Han-CS / Unknown wins going forward.
+  // We re-fetch the customer's live billingType from the server after clearing
+  // because only the server knows what QB has for this account.
+  const clearOverride = async (e) => {
+    if (stopPropagation) e.stopPropagation()
+    setClearingType(true)
+    try {
+      const res = await fetch(`${API}/api/customers/${customer.id}/billing-type`, {
+        method: 'DELETE',
+      })
+      if (res.ok) {
+        // Tell the parent to mark this customer's source as cleared;
+        // the actual new billingType will come on next data fetch.
+        // For instant feedback we optimistically set source = 'qb' and keep
+        // the same billingType label (it will update on next reload).
+        onBillingTypeChange(customer.id, customer.billingType, 'qb')
+      }
+    } catch (e) {
+      console.error('Failed to clear billing type override:', e)
+    } finally {
+      setClearingType(false)
     }
   }
 
@@ -569,15 +600,41 @@ function BillingTypeEditor({ customer, onBillingTypeChange, stopPropagation = tr
   }
 
   return (
-    <div
-      className="flex items-center gap-2 group cursor-pointer"
-      onClick={stopPropagation ? e => { e.stopPropagation(); setEditingBilling(true) } : () => setEditingBilling(true)}
-      title="Click to change billing type"
-    >
-      <BillingBadge type={customer.billingType} />
-      <svg className="w-3 h-3 text-slate-600 group-hover:text-slate-400 transition-colors opacity-0 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-      </svg>
+    <div className="flex flex-col gap-0.5">
+      <div
+        className="flex items-center gap-1.5 group cursor-pointer"
+        onClick={stopPropagation ? e => { e.stopPropagation(); setEditingBilling(true) } : () => setEditingBilling(true)}
+        title={isOverride ? 'Manually set in GeoBridge — click to change' : 'Click to change billing type'}
+      >
+        <BillingBadge type={customer.billingType} />
+        {/* Lock icon when value is a manual GeoBridge override */}
+        {isOverride && (
+          <svg
+            className="w-3 h-3 text-amber-400/70 flex-shrink-0"
+            fill="currentColor" viewBox="0 0 20 20"
+            title="Manually set — overrides QB"
+          >
+            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+          </svg>
+        )}
+        <svg className="w-3 h-3 text-slate-600 group-hover:text-slate-400 transition-colors opacity-0 group-hover:opacity-100" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+        </svg>
+      </div>
+      {/* "Clear override → use QB" button — only visible when a manual override is set */}
+      {isOverride && (
+        <button
+          onClick={clearOverride}
+          disabled={clearingType}
+          className="flex items-center gap-1 text-[10px] text-amber-400/60 hover:text-amber-300 transition-colors disabled:opacity-50 leading-tight"
+          title="Remove manual override and let QB Job Type win"
+        >
+          <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+          </svg>
+          {clearingType ? 'clearing…' : 'clear → use QB'}
+        </button>
+      )}
     </div>
   )
 }
@@ -984,12 +1041,25 @@ function ParentGroupRow({ group, onBillingTypeChange, onBillingFrequencyChange, 
           )}
         </td>
 
-        {/* Billing type + frequency (parent's own, if it exists) */}
+        {/* Billing type + frequency (parent's own, if it exists; otherwise derived from first sub) */}
         <td className="px-4 py-3" onClick={e => e.stopPropagation()}>
           {parent ? (
             <>
               <BillingTypeEditor customer={parent} onBillingTypeChange={onBillingTypeChange} />
               <BillingFrequencyEditor customer={parent} onBillingFrequencyChange={onBillingFrequencyChange} />
+            </>
+          ) : subs.length > 0 ? (
+            // No direct parent account exists — all subs inherit the same QB billing type
+            // via the stripped parent name lookup.  Let the user set/clear the override
+            // using the first sub as the representative account.
+            <>
+              <BillingTypeEditor
+                customer={subs[0]}
+                onBillingTypeChange={onBillingTypeChange}
+              />
+              <span className="text-[10px] text-slate-600 italic mt-0.5 block">
+                inherited by {subs.length} sub{subs.length !== 1 ? 's' : ''}
+              </span>
             </>
           ) : (
             <span className="text-xs text-slate-600">—</span>
@@ -1314,7 +1384,8 @@ export default function Customers({ onDetail }) {
   const debounceRef = useRef(null)
   const [importingQb, setImportingQb] = useState(false)
   const [importMsg,    setImportMsg]    = useState('')
-  const [importCols,   setImportCols]   = useState(null)  // CSV columns from last import
+  const [importCols,     setImportCols]     = useState(null)  // CSV columns from last import
+  const [forceQbImport,  setForceQbImport]  = useState(false) // force QB values to override GeoBridge overrides
   const [qbSummary, setQbSummary] = useState(null)
   const [syncProgress, setSyncProgress] = useState(null)   // SSE progress data
   const sseRef = useRef(null)   // holds the EventSource so we can close it
@@ -1507,9 +1578,12 @@ export default function Customers({ onDetail }) {
       .catch(() => {})
   }, [])
 
-  const handleBillingTypeChange = (customerId, newType) => {
+  const handleBillingTypeChange = (customerId, newType, newSource) => {
     setCustomers(prev =>
-      prev.map(c => c.id === customerId ? { ...c, billingType: newType } : c)
+      prev.map(c => c.id === customerId
+        ? { ...c, billingType: newType, billingTypeSource: newSource ?? c.billingTypeSource }
+        : c
+      )
     )
   }
 
@@ -1530,7 +1604,10 @@ export default function Customers({ onDetail }) {
     const form = new FormData()
     form.append('file', file)
     try {
-      const res = await fetch(`${API}/api/customers/import-qb`, {
+      const url = forceQbImport
+        ? `${API}/api/customers/import-qb?force=true`
+        : `${API}/api/customers/import-qb`
+      const res = await fetch(url, {
         method: 'POST',
         body: form,
       })
@@ -1618,18 +1695,37 @@ export default function Customers({ onDetail }) {
         </div>
 
         <div className="flex items-start gap-3">
-          {/* QB Import button */}
-          <label className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors ${
-            importingQb
-              ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-              : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
-          }`}>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-            </svg>
-            {importingQb ? 'Importing...' : 'Import QB Customers'}
-            <input type="file" accept=".csv" className="hidden" onChange={handleQbImport} disabled={importingQb} />
-          </label>
+          {/* QB Import button + force-override option */}
+          <div className="flex flex-col items-end gap-1">
+            <label className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors ${
+              importingQb
+                ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                : forceQbImport
+                  ? 'bg-amber-700/60 hover:bg-amber-700/80 text-amber-200 ring-1 ring-amber-500/50'
+                  : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+            }`}>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              {importingQb ? 'Importing...' : forceQbImport ? 'Import QB (force override)' : 'Import QB Customers'}
+              <input type="file" accept=".csv" className="hidden" onChange={handleQbImport} disabled={importingQb} />
+            </label>
+            {/* Force QB override toggle */}
+            <label
+              className="flex items-center gap-1.5 cursor-pointer select-none"
+              onClick={e => e.stopPropagation()}
+            >
+              <input
+                type="checkbox"
+                checked={forceQbImport}
+                onChange={e => setForceQbImport(e.target.checked)}
+                className="w-3 h-3 rounded accent-amber-500"
+              />
+              <span className={`text-[11px] ${forceQbImport ? 'text-amber-400' : 'text-slate-500'}`}>
+                Force QB to override GeoBridge edits
+              </span>
+            </label>
+          </div>
 
           <div className="flex flex-col items-end gap-1">
             <button

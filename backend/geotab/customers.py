@@ -359,25 +359,29 @@ def enrich_customer(customer: dict) -> dict:
     cid = company_id or normalize(company_name)
 
     # Billing type priority:
-    #   1. Manual override (billing_overrides.json)
-    #   2. QB Job Type (from qb_customers lookup — parent name after stripping suffixes)
-    #      Sub-accounts (e.g. 'AWT... {3rd Party Devices}') look up the parent QB
-    #      record and inherit its billing type here.
-    #   3. If the company name has '{Han-CS}' suffix and QB has no override,
-    #      default to 'Han-CS' (the name itself tells us the type).
-    #   4. Fall back to 'Unknown'
-    billing_type = (
-        billing_overrides.get(cid)
-        or qb.get("billingType")
-        or ("Han-CS" if is_han_cs_customer else None)
-        or "Unknown"
-    )
+    #   1. Manual override (billing_overrides.json)  → source = "override"
+    #   2. QB Job Type (from qb_customers lookup)    → source = "qb"
+    #   3. Han-CS suffix default                     → source = "han-cs"
+    #   4. Fall back to 'Unknown'                    → source = "unknown"
+    if billing_overrides.get(cid):
+        billing_type        = billing_overrides[cid]
+        billing_type_source = "override"
+    elif qb.get("billingType"):
+        billing_type        = qb["billingType"]
+        billing_type_source = "qb"
+    elif is_han_cs_customer:
+        billing_type        = "Han-CS"
+        billing_type_source = "han-cs"
+    else:
+        billing_type        = "Unknown"
+        billing_type_source = "unknown"
 
     return {
         "id":                cid,
         "name":              display_name,
         "accountNo":         qb.get("accountNo") or "",
         "billingType":       billing_type,
+        "billingTypeSource": billing_type_source,
         "billingFrequency":  (billing_frequency_overrides.get(normalize(qb_lookup_name)) or {}).get("billingFrequency") or "",
         "billingStartMonth": (billing_frequency_overrides.get(normalize(qb_lookup_name)) or {}).get("billingStartMonth") or None,
         "primaryDatabase":   db_name,
@@ -920,7 +924,17 @@ async def get_dashboard_stats():
 
 # --- POST /api/customers/import-qb --------------------------------------------
 @router.post("/customers/import-qb")
-async def import_qb_customers(file: UploadFile = File(...)):
+async def import_qb_customers(file: UploadFile = File(...), force: bool = Query(False)):
+    """Import QuickBooks Customer List CSV.
+
+    ``force=true``  — ignore any existing GeoBridge billing-type overrides and
+    always use the QB Job Type value.  Use this when you have just updated Job
+    Types in QB and want those values to win everywhere, even for customers that
+    were previously edited in GeoBridge.
+
+    Default (``force=false``) — preserves manually-set GeoBridge overrides so
+    that a routine re-import never silently overwrites your manual edits.
+    """
     global qb_customers
     content = await file.read()
     try:
@@ -976,13 +990,18 @@ async def import_qb_customers(file: UploadFile = File(...)):
 
         has_override = bool(billing_overrides.get(company_id))
         existing     = qb_customers.get(norm_name) or {}
-        if has_override:
+        if has_override and not force:
             preserved_billing = existing.get("billingType") or new_billing_type
             protected += 1
             _print(f"[import-qb] Override protected '{name}': "
                f"QB='{new_billing_type}' -> keeping '{preserved_billing}'")
         else:
             preserved_billing = new_billing_type
+            if has_override and force:
+                # Force mode: clear the stored override so QB wins going forward
+                del billing_overrides[company_id]
+                _print(f"[import-qb] Force-override: cleared override for '{name}', "
+                       f"using QB='{new_billing_type}'")
 
         qb_customers[norm_name] = {
             "name":        name,
@@ -1004,6 +1023,9 @@ async def import_qb_customers(file: UploadFile = File(...)):
         imported += 1
 
     _save_json(QB_DATA_FILE, qb_customers)
+    # If force mode cleared any billing overrides, persist the updated dict
+    if force:
+        _save_json(OVERRIDES_FILE, billing_overrides)
     # Persist the column list so the debug endpoint can report it later
     _save_json(os.path.join(_HERE, "qb_last_import_columns.json"), csv_columns)
     print(f"[import-qb] Saved {len(qb_customers)} QB customers to {QB_DATA_FILE}")
@@ -1011,6 +1033,8 @@ async def import_qb_customers(file: UploadFile = File(...)):
     msg = f"{imported} customers imported, {skipped} skipped"
     if protected:
         msg += f", {protected} GeoBridge billing overrides preserved"
+    if force and imported > 0:
+        msg += f" (force mode: QB values applied to all customers)"
 
     return {
         "success":    True,
@@ -1198,6 +1222,26 @@ async def set_billing_type(account_id: str, body: BillingTypeUpdate):
     billing_overrides[account_id] = body.billing_type
     _save_json(OVERRIDES_FILE, billing_overrides)
     return {"success": True, "customerId": account_id, "billingType": body.billing_type}
+
+
+# --- DELETE /api/customers/{account_id}/billing-type -------------------------
+# Clears the manual override so the QB Job Type wins on next lookup.
+@router.delete("/customers/{account_id}/billing-type")
+async def clear_billing_type(account_id: str):
+    """Remove the manual billing-type override for this account.
+
+    After clearing, ``enrich_customer()`` will fall back to the QB Job Type
+    (or Han-CS / Unknown) — exactly as if the user had never set it manually.
+    """
+    had_override = account_id in billing_overrides
+    if had_override:
+        del billing_overrides[account_id]
+        _save_json(OVERRIDES_FILE, billing_overrides)
+    return {
+        "success":     True,
+        "customerId":  account_id,
+        "hadOverride": had_override,
+    }
 
 
 # --- GET /api/customers/{account_id}/devices ---------------------------------
