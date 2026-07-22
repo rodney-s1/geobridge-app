@@ -733,24 +733,32 @@ function EmptyState({ icon, title, body }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 //  ROOT COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
-export default function Reconciliation() {
+export default function Reconciliation({ onNavigate }) {
   const [data,         setData]        = useState(null)
   const [loading,      setLoading]     = useState(false)
   const [error,        setError]       = useState(null)
   const [search,       setSearch]      = useState('')
   const [qtyFilter,    setQtyFilter]   = useState('')  // '' | 'under_billed' | 'over_billed' | 'no_qb_data' | 'match' | 'periodic'
   const [sortBy,       setSortBy]      = useState('alpha') // 'alpha' | 'status' | 'under_first' | 'over_first' | 'no_qb_first' | 'match_first' | 'periodic_first'
+  const [catalog,      setCatalog]     = useState([])
 
   const fetchData = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const r = await fetch(`${API}/api/reconciliation`)
-      if (!r.ok) {
-        const body = await r.json().catch(() => ({}))
-        throw new Error(body.detail || `HTTP ${r.status}`)
+      const [recR, catR] = await Promise.all([
+        fetch(`${API}/api/reconciliation`),
+        fetch(`${API}/api/settings/catalog`).catch(() => null),
+      ])
+      if (!recR.ok) {
+        const body = await recR.json().catch(() => ({}))
+        throw new Error(body.detail || `HTTP ${recR.status}`)
       }
-      setData(await r.json())
+      setData(await recR.json())
+      if (catR && catR.ok) {
+        const catJson = await catR.json()
+        setCatalog(catJson.items || catJson || [])
+      }
     } catch (e) {
       setError(e.message)
     } finally {
