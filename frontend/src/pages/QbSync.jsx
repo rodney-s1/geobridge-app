@@ -213,10 +213,12 @@ function HistoryRow({ run }) {
         </td>
         <td className="px-3 py-2.5 align-middle"><StatusBadge status={run.status} /></td>
         <td className="px-3 py-2.5 text-xs text-slate-300 align-middle text-center">
-          {run.recurrencesUpdated ?? '—'}
+          {run.dryRun
+            ? (run.totalPreviewed != null ? `${run.totalPreviewed} preview` : (run.recurrencesUpdated ?? '—'))
+            : (run.recurrencesUpdated ?? '—')}
         </td>
         <td className="px-3 py-2.5 text-xs text-slate-300 align-middle text-center">
-          {run.invoicesCreated ?? '—'}
+          {run.dryRun ? '—' : (run.invoicesCreated ?? '—')}
         </td>
         <td className="px-3 py-2.5 align-middle text-center">
           {run.errorCount > 0 ? (
@@ -295,6 +297,8 @@ export default function QbSync() {
   const [result,     setResult]     = useState(null)    // { recurrencesUpdated, invoicesCreated, errorCount, durationMs }
   const [history,    setHistory]    = useState([])
   const [historyLoading, setHistoryLoading] = useState(false)
+  const [preview,    setPreview]    = useState([])   // dry-run preview rows from done event
+  const [previewFilter, setPreviewFilter] = useState('all') // 'all'|'recurrence'|'prorated'
 
   const logEndRef    = useRef(null)
   const sseRef       = useRef(null)
@@ -334,6 +338,8 @@ export default function QbSync() {
     setLog([])
     setErrors([])
     setResult(null)
+    setPreview([])
+    setPreviewFilter('all')
     startTimeRef.current = Date.now()
 
     appendLog('step', `Starting ${MODES.find(m => m.id === mode)?.title}${dryRun ? ' [DRY RUN]' : ''}…`)
@@ -375,18 +381,31 @@ export default function QbSync() {
             setSyncState(finalStatus)
             setProgress(100)
             setProgressLabel(finalStatus === 'success' ? 'Sync complete' : 'Completed with errors')
+            // In dry-run mode the real counts are 0 — use preview length as the
+            // display count so the summary cards show meaningful numbers.
+            const previewRows  = msg.preview || []
+            const recPreviewed = previewRows.filter(p => p.syncType === 'recurrence').length
+            const proPreviewed = previewRows.filter(p => p.syncType === 'prorated').length
+            const isDry = dryRun  // captured from outer scope
+            setPreview(previewRows)
             setResult({
-              recurrencesUpdated: msg.recurrencesUpdated ?? 0,
-              invoicesCreated:    msg.invoicesCreated    ?? 0,
-              errorCount:         msg.errorCount         ?? 0,
+              recurrencesUpdated: isDry ? recPreviewed : (msg.recurrencesUpdated ?? 0),
+              invoicesCreated:    isDry ? proPreviewed : (msg.invoicesCreated    ?? 0),
+              errorCount:         msg.errorCount ?? 0,
               durationMs,
+              isDryRun: isDry,
             })
             appendLog(
               finalStatus === 'success' ? 'success' : 'warning',
-              `Sync finished in ${fmtDuration(durationMs)} — ` +
-              `${msg.recurrencesUpdated ?? 0} recurrences, ` +
-              `${msg.invoicesCreated ?? 0} prorated invoices, ` +
-              `${msg.errorCount ?? 0} errors`
+              isDry
+                ? `Dry run finished in ${fmtDuration(durationMs)} — ` +
+                  `${recPreviewed} recurrences would be updated, ` +
+                  `${proPreviewed} prorated invoices would be created, ` +
+                  `${msg.errorCount ?? 0} errors`
+                : `Sync finished in ${fmtDuration(durationMs)} — ` +
+                  `${msg.recurrencesUpdated ?? 0} recurrences, ` +
+                  `${msg.invoicesCreated ?? 0} prorated invoices, ` +
+                  `${msg.errorCount ?? 0} errors`
             )
             evtSource.close()
             sseRef.current = null
@@ -598,13 +617,13 @@ export default function QbSync() {
                         : 'bg-red-500/10 border-red-500/20',
                     },
                     {
-                      label: 'Recurrences',
+                      label: result.isDryRun ? 'Recurrences (preview)' : 'Recurrences',
                       value: result.recurrencesUpdated,
                       cls: 'text-blue-400',
                       bg: 'bg-blue-500/10 border-blue-500/20',
                     },
                     {
-                      label: 'Prorated Invoices',
+                      label: result.isDryRun ? 'Prorated (preview)' : 'Prorated Invoices',
                       value: result.invoicesCreated,
                       cls: 'text-purple-400',
                       bg: 'bg-purple-500/10 border-purple-500/20',
@@ -624,6 +643,94 @@ export default function QbSync() {
                       )}
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Dry-run preview table */}
+              {hasDone && result?.isDryRun && preview.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <p className="text-xs text-amber-300 font-semibold uppercase tracking-wider">
+                      📋 Dry Run Preview — {preview.length} line{preview.length !== 1 ? 's' : ''} that would be written to QB
+                    </p>
+                    {/* Filter chips */}
+                    <div className="flex gap-1 ml-auto">
+                      {['all', 'recurrence', 'prorated'].map(f => (
+                        <button key={f}
+                          onClick={() => setPreviewFilter(f)}
+                          className={`text-[11px] px-2 py-0.5 rounded border transition-colors
+                            ${previewFilter === f
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                              : 'bg-slate-700/50 text-slate-400 border-slate-600/40 hover:text-slate-200'}`}>
+                          {f === 'all' ? `All (${preview.length})`
+                            : f === 'recurrence' ? `Recurrences (${preview.filter(p => p.syncType === 'recurrence').length})`
+                            : `Prorated (${preview.filter(p => p.syncType === 'prorated').length})`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="bg-slate-950/70 border border-amber-500/20 rounded-lg overflow-hidden">
+                    <div className="max-h-72 overflow-y-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="sticky top-0 bg-slate-800/90">
+                        <tr className="border-b border-slate-700/50">
+                          <th className="px-3 py-2 text-slate-400 font-medium">Customer</th>
+                          <th className="px-3 py-2 text-slate-400 font-medium">Type</th>
+                          <th className="px-3 py-2 text-slate-400 font-medium">QB SKU</th>
+                          <th className="px-3 py-2 text-slate-400 font-medium text-center">Qty</th>
+                          <th className="px-3 py-2 text-slate-400 font-medium text-center">Days</th>
+                          <th className="px-3 py-2 text-slate-400 font-medium text-right">Amount</th>
+                          <th className="px-3 py-2 text-slate-400 font-medium">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {preview
+                          .filter(p => previewFilter === 'all' || p.syncType === previewFilter)
+                          .map((p, i) => (
+                          <tr key={i} className="border-b border-slate-700/20 hover:bg-slate-800/40">
+                            <td className="px-3 py-1.5 text-slate-200 max-w-[180px] truncate" title={p.customer}>
+                              {p.customer}
+                            </td>
+                            <td className="px-3 py-1.5">
+                              <span className={`px-1.5 py-0.5 rounded border text-[10px] font-medium
+                                ${ p.syncType === 'recurrence'
+                                  ? 'bg-blue-500/15 text-blue-300 border-blue-500/30'
+                                  : 'bg-purple-500/15 text-purple-300 border-purple-500/30'}`}>
+                                {p.syncType === 'recurrence' ? 'Recurrence' : 'Prorated'}
+                              </span>
+                            </td>
+                            <td className="px-3 py-1.5 font-mono text-slate-300 max-w-[200px] truncate" title={p.skuKey}>
+                              {p.skuKey || '—'}
+                            </td>
+                            <td className="px-3 py-1.5 text-center font-mono text-slate-300">{p.qty ?? '—'}</td>
+                            <td className="px-3 py-1.5 text-center font-mono text-slate-400">
+                              {p.daysActive != null ? p.daysActive : '—'}
+                            </td>
+                            <td className="px-3 py-1.5 text-right font-mono text-slate-200">
+                              {p.amount != null ? `$${Number(p.amount).toFixed(2)}` : '—'}
+                            </td>
+                            <td className="px-3 py-1.5">
+                              <span className="text-[10px] text-amber-400/80 italic">{p.action}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    </div>
+                  </div>
+                  {/* Totals row */}
+                  {(() => {
+                    const rows = preview.filter(p => previewFilter === 'all' || p.syncType === previewFilter)
+                    const total = rows.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+                    return (
+                      <div className="flex justify-end mt-1.5 gap-4 text-xs text-slate-400 pr-1">
+                        <span>{rows.length} line{rows.length !== 1 ? 's' : ''}</span>
+                        <span className="font-mono text-slate-200">
+                          Total: <span className="text-amber-300 font-semibold">${total.toFixed(2)}</span>
+                        </span>
+                      </div>
+                    )
+                  })()}
                 </div>
               )}
 
