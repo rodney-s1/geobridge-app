@@ -358,6 +358,10 @@ def _enrich_request(
     # ── Billing type ──────────────────────────────────────────────────────
     billing_type = _get_billing_type(company_id, company_name)
 
+    # Skip Trial accounts — they are not billed for services
+    if billing_type == "Trial":
+        return None
+
     # ── SKU resolution ────────────────────────────────────────────────────
     customer_norm = _normalize(company_name)
     sku_key = _resolve_activation_sku(

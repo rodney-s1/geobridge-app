@@ -188,12 +188,13 @@ async def _run_recurrences(dry_run: bool, counters: dict) -> AsyncGenerator:
 
     # Filter to customers that have at least one device with a resolved SKU
     # and an expected price (these are the rows that would become QB memorized
-    # transactions).
+    # transactions).  Trial customers are never billed.
     billable = [
         c for c in customers
         if not c.get("qbOnly")
         and c.get("expectedMonthly") is not None
         and float(c.get("expectedMonthly") or 0) > 0
+        and c.get("billingType") != "Trial"
     ]
 
     total = len(billable)
@@ -310,13 +311,16 @@ async def _run_prorated(dry_run: bool, counters: dict) -> AsyncGenerator:
     activ_data = await _load_activations_data(from_date=from_date, to_date=to_date)
     records    = activ_data.get("records") or []
 
-    # Filter to records that have a proration entry with a positive charge
+    # Filter to records that have a proration entry with a positive charge.
+    # Trial accounts are excluded from activations upstream (_enrich_request
+    # returns None for Trial billing type) but guard here too for safety.
     billable = [
         r for r in records
         if r.get("proration")
         and float((r.get("proration") or {}).get("proratedCharge") or 0) > 0
         and r.get("skuKey") and r["skuKey"] != "UNMAPPED"
         and not r.get("excludedCategory")
+        and r.get("billingType") != "Trial"
     ]
 
     total = len(billable)

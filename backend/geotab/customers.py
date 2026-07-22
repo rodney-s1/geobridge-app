@@ -229,6 +229,7 @@ QB_JOB_TYPE_MAP = {
     "in collections":               "In Collections",
     "collections":                  "In Collections",
     "terminated":                   "Terminated",
+    "trial":                        "Trial",
 }
 
 def normalize(name: str) -> str:
@@ -1237,7 +1238,7 @@ async def bulk_set_billing_type(body: BillingTypeBulkUpdate):
     valid = {
         "Standard", "Charge Upon Activation", "Hanover", "Han-CS",
         "Check Before Sending", "Reseller", "In Collections",
-        "Terminated", "Unknown",
+        "Terminated", "Unknown", "Trial",
     }
     # Validate all before writing any
     for item in body.updates:
@@ -1264,7 +1265,7 @@ async def set_billing_type(account_id: str, body: BillingTypeUpdate):
     valid = [
         "Standard", "Charge Upon Activation", "Hanover", "Han-CS",
         "Check Before Sending",
-        "Reseller", "In Collections", "Terminated", "Unknown",
+        "Reseller", "In Collections", "Terminated", "Unknown", "Trial",
     ]
     if body.billing_type not in valid:
         raise HTTPException(status_code=400, detail=f"Invalid billing type: {body.billing_type}")

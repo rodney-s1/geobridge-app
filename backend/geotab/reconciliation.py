@@ -661,6 +661,11 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         # Skip internal / test accounts (MyAdmin marks them with a leading '* ')
         if (cname or "").startswith("* "):
             continue
+        # Skip Trial accounts — they are not billed for services
+        if billing_type_index.get(cid) == "Trial" or any(
+            billing_type_index.get(c) == "Trial" for c in (cdata.get("subAccountIds") or {cid})
+        ):
+            continue
         devices      = cdata["devices"]
         # Re-scan all sub-account cids so billing type is found even when
         # the first cid seen belongs to a sub-account with an Unknown type.

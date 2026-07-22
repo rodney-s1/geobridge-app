@@ -14,12 +14,13 @@ const BILLING_COLORS = {
   'Terminated':             'bg-gray-500/20 text-gray-400 border border-gray-500/30',
   'Unknown':                'bg-gray-700/30 text-gray-500 border border-gray-600/30',
   'Unassigned':             'bg-gray-700/30 text-gray-500 border border-gray-600/30',
+  'Trial':                  'bg-teal-500/20 text-teal-300 border border-teal-500/30',
 }
 
 const VALID_BILLING_TYPES = [
   'Standard','Charge Upon Activation','Hanover','Han-CS',
   'Check Before Sending',
-  'Reseller','In Collections','Terminated','Unknown',
+  'Reseller','In Collections','Terminated','Unknown','Trial',
 ]
 
 const VALID_BILLING_FREQUENCIES = ['Annual', 'Semi-Annual', 'Quarterly']
