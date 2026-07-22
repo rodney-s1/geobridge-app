@@ -965,6 +965,15 @@ async def import_qb_customers(file: UploadFile = File(...), force: bool = Query(
             skipped += 1
             continue
 
+        # QB exports sub-jobs in "Parent:Child" format, e.g.:
+        #   "City of Greenville, NC - Fleet Services:City of Greenville - Building and Grounds"
+        # MyAdmin only knows the child portion ("City of Greenville - Building and Grounds").
+        # Strip everything up to and including the last colon so the lookup key
+        # matches what MyAdmin stores.  We keep the full raw name for reference.
+        qb_full_name = name   # original "Parent:Child" string (stored for reference)
+        if ":" in name:
+            name = name.rsplit(":", 1)[-1].strip()
+
         job_type    = row.get("Job Type") or row.get("Customer Type") or row.get("Type") or ""
         account_no  = (
             row.get("Account No.") or row.get("Account Number")
@@ -1005,6 +1014,7 @@ async def import_qb_customers(file: UploadFile = File(...), force: bool = Query(
 
         qb_customers[norm_name] = {
             "name":        name,
+            "qbFullName":  qb_full_name,   # original "Parent:Child" key from QB CSV
             "accountNo":   account_no,
             "billingType": preserved_billing,
             "jobType":     job_type,
