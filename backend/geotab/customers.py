@@ -1216,6 +1216,45 @@ async def get_customer(account_id: str):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# --- POST /api/customers/billing-type/bulk -----------------------------------
+# Must be defined BEFORE the wildcard /{account_id} route so FastAPI matches
+# the literal path first.
+class BillingTypeBulkItem(BaseModel):
+    id:           str
+    billing_type: str
+
+class BillingTypeBulkUpdate(BaseModel):
+    updates: List[BillingTypeBulkItem]
+
+@router.post("/customers/billing-type/bulk")
+async def bulk_set_billing_type(body: BillingTypeBulkUpdate):
+    """Set billing type for multiple customers in one request.
+
+    Each item in ``updates`` is ``{id, billing_type}``.  Invalid billing types
+    are rejected for the whole batch (atomic validation).  Valid updates are
+    written to billing_overrides.json in a single file save.
+    """
+    valid = {
+        "Standard", "Charge Upon Activation", "Hanover", "Han-CS",
+        "Check Before Sending", "Reseller", "In Collections",
+        "Terminated", "Unknown",
+    }
+    # Validate all before writing any
+    for item in body.updates:
+        if item.billing_type not in valid:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Invalid billing type '{item.billing_type}' for id '{item.id}'"
+            )
+    for item in body.updates:
+        billing_overrides[item.id] = item.billing_type
+    _save_json(OVERRIDES_FILE, billing_overrides)
+    return {
+        "success": True,
+        "updated": len(body.updates),
+    }
+
+
 # --- POST /api/customers/{account_id}/billing-type ---------------------------
 class BillingTypeUpdate(BaseModel):
     billing_type: str

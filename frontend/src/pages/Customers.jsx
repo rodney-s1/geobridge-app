@@ -713,7 +713,7 @@ function DeviceSubTable({ devices, onDateSaved }) {
 
 // ─── Sub-account row (indented, inside an expanded parent group) ──────────────
 // devices prop is pre-loaded by the parent; expandable to show the device table.
-function SubAccountRow({ customer, devices, loadingDevices, onBillingTypeChange, onBillingFrequencyChange, onDetail }) {
+function SubAccountRow({ customer, devices, loadingDevices, onBillingTypeChange, onBillingFrequencyChange, onDetail, isSelected = false, onToggleSelect }) {
   const [expanded, setExpanded] = useState(false)
   const subLabel = getSubLabel(customer.name)
 
@@ -726,18 +726,26 @@ function SubAccountRow({ customer, devices, loadingDevices, onBillingTypeChange,
         }`}
         onClick={() => setExpanded(e => !e)}
       >
-        {/* Indent + expand toggle */}
+        {/* Indent + checkbox + expand toggle */}
         <td className="w-10 pl-4 py-2.5">
-          <div className="flex items-center">
-            {/* Tree connector line */}
-            <div className="w-4 flex-shrink-0 flex flex-col items-center mr-1">
-              <div className="w-px h-2 bg-slate-600/50" />
-              <div className="w-3 h-px bg-slate-600/50 self-end" />
-            </div>
-            <button
-              onClick={e => { e.stopPropagation(); setExpanded(ex => !ex) }}
-              className="text-slate-600 hover:text-slate-400 transition-colors"
-            >
+          <div className="flex flex-col items-center gap-1">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={e => { e.stopPropagation(); onToggleSelect && onToggleSelect(customer.id) }}
+              onClick={e => e.stopPropagation()}
+              className="w-3 h-3 rounded accent-blue-500 cursor-pointer"
+            />
+            <div className="flex items-center">
+              {/* Tree connector line */}
+              <div className="w-4 flex-shrink-0 flex flex-col items-center mr-1">
+                <div className="w-px h-2 bg-slate-600/50" />
+                <div className="w-3 h-px bg-slate-600/50 self-end" />
+              </div>
+              <button
+                onClick={e => { e.stopPropagation(); setExpanded(ex => !ex) }}
+                className="text-slate-600 hover:text-slate-400 transition-colors"
+              >
               {loadingDevices ? (
                 <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
@@ -753,6 +761,7 @@ function SubAccountRow({ customer, devices, loadingDevices, onBillingTypeChange,
                 </svg>
               )}
             </button>
+            </div>
           </div>
         </td>
 
@@ -827,7 +836,7 @@ function SubAccountRow({ customer, devices, loadingDevices, onBillingTypeChange,
 // ─── Parent group row (with optional sub-accounts) ───────────────────────────
 // When expanded, fetches all sub-accounts' devices in parallel,
 // then shows a combined RPC breakdown + indented sub-account rows.
-function ParentGroupRow({ group, onBillingTypeChange, onBillingFrequencyChange, onDetail }) {
+function ParentGroupRow({ group, onBillingTypeChange, onBillingFrequencyChange, onDetail, selectedIds = new Set(), onToggleSelect }) {
   const { parentName, parent, subs, combinedDeviceCount } = group
   const hasSubs = subs.length > 0
 
@@ -944,6 +953,8 @@ function ParentGroupRow({ group, onBillingTypeChange, onBillingFrequencyChange, 
         customer={parent}
         onBillingTypeChange={onBillingTypeChange}
         onBillingFrequencyChange={onBillingFrequencyChange}
+        isSelected={selectedIds.has(parent?.id)}
+        onToggleSelect={onToggleSelect}
       />
     )
   }
@@ -958,30 +969,61 @@ function ParentGroupRow({ group, onBillingTypeChange, onBillingFrequencyChange, 
         }`}
         onClick={hasSubs ? toggleSubs : undefined}
       >
-        {/* Sub-accounts expand toggle */}
+        {/* Sub-accounts expand toggle + group checkbox */}
         <td className="w-10 pl-4 py-3">
-          {hasSubs && (
-            <button
-              onClick={e => { e.stopPropagation(); toggleSubs() }}
-              className="text-indigo-400 hover:text-indigo-300 transition-colors"
-              title={`${subsExpanded ? 'Collapse' : 'Expand'} sub-accounts`}
-            >
-              {loadingDevices ? (
-                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-                </svg>
-              ) : subsExpanded ? (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              )}
-            </button>
-          )}
+          <div className="flex flex-col items-center gap-1.5">
+            {/* Group checkbox — selects/deselects all accounts in this group */}
+            {(() => {
+              const groupIds = [...(parent ? [parent.id] : []), ...subs.map(s => s.id)]
+              const allChk  = groupIds.length > 0 && groupIds.every(id => selectedIds.has(id))
+              const someChk = !allChk && groupIds.some(id => selectedIds.has(id))
+              return (
+                <input
+                  type="checkbox"
+                  checked={allChk}
+                  ref={el => { if (el) el.indeterminate = someChk }}
+                  onChange={e => {
+                    e.stopPropagation()
+                    groupIds.forEach(id => {
+                      // If allChk we want to deselect; otherwise select
+                      if (allChk) {
+                        // remove
+                        onToggleSelect && selectedIds.has(id) && onToggleSelect(id)
+                      } else {
+                        // add
+                        onToggleSelect && !selectedIds.has(id) && onToggleSelect(id)
+                      }
+                    })
+                  }}
+                  onClick={e => e.stopPropagation()}
+                  className="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
+                  title="Select/deselect all accounts in this group"
+                />
+              )
+            })()}
+            {hasSubs && (
+              <button
+                onClick={e => { e.stopPropagation(); toggleSubs() }}
+                className="text-indigo-400 hover:text-indigo-300 transition-colors"
+                title={`${subsExpanded ? 'Collapse' : 'Expand'} sub-accounts`}
+              >
+                {loadingDevices ? (
+                  <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                  </svg>
+                ) : subsExpanded ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                )}
+              </button>
+            )}
+          </div>
         </td>
 
         {/* Parent name + sub-account count badge */}
@@ -1173,6 +1215,8 @@ function ParentGroupRow({ group, onBillingTypeChange, onBillingFrequencyChange, 
           onBillingTypeChange={onBillingTypeChange}
           onBillingFrequencyChange={onBillingFrequencyChange}
           onDetail={onDetail}
+          isSelected={selectedIds.has(sub.id)}
+          onToggleSelect={onToggleSelect}
         />
       ))}
     </>
@@ -1180,7 +1224,7 @@ function ParentGroupRow({ group, onBillingTypeChange, onBillingFrequencyChange, 
 }
 
 // ─── Single expandable customer row (standalone, no sub-account grouping) ─────
-function CustomerRow({ customer, onBillingTypeChange, onBillingFrequencyChange }) {
+function CustomerRow({ customer, onBillingTypeChange, onBillingFrequencyChange, isSelected = false, onToggleSelect }) {
   const [expanded, setExpanded] = useState(false)
   const [devices, setDevices] = useState([])
   const [loadingDevices, setLoadingDevices] = useState(false)
@@ -1216,27 +1260,36 @@ function CustomerRow({ customer, onBillingTypeChange, onBillingFrequencyChange }
         }`}
         onClick={toggleExpand}
       >
-        {/* Expand toggle */}
+        {/* Checkbox + expand toggle */}
         <td className="w-10 pl-4 py-3">
-          <button
-            onClick={e => { e.stopPropagation(); toggleExpand() }}
-            className="text-slate-500 hover:text-slate-300 transition-colors"
-          >
-            {loadingDevices ? (
-              <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-              </svg>
-            ) : expanded ? (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            )}
-          </button>
+          <div className="flex flex-col items-center gap-1.5">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={e => { e.stopPropagation(); onToggleSelect && onToggleSelect(customer.id) }}
+              onClick={e => e.stopPropagation()}
+              className="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
+            />
+            <button
+              onClick={e => { e.stopPropagation(); toggleExpand() }}
+              className="text-slate-500 hover:text-slate-300 transition-colors"
+            >
+              {loadingDevices ? (
+                <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                </svg>
+              ) : expanded ? (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              )}
+            </button>
+          </div>
         </td>
 
         {/* Customer name */}
@@ -1386,6 +1439,12 @@ export default function Customers({ onDetail }) {
   const [importMsg,    setImportMsg]    = useState('')
   const [importCols,     setImportCols]     = useState(null)  // CSV columns from last import
   const [forceQbImport,  setForceQbImport]  = useState(false) // force QB values to override GeoBridge overrides
+
+  // ── Bulk selection state ──────────────────────────────────────────────────
+  const [selectedIds,    setSelectedIds]    = useState(new Set())  // Set of customer .id strings
+  const [bulkType,       setBulkType]       = useState('Standard') // dropdown value in bulk bar
+  const [applyingBulk,   setApplyingBulk]   = useState(false)
+  const [bulkMsg,        setBulkMsg]        = useState('')         // success/error feedback
   const [qbSummary, setQbSummary] = useState(null)
   const [syncProgress, setSyncProgress] = useState(null)   // SSE progress data
   const sseRef = useRef(null)   // holds the EventSource so we can close it
@@ -1639,6 +1698,60 @@ export default function Customers({ onDetail }) {
   // Group customers into parent/sub-account hierarchy
   const customerGroups = groupCustomers(customers)
 
+  // Flat list of every customer id currently loaded (for select-all)
+  const allVisibleIds = customers.map(c => c.id)
+  const allSelected   = allVisibleIds.length > 0 && allVisibleIds.every(id => selectedIds.has(id))
+  const someSelected  = !allSelected && allVisibleIds.some(id => selectedIds.has(id))
+
+  const toggleSelectAll = () => {
+    if (allSelected) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(allVisibleIds))
+    }
+  }
+
+  const toggleSelectId = (id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const applyBulkBillingType = async () => {
+    if (selectedIds.size === 0) return
+    setApplyingBulk(true)
+    setBulkMsg('')
+    try {
+      const updates = [...selectedIds].map(id => ({ id, billing_type: bulkType }))
+      const res = await fetch(`${API}/api/customers/billing-type/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates }),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.detail || `Server error (HTTP ${res.status})`)
+      }
+      const data = await res.json()
+      // Update local state for all affected customers
+      setCustomers(prev =>
+        prev.map(c => selectedIds.has(c.id)
+          ? { ...c, billingType: bulkType, billingTypeSource: 'override' }
+          : c
+        )
+      )
+      setBulkMsg(`✓ Updated ${data.updated} customer${data.updated !== 1 ? 's' : ''} to "${bulkType}"`)
+      setSelectedIds(new Set())
+    } catch (e) {
+      setBulkMsg(`✗ Bulk update failed: ${e.message}`)
+    } finally {
+      setApplyingBulk(false)
+    }
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* ── Sync progress banner — sticky top, shown during force-refresh ── */}
@@ -1821,6 +1934,55 @@ export default function Customers({ onDetail }) {
         </select>
       </div>
 
+      {/* Bulk action bar — appears when ≥1 row is checked */}
+      {selectedIds.size > 0 && (
+        <div className="mb-3 flex items-center gap-3 px-4 py-2.5 bg-blue-900/30 border border-blue-500/30 rounded-lg">
+          <span className="text-sm text-blue-300 font-medium min-w-[6rem]">
+            {selectedIds.size} selected
+          </span>
+          <div className="flex items-center gap-2 flex-1">
+            <span className="text-xs text-slate-400">Set billing type:</span>
+            <select
+              value={bulkType}
+              onChange={e => setBulkType(e.target.value)}
+              className="bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 focus:outline-none focus:border-blue-500"
+            >
+              {VALID_BILLING_TYPES.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+            <button
+              onClick={applyBulkBillingType}
+              disabled={applyingBulk}
+              className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs rounded font-medium transition-colors"
+            >
+              {applyingBulk ? 'Applying…' : `Apply to ${selectedIds.size}`}
+            </button>
+          </div>
+          <button
+            onClick={() => setSelectedIds(new Set())}
+            className="text-xs text-slate-500 hover:text-slate-300 transition-colors ml-auto"
+          >
+            Clear selection
+          </button>
+        </div>
+      )}
+
+      {/* Bulk feedback message */}
+      {bulkMsg && (
+        <div className={`mb-3 px-4 py-2 rounded-lg text-sm border ${
+          bulkMsg.startsWith('✓')
+            ? 'bg-green-900/20 border-green-500/20 text-green-300'
+            : 'bg-red-900/20 border-red-500/20 text-red-300'
+        }`}>
+          {bulkMsg}
+          <button
+            onClick={() => setBulkMsg('')}
+            className="ml-3 text-slate-500 hover:text-slate-300"
+          >✕</button>
+        </div>
+      )}
+
       {/* Error state */}
       {error && (
         <div className={`mb-4 p-4 rounded-lg text-sm flex items-start gap-3 ${
@@ -1861,7 +2023,16 @@ export default function Customers({ onDetail }) {
         <table className="w-full min-w-[900px]">
           <thead className="sticky top-0 z-10 bg-slate-800/90 backdrop-blur-sm">
             <tr className="border-b border-slate-700">
-              <th className="w-10 pl-4 py-3" />
+              <th className="w-10 pl-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  ref={el => { if (el) el.indeterminate = someSelected }}
+                  onChange={toggleSelectAll}
+                  className="w-3.5 h-3.5 rounded accent-blue-500 cursor-pointer"
+                  title={allSelected ? 'Deselect all' : 'Select all visible'}
+                />
+              </th>
               <th className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 Customer Name
               </th>
@@ -1914,6 +2085,8 @@ export default function Customers({ onDetail }) {
                   onBillingTypeChange={handleBillingTypeChange}
                   onBillingFrequencyChange={handleBillingFrequencyChange}
                   onDetail={onDetail}
+                  selectedIds={selectedIds}
+                  onToggleSelect={toggleSelectId}
                 />
               ))
             )}
