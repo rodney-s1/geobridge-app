@@ -85,6 +85,10 @@ app.include_router(activations_router, prefix="/api", tags=["Activations"])
 from geotab.reports import router as reports_router
 app.include_router(reports_router, prefix="/api", tags=["Reports"])
 
+# QB Sync Routes
+from geotab.qb_sync import router as qb_sync_router
+app.include_router(qb_sync_router, prefix="/api", tags=["QB Sync"])
+
 # ============================================================
 #  S3 BACKUP  endpoints + startup restore
 # ============================================================

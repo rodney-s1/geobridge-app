@@ -6,6 +6,7 @@ import Reconciliation from './Reconciliation'
 import Invoices from './Invoices'
 import Activations from './Activations'
 import Reports from './Reports'
+import QbSync from './QbSync'
 
 const API = 'http://127.0.0.1:8001'
 
@@ -175,7 +176,7 @@ function Dashboard({ sessionData, onLogout }) {
           <div style={{ display: activePage === 'activations' ? 'contents' : 'none' }}>
             <Activations />
           </div>
-          {activePage === 'sync' && <ComingSoon page="Sync Status" />}
+          {activePage === 'sync' && <QbSync />}
           {activePage === 'reports' && <Reports />}
           {activePage === 'settings' && <Settings />}
         </div>
