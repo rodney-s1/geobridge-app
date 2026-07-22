@@ -837,6 +837,7 @@ async def import_price_list(file: UploadFile = File(...)):
 async def get_unmapped_rate_plans():
     """
     Compare rate plan codes seen in the MyAdmin sync cache against sku_mappings.
+    Returns per-code device counts and the list of affected customer names.
     Reads myadmin_cache.json directly -- no import of customers module needed.
     """
     try:
@@ -845,21 +846,32 @@ async def get_unmapped_rate_plans():
         if not raw:
             return {"unmapped": [], "total": 0, "hasCachedData": False}
 
-        seen_codes: set = set()
-        code_counts: dict = {}
+        seen_codes: set      = set()
+        code_counts: dict    = {}
+        code_customers: dict = {}   # code -> set of customer names
+
         for c in raw:
+            cname = (c.get("companyName") or c.get("customerName") or "").strip()
             for d in (c.get("devices") or []):
                 code = (d.get("promoCode") or "").strip().upper()
                 if code:
                     seen_codes.add(code)
                     code_counts[code] = code_counts.get(code, 0) + 1
+                    if cname:
+                        code_customers.setdefault(code, set()).add(cname)
 
         mapped_codes = {m["ratePlanCode"].upper() for m in _mappings()}
         unmapped     = sorted(seen_codes - mapped_codes)
 
         return {
             "unmapped": [
-                {"ratePlanCode": code, "deviceCount": code_counts.get(code, 0)}
+                {
+                    "ratePlanCode": code,
+                    "deviceCount":  code_counts.get(code, 0),
+                    # sorted alphabetically, capped at 15 to keep payload small
+                    "customers":    sorted(code_customers.get(code, set()))[:15],
+                    "customerCount": len(code_customers.get(code, set())),
+                }
                 for code in unmapped
             ],
             "total":        len(unmapped),

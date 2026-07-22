@@ -15,6 +15,14 @@ function Dashboard({ sessionData, onLogout }) {
   const [detailCustomerId, setDetailCustomerId] = useState(null)
   const [detailCustomerName, setDetailCustomerName] = useState('')
   const [sessionAlive,     setSessionAlive]     = useState(true)
+  // Deep-link state: navigate to a page with a payload (e.g. open Settings on mappings tab prefilled)
+  const [settingsDeepLink, setSettingsDeepLink] = useState(null)
+
+  // Called by child pages (e.g. Reconciliation) to jump to another page with context
+  function handleNavigate(page, payload = null) {
+    if (page === 'settings' && payload) setSettingsDeepLink(payload)
+    setActivePage(page)
+  }
 
   // Poll /api/session every 30 s to detect backend restarts / session expiry
   useEffect(() => {
@@ -170,7 +178,7 @@ function Dashboard({ sessionData, onLogout }) {
               : <Customers onDetail={handleOpenDetail} />
             }
           </div>
-          {activePage === 'reconciliation' && <Reconciliation />}
+          {activePage === 'reconciliation' && <Reconciliation onNavigate={handleNavigate} />}
           {activePage === 'invoices' && <Invoices />}
           {/* Activations is always mounted so loaded data survives tab switches */}
           <div style={{ display: activePage === 'activations' ? 'contents' : 'none' }}>
@@ -178,7 +186,12 @@ function Dashboard({ sessionData, onLogout }) {
           </div>
           {activePage === 'sync' && <QbSync />}
           {activePage === 'reports' && <Reports />}
-          {activePage === 'settings' && <Settings />}
+          {activePage === 'settings' && (
+            <Settings
+              deepLink={settingsDeepLink}
+              onDeepLinkConsumed={() => setSettingsDeepLink(null)}
+            />
+          )}
         </div>
 
       </div>

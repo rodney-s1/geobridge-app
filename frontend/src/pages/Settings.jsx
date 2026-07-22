@@ -358,7 +358,7 @@ function SkuCatalogTab({ catalog, onRefresh }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 //  TAB 2 — Rate Plan Mappings
 // ═══════════════════════════════════════════════════════════════════════════════
-function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh }) {
+function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkPrefill = null }) {
   const [editCode,         setEditCode]         = useState(null)
   const [editOriginalCode, setEditOriginalCode] = useState(null)  // tracks code before rename
   const [editForm, setEditForm] = useState({})
@@ -371,6 +371,23 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh }) {
   const [msg, setMsg] = useState(null)
   const [search, setSearch] = useState('')
   const [showUnmapped, setShowUnmapped] = useState(true)
+  // Which unmapped chip is expanded to show customer list
+  const [expandedChip, setExpandedChip] = useState(null)
+
+  // Apply deep-link prefill: open the add form pre-filled with the given rate plan code
+  const prefillApplied = React.useRef(false)
+  useEffect(() => {
+    if (!deepLinkPrefill || prefillApplied.current) return
+    prefillApplied.current = true
+    setAdding(true)
+    setAddCode(deepLinkPrefill)
+    setShowUnmapped(false)
+    // Scroll form into view after render
+    setTimeout(() => {
+      const el = document.getElementById('mapping-add-form')
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 150)
+  }, [deepLinkPrefill])
 
   const skuOptions = catalog.map(s => s.skuKey).sort()
 
@@ -422,6 +439,11 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh }) {
     setAdding(true)
     setAddCode(code)
     setShowUnmapped(false)
+    setExpandedChip(null)
+    setTimeout(() => {
+      const el = document.getElementById('mapping-add-form')
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
   }
 
   return (
@@ -450,23 +472,58 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh }) {
             <span className="text-slate-500 text-xs">{showUnmapped ? '▲ Hide' : '▼ Show'}</span>
           </button>
           {showUnmapped && (
-            <div className="px-4 pb-3">
-              <div className="flex flex-wrap gap-2">
-                {unmapped.map(u => (
-                  <div key={u.ratePlanCode} className="flex items-center gap-1 bg-slate-800 border border-slate-600 rounded-lg px-2 py-1">
-                    <span className="font-mono text-xs text-amber-300">{u.ratePlanCode}</span>
-                    {u.deviceCount > 0 && (
-                      <span className="text-xs text-slate-500">({u.deviceCount})</span>
+            <div className="px-4 pb-4 space-y-2">
+              {unmapped.map(u => {
+                const isExpanded = expandedChip === u.ratePlanCode
+                return (
+                  <div key={u.ratePlanCode} className="bg-slate-800/80 border border-slate-700/60 rounded-lg overflow-hidden">
+                    {/* Chip header row */}
+                    <div className="flex items-center gap-2 px-3 py-2">
+                      <span className="font-mono text-xs text-amber-300 font-semibold">{u.ratePlanCode}</span>
+                      <span className="text-xs text-slate-500">
+                        {u.deviceCount} device{u.deviceCount !== 1 ? 's' : ''}
+                        {u.customerCount > 0 && (
+                          <> · {u.customerCount} customer{u.customerCount !== 1 ? 's' : ''}</>
+                        )}
+                      </span>
+                      {/* Expand customer list toggle */}
+                      {u.customers && u.customers.length > 0 && (
+                        <button
+                          onClick={() => setExpandedChip(isExpanded ? null : u.ratePlanCode)}
+                          className="text-xs text-slate-500 hover:text-slate-300 ml-1"
+                          title={isExpanded ? 'Hide customers' : 'Show affected customers'}
+                        >
+                          {isExpanded ? '▲ hide' : '▼ who?'}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => quickAdd(u.ratePlanCode)}
+                        className="ml-auto text-xs bg-blue-600 hover:bg-blue-500 text-white px-2.5 py-1 rounded-md font-medium transition-colors"
+                      >
+                        Map →
+                      </button>
+                    </div>
+                    {/* Expandable customer list */}
+                    {isExpanded && u.customers && u.customers.length > 0 && (
+                      <div className="border-t border-slate-700/50 px-3 py-2 bg-slate-900/40">
+                        <div className="text-xs text-slate-500 mb-1.5">Affected customers:</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {u.customers.map(name => (
+                            <span key={name} className="text-xs bg-slate-700 text-slate-300 border border-slate-600/60 rounded px-2 py-0.5">
+                              {name}
+                            </span>
+                          ))}
+                          {u.customerCount > u.customers.length && (
+                            <span className="text-xs text-slate-500 italic px-1 py-0.5">
+                              +{u.customerCount - u.customers.length} more
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     )}
-                    <button
-                      onClick={() => quickAdd(u.ratePlanCode)}
-                      className="ml-1 text-xs text-blue-400 hover:text-blue-300 font-medium"
-                    >
-                      Map →
-                    </button>
                   </div>
-                ))}
-              </div>
+                )
+              })}
             </div>
           )}
         </div>
@@ -490,7 +547,7 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh }) {
 
       {/* Add form */}
       {adding && (
-        <div className="bg-slate-800 border border-blue-500/40 rounded-xl p-4 space-y-3">
+        <div id="mapping-add-form" className="bg-slate-800 border border-blue-500/40 rounded-xl p-4 space-y-3">
           <div className="text-sm font-semibold text-blue-300 mb-1">New Rate Plan → SKU Mapping</div>
           <div className="text-xs text-slate-500 mb-2">
             Enter either a <span className="text-amber-300">promo code</span> (e.g. <code className="font-mono bg-slate-700/60 px-1 rounded">SWELL-NOINS3</code>) or a
@@ -1460,7 +1517,8 @@ function SerialPrefixTab({ prefixMappings, catalog, onRefresh }) {
 // ===============================================================================
 //  ROOT COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
-export default function Settings() {
+export default function Settings({ deepLink = null, onDeepLinkConsumed }) {
+  // deepLink = { tab: 'mappings', prefill: 'SOME-RATE-CODE' } — passed from Reconciliation
   const [activeTab, setActiveTab] = useState('catalog')
   const [catalog,        setCatalog]        = useState([])
   const [mappings,       setMappings]       = useState([])
@@ -1521,6 +1579,16 @@ export default function Settings() {
   }, [])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+
+  // Deep-link: jump to a specific tab and optionally pre-fill a form
+  const deepLinkApplied = React.useRef(false)
+  useEffect(() => {
+    if (!deepLink || deepLinkApplied.current || loading) return
+    deepLinkApplied.current = true
+    if (deepLink.tab) setActiveTab(deepLink.tab)
+    // Signal parent that link was consumed so it can clear it
+    if (onDeepLinkConsumed) onDeepLinkConsumed()
+  }, [deepLink, loading, onDeepLinkConsumed])
 
   return (
     <div className="space-y-6">
@@ -1588,7 +1656,7 @@ export default function Settings() {
       ) : (
         <>
           {activeTab === 'catalog'        && <SkuCatalogTab      catalog={catalog}   onRefresh={fetchAll} />}
-          {activeTab === 'mappings'       && <RatePlanMappingsTab mappings={mappings} catalog={catalog} unmapped={unmapped} onRefresh={fetchAll} />}
+          {activeTab === 'mappings'       && <RatePlanMappingsTab mappings={mappings} catalog={catalog} unmapped={unmapped} onRefresh={fetchAll} deepLinkPrefill={activeTab === 'mappings' ? deepLink?.prefill : null} />}
           {activeTab === 'custRatePlans'  && <CustRatePlanTab custMappings={custMappings} catalog={catalog} onRefresh={fetchAll} />}
           {activeTab === 'overrides'      && <CustomerOverridesTab overrides={overrides} catalog={catalog} onRefresh={fetchAll} />}
           {activeTab === 'serialPrefixes' && <SerialPrefixTab prefixMappings={prefixMappings} catalog={catalog} onRefresh={fetchAll} />}

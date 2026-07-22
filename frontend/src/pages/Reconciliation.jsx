@@ -158,7 +158,7 @@ function QtyBreakdownTable({ rows }) {
 }
 
 // ─── Price breakdown table (device-level, shown in price tab) ─────────────────
-function PriceBreakdownTable({ devices }) {
+function PriceBreakdownTable({ devices, catalog, onSetPrice, priceSetMsg }) {
   if (!devices || devices.length === 0) return (
     <div className="px-6 py-4 text-xs text-slate-500 italic">No device data available.</div>
   )
@@ -167,6 +167,12 @@ function PriceBreakdownTable({ devices }) {
   const neverActivatedCount = neverActivatedDevs.length
   return (
     <div>
+      {priceSetMsg && (
+        <div className="mx-4 mt-3 mb-1 px-3 py-2 rounded-lg bg-emerald-900/25 border border-emerald-700/40 text-xs text-emerald-300 flex items-center gap-2">
+          <span>{priceSetMsg}</span>
+          <span className="text-emerald-500/70 text-xs">Refresh reconciliation to see updated prices.</span>
+        </div>
+      )}
       {noneCount > 0 && (
         <div className="mx-4 mt-3 mb-1 px-3 py-2 rounded-lg bg-amber-900/25 border border-amber-700/40 text-xs text-amber-300 flex items-start gap-2">
           <span className="mt-0.5">⚠</span>
@@ -236,7 +242,19 @@ function PriceBreakdownTable({ devices }) {
                 : <span className="text-slate-600">—</span>}
             </td>
             <td className="px-4 py-2 text-slate-500 capitalize text-[10px]">{d.priceSource || '—'}</td>
-            <td className="px-4 py-2"><PriceChip status={d.status} size="xs" /></td>
+            <td className="px-4 py-2">
+              <div className="flex items-center gap-1.5">
+                <PriceChip status={d.status} size="xs" />
+                {d.status === 'no_price' && onSetPrice && (
+                  <button
+                    onClick={e => { e.stopPropagation(); onSetPrice(d) }}
+                    className="text-[10px] bg-blue-700/60 hover:bg-blue-600 text-blue-200 border border-blue-600/60 rounded px-1.5 py-0.5 font-medium transition-colors whitespace-nowrap"
+                  >
+                    Set Price →
+                  </button>
+                )}
+              </div>
+            </td>
           </tr>
         ))}
       </tbody>
@@ -332,6 +350,118 @@ function LocationsPanel({ locationNames, devices, customerName }) {
   )
 }
 
+// ─── Inline Set-Price modal (shown on no_price device rows) ─────────────────
+function SetPriceModal({ device, customerName, catalog, onSave, onClose }) {
+  const [sku,     setSku]     = useState(device.skuKey || '')
+  const [price,   setPrice]   = useState('')
+  const [saving,  setSaving]  = useState(false)
+  const [err,     setErr]     = useState(null)
+
+  // Prefill price from catalog when SKU is selected
+  function onSkuChange(key) {
+    setSku(key)
+    const found = (catalog || []).find(s => s.skuKey === key)
+    if (found && found.defaultPrice != null) setPrice(String(found.defaultPrice))
+    else setPrice('')
+  }
+
+  async function handleSave() {
+    if (!sku || price === '') { setErr('SKU and price are required.'); return }
+    const p = parseFloat(price)
+    if (isNaN(p)) { setErr('Price must be a number.'); return }
+    setSaving(true); setErr(null)
+    try {
+      const r = await fetch(`${API}/api/settings/customer-overrides`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerName, skuKey: sku, price: p }),
+      })
+      if (!r.ok) throw new Error(await r.text())
+      onSave()
+    } catch (e) {
+      setErr(e.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const skuOptions = (catalog || []).map(s => s.skuKey).sort()
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
+      <div className="bg-slate-800 border border-slate-600 rounded-xl p-5 w-[480px] shadow-2xl space-y-4">
+        <div className="flex items-start justify-between">
+          <div>
+            <div className="text-sm font-semibold text-white">Set Price Override</div>
+            <div className="text-xs text-slate-400 mt-0.5">{customerName}</div>
+          </div>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 text-lg leading-none mt-0.5">✕</button>
+        </div>
+
+        {/* Device info */}
+        <div className="bg-slate-900/60 border border-slate-700/50 rounded-lg px-3 py-2 text-xs space-y-1">
+          <div className="flex gap-4">
+            <span className="text-slate-500">Serial:</span>
+            <span className="font-mono text-slate-300">{device.serialNumber || '—'}</span>
+          </div>
+          <div className="flex gap-4">
+            <span className="text-slate-500">Rate Plan:</span>
+            <span className="text-slate-300">{device.ratePlanCode || device.billingPlan || '—'}</span>
+          </div>
+        </div>
+
+        {/* SKU selector */}
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">QB SKU *</label>
+          <select
+            value={sku}
+            onChange={e => onSkuChange(e.target.value)}
+            className="w-full bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500"
+          >
+            <option value="">— select SKU —</option>
+            {skuOptions.map(k => <option key={k} value={k}>{k}</option>)}
+          </select>
+        </div>
+
+        {/* Price input */}
+        <div>
+          <label className="block text-xs text-slate-400 mb-1">Monthly Price *</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">$</span>
+            <input
+              type="number" step="0.01" min="0"
+              value={price}
+              onChange={e => setPrice(e.target.value)}
+              placeholder="0.00"
+              className="w-full bg-slate-700 border border-slate-600 rounded-lg pl-7 pr-3 py-2 text-sm text-slate-100 font-mono focus:outline-none focus:border-blue-500"
+            />
+          </div>
+        </div>
+
+        {err && (
+          <div className="text-xs text-red-400 bg-red-900/30 border border-red-700/40 rounded px-3 py-2">{err}</div>
+        )}
+
+        <div className="flex gap-2 justify-end pt-1">
+          <button onClick={onClose} className="px-4 py-1.5 text-sm text-slate-400 hover:text-slate-200 rounded-lg border border-slate-600 hover:border-slate-500 transition-colors">
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="px-4 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg font-medium transition-colors"
+          >
+            {saving ? 'Saving…' : 'Save Price'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Billing cycle helper (pure, module-level) ────────────────────────────────
 // Returns true  if referenceMonth is a billing month for this frequency+anchor
 // Returns false if it's a non-billing month
@@ -347,9 +477,11 @@ function isBillingMonth(billingFrequency, billingStartMonth, referenceMonth) {
   return elapsed % step === 0
 }
 
-function CustomerRow({ customer, nowMonth }) {
+function CustomerRow({ customer, nowMonth, onNavigate, catalog }) {
   const [tab, setTab] = useState('qty')   // 'qty' | 'price' | 'locations'
   const [expanded, setExpanded] = useState(false)
+  const [setPriceDevice, setSetPriceDevice] = useState(null)  // device for Set Price modal
+  const [priceSetMsg, setPriceSetMsg] = useState(null)        // success confirmation
 
   const {
     customerName, deviceCount, billingType, billingFrequency, billingStartMonth,
@@ -464,8 +596,20 @@ function CustomerRow({ customer, nowMonth }) {
               </span>
             )}
             {unmapped > 0 && (
-              <span className="text-xs bg-amber-900/50 text-amber-300 border border-amber-700/40 rounded px-1.5 py-0.5">
+              <span
+                className="text-xs bg-amber-900/50 text-amber-300 border border-amber-700/40 rounded px-1.5 py-0.5 cursor-pointer inline-flex items-center gap-1 hover:bg-amber-800/60 transition-colors"
+                title="Click to map this rate plan in Settings"
+                onClick={e => {
+                  e.stopPropagation()
+                  const firstUnmappedDev = (customer.devices || []).find(
+                    d => d.status === 'unmapped' && !d.neverActivated
+                  )
+                  const prefill = firstUnmappedDev?.ratePlanCode || firstUnmappedDev?.promoCode || null
+                  if (onNavigate) onNavigate('settings', { tab: 'mappings', prefill })
+                }}
+              >
                 {unmapped} unmapped
+                <span className="text-amber-500/80">→ Fix</span>
               </span>
             )}
             {neverActivated > 0 && (
@@ -540,7 +684,12 @@ function CustomerRow({ customer, nowMonth }) {
                 <QtyBreakdownTable rows={skuQtyBreakdown} />
               )}
               {tab === 'price' && (
-                <PriceBreakdownTable devices={devices} />
+                <PriceBreakdownTable
+                  devices={devices}
+                  catalog={catalog}
+                  onSetPrice={dev => { setSetPriceDevice(dev); setPriceSetMsg(null) }}
+                  priceSetMsg={priceSetMsg}
+                />
               )}
               {tab === 'locations' && (
                 <LocationsPanel
@@ -552,6 +701,19 @@ function CustomerRow({ customer, nowMonth }) {
             </div>
           </td>
         </tr>
+      )}
+      {/* Set Price modal */}
+      {setPriceDevice && (
+        <SetPriceModal
+          device={setPriceDevice}
+          customerName={customerName}
+          catalog={catalog || []}
+          onSave={() => {
+            setSetPriceDevice(null)
+            setPriceSetMsg(`✓ Price saved for ${setPriceDevice.serialNumber || setPriceDevice.skuKey}.`)
+          }}
+          onClose={() => setSetPriceDevice(null)}
+        />
       )}
     </>
   )
@@ -932,7 +1094,7 @@ export default function Reconciliation() {
               </tr>
             </thead>
             <tbody>
-              {visible.map(c => <CustomerRow key={c.customerId} customer={c} nowMonth={nowMonth} />)}
+              {visible.map(c => <CustomerRow key={c.customerId} customer={c} nowMonth={nowMonth} onNavigate={onNavigate} catalog={catalog} />)}
             </tbody>
           </table>
           </div>
