@@ -707,7 +707,7 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
     raw = [
         v for v in company_map.values()
         if v["activeDevices"] > 0
-        and not v["customerName"].startswith("* Terminated")
+        and not v["customerName"].startswith("* ")   # skip internal / test accounts
     ]
     _print(f"[sync] {len(all_device_dbs)} device-db records + {len(all_contracts)} contracts -> "
            f"{len(company_map)} companies -> {len(raw)} with active devices")

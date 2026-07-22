@@ -658,6 +658,9 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     for _pkey, cdata in company_map.items():
         cid          = cdata["customerId"]
         cname        = cdata["customerName"]
+        # Skip internal / test accounts (MyAdmin marks them with a leading '* ')
+        if (cname or "").startswith("* "):
+            continue
         devices      = cdata["devices"]
         # Re-scan all sub-account cids so billing type is found even when
         # the first cid seen belongs to a sub-account with an Unknown type.
@@ -1763,6 +1766,10 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
 
             # Skip if status_filter wouldn't match
             if status_filter and status_filter != "ok":
+                continue
+
+            # Skip internal / test accounts in the QB-only fallback path too
+            if display_name.startswith("* "):
                 continue
 
             # HIG total = Hanover devices + Han-CS devices (both roll up to HIG in QB)

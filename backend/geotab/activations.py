@@ -253,6 +253,10 @@ def _enrich_request(
     company_id   = str(company.get("id") or "")
     company_name = (company.get("name") or "").strip()
 
+    # Skip internal / test accounts (MyAdmin marks them with a leading '* ')
+    if company_name.startswith("* "):
+        return None
+
     # ── Request metadata ──────────────────────────────────────────────────
     request_date  = _safe_date_str(req.get("requestDate"))
     process_date  = _safe_date_str(req.get("processDate"))
