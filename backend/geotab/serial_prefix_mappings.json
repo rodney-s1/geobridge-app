@@ -126,6 +126,12 @@
     "dmExcluded": true
   },
   {
+    "prefix": "P8",
+    "skuKey": "AEMP Service (Premium)",
+    "notes": "Hitachi AEMP integration — billed as AEMP Service (Premium) in QB",
+    "dmExcluded": false
+  },
+  {
     "prefix": "OE",
     "skuKey": "",
     "notes": "Digital Matter — excluded from prorated invoices (DM_SERIAL_PREFIXES)",

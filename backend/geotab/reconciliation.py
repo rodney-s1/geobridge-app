@@ -78,6 +78,62 @@ QB_AUTHORITATIVE_SKUS: frozenset = frozenset({
     "Predictive Coach",
     "Predictive Coach Service Fee (Predictive Coach Service Fee - Automated Driver C...",
 
+    # --- Fleetio fleet management platform (not MyAdmin — sourced from Fleetio) --
+    "Service Fee Fleetio (Advanced)",
+    "Service Fee Fleetio Pro",
+
+    # --- Drivewyze weigh-station bypass (sourced from Drivewyze platform) --------
+    "Service Fee Drivewyze",
+
+    # --- Haas Alert safety platform (not MyAdmin) --------------------------------
+    "Haas Alert",
+
+    # --- LifeSaver distracted-driving platform (not MyAdmin) ---------------------
+    "LifeSaver Service",
+
+    # --- DoForms mobile data capture platform (not MyAdmin) ----------------------
+    "Service Fee DoForms (Basic)",
+
+    # --- Route4Me route optimisation platform (not MyAdmin) ----------------------
+    "Service Fee Route4Me",
+
+    # --- Starlite platform (not MyAdmin) -----------------------------------------
+    "Service Fee Starlite",
+
+    # --- TopFly tracking platform (not MyAdmin) ----------------------------------
+    "Service Fee TopFly Basic",
+
+    # --- Xirgo device platform (not MyAdmin) -------------------------------------
+    "Service Fee Xirgo (Basic)",
+
+    # --- GoCam+ camera platform (not MyAdmin) ------------------------------------
+    "Service Fee GoCam+",
+
+    # --- ORIGOInspect inspection platform (not MyAdmin) --------------------------
+    "ORIGOInspect Plan",
+
+    # --- Oyster3 asset tracker (not MyAdmin) -------------------------------------
+    "Oyster3",
+
+    # --- Pressure Pro tyre monitoring (not MyAdmin) ------------------------------
+    "Pressure Pro FX Service",
+
+    # --- AA Lithium / Nano Sim hardware add-ons (one-off, not MyAdmin devices) ---
+    "AA Lithium",
+    "Nano Sim",
+
+    # --- Geoforce asset tracking platform (not MyAdmin) --------------------------
+    "Geoforce Service (GT1s)",
+    "Geoforce Service (GT2c)",
+    "Geoforce Service (GT2h)",
+
+    # --- GoAnalytics analytics platform add-on (not MyAdmin device-based) --------
+    "GoAnalytics",
+
+    # --- LifeSaver / Pledge / Pairing are per-account fees, not device counts ----
+    "Pledge - Enterprise",
+    "Pairing Script",
+
     # NOTE: "Geotab Service Fee (HANOVER)" is intentionally NOT listed here.
     # It is handled in two places:
     #   1. Per Hanover customer (billing_type=="Hanover"): hanoverConsolidated branch
@@ -840,6 +896,16 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 mapping_tier = "serial_prefix"
                 lookup_code  = "C3 serial prefix (CalAmp Asset)"
 
+            # -- Tier 0.5g: P8 serial prefix = Hitachi AEMP Service (Premium) ------
+            # Hitachi heavy-equipment devices carry serial numbers starting with "P8".
+            # MyAdmin reports their plan as an OEM AEMP variant; without this guard
+            # they would fall through to a generic plan lookup.  QB invoices them
+            # under "AEMP Service (Premium)" alongside CAT/JD/Komatsu OEM lines.
+            if sku_key is None and serial_upper.startswith("P8"):
+                sku_key      = "AEMP Service (Premium)"
+                mapping_tier = "serial_prefix"
+                lookup_code  = "P8 serial prefix (Hitachi AEMP)"
+
             # -- Tier 0.5f: GE / GF serial prefix = GO Focus Plus / GO Focus ----
             # GE serials = Geotab GO Focus Plus hardware.
             # GF serials = Geotab GO Focus hardware.
@@ -1263,6 +1329,11 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 # them.  The serial prefix is the definitive discriminator.
                 if na_sku_key is None and na_serial.startswith("EVD-MKH-SRF"):
                     na_sku_key      = "SS Service Fee"
+                    na_price_source = "serial_prefix"
+
+                # NA-0.5g: P8 serial → Hitachi AEMP Service (Premium)
+                if na_sku_key is None and na_serial.startswith("P8"):
+                    na_sku_key      = "AEMP Service (Premium)"
                     na_price_source = "serial_prefix"
 
                 # NA-0.5f: GE / GF serial (no promoCode) → GO Focus Plus / GO Focus

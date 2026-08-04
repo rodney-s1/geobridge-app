@@ -392,5 +392,7 @@
   {"ratePlanCode": "Cat AEMP Support: Live",        "skuKey": "CAT AEMP + Support (OEM)",               "defaultPrice": 9.50,  "notes": "MyAdmin activeDevicePlan - Caterpillar AEMP + Support OEM"},
   {"ratePlanCode": "John Deere AEMP: Live",         "skuKey": "John Deere AEMP (OEM)",                  "defaultPrice": 5.00,  "notes": "MyAdmin activeDevicePlan - John Deere AEMP OEM"},
   {"ratePlanCode": "John Deere AEMP Support: Live", "skuKey": "John Deere AEMP + Support (OEM)",        "defaultPrice": 9.50,  "notes": "MyAdmin activeDevicePlan - John Deere AEMP + Support OEM"},
-  {"ratePlanCode": "Komatsu AEMP: Live",            "skuKey": "Komatsu AEMP (OEM)",                     "defaultPrice": 5.00,  "notes": "MyAdmin activeDevicePlan - Komatsu AEMP OEM"}
+  {"ratePlanCode": "Komatsu AEMP: Live",            "skuKey": "Komatsu AEMP (OEM)",                     "defaultPrice": 5.00,  "notes": "MyAdmin activeDevicePlan - Komatsu AEMP OEM"},
+  {"ratePlanCode": "Hitachi AEMP: Live",            "skuKey": "AEMP Service (Premium)",                  "defaultPrice": 7.50,  "notes": "MyAdmin activeDevicePlan - Hitachi AEMP (P8 serial prefix); billed as AEMP Service (Premium) in QB"},
+  {"ratePlanCode": "AEMP PREMIUM MODE",             "skuKey": "AEMP Service (Premium)",                  "defaultPrice": 7.50,  "notes": "Generic AEMP Premium billing plan fallback for non-OEM-specific AEMP devices"}
 ]
