@@ -24,7 +24,7 @@ from .auth import require_session
 
 router = APIRouter(dependencies=[Depends(require_session)])
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
+from ._data_dir import _DATA_DIR, _HERE
 
 
 # ---------------------------------------------------------------------------
@@ -99,8 +99,8 @@ def _load(path, default):
 
 def _build_price_index() -> Tuple[dict, dict]:
     """Returns (ovr_index, catalog_index)."""
-    catalog   = _load(os.path.join(_HERE, "sku_catalog.json"), [])
-    overrides = _load(os.path.join(_HERE, "sku_customer_overrides.json"), [])
+    catalog   = _load(os.path.join(_DATA_DIR, "sku_catalog.json"), [])
+    overrides = _load(os.path.join(_DATA_DIR, "sku_customer_overrides.json"), [])
     catalog_index = {s["skuKey"]: float(s.get("defaultPrice") or 0) for s in catalog}
     ovr_index = {
         (_normalize(o["customerName"]), o["skuKey"]): float(o.get("price") or 0)
@@ -135,8 +135,8 @@ def _resolve_monthly_rate(customer_name: str, sku_key: str,
 
 def _build_sku_index() -> Tuple[dict, dict]:
     """Returns (mapping_index, cust_map_index)."""
-    mappings  = _load(os.path.join(_HERE, "sku_mappings.json"), [])
-    cust_maps = _load(os.path.join(_HERE, "customer_rate_plan_mappings.json"), [])
+    mappings  = _load(os.path.join(_DATA_DIR, "sku_mappings.json"), [])
+    cust_maps = _load(os.path.join(_DATA_DIR, "customer_rate_plan_mappings.json"), [])
     mapping_index: dict = {}
     for m in mappings:
         key = (m.get("ratePlanCode") or m.get("promoCode") or "").upper()

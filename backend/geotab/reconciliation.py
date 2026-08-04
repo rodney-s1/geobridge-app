@@ -143,7 +143,7 @@ QB_AUTHORITATIVE_SKUS: frozenset = frozenset({
     #      vs QB invoice qty for a real cross-customer diff.
 })
 
-_HERE = os.path.dirname(os.path.abspath(__file__))
+from ._data_dir import _DATA_DIR, _HERE
 
 # --- Shared stores (imported lazily so circular-import safe) -----------------
 def _load(path, default):
@@ -156,11 +156,11 @@ def _load(path, default):
 
 def _get_stores():
     """Load fresh copies from disk each call so restarts aren't needed."""
-    catalog      = _load(os.path.join(_HERE, "sku_catalog.json"),                    [])
-    mappings     = _load(os.path.join(_HERE, "sku_mappings.json"),                   [])
-    cust_maps    = _load(os.path.join(_HERE, "customer_rate_plan_mappings.json"),     [])
-    overrides    = _load(os.path.join(_HERE, "sku_customer_overrides.json"),          [])
-    qb_qtys      = _load(os.path.join(_HERE, "qb_invoice_quantities.json"),           [])
+    catalog      = _load(os.path.join(_DATA_DIR, "sku_catalog.json"),                    [])
+    mappings     = _load(os.path.join(_DATA_DIR, "sku_mappings.json"),                   [])
+    cust_maps    = _load(os.path.join(_DATA_DIR, "customer_rate_plan_mappings.json"),     [])
+    overrides    = _load(os.path.join(_DATA_DIR, "sku_customer_overrides.json"),          [])
+    qb_qtys      = _load(os.path.join(_DATA_DIR, "qb_invoice_quantities.json"),           [])
     return catalog, mappings, cust_maps, overrides, qb_qtys
 
 

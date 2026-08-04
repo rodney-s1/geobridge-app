@@ -27,15 +27,19 @@ router = APIRouter(dependencies=[Depends(require_session)])
 MYADMIN_ACCOUNT = "CELU01"
 
 # --- Disk persistence paths ---------------------------------------------------
-_HERE = os.path.dirname(os.path.abspath(__file__))
-QB_DATA_FILE           = os.path.join(_HERE, "qb_customers.json")
-OVERRIDES_FILE         = os.path.join(_HERE, "billing_overrides.json")
-BILLING_TYPE_OVERRIDES_FILE = os.path.join(_HERE, "billing_type_overrides.json")
-BILLING_DATE_OVERRIDES_FILE      = os.path.join(_HERE, "billing_date_overrides.json")
-FIRST_CONNECT_OVERRIDES_FILE     = os.path.join(_HERE, "first_connect_date_overrides.json")
-BILLING_FREQUENCY_FILE           = os.path.join(_HERE, "billing_frequency_overrides.json")
-SYNC_CACHE_FILE        = os.path.join(_HERE, "myadmin_cache.json")   # persisted between restarts
-CONTRACT_CHECKPOINT_FILE = os.path.join(_HERE, "contract_checkpoint.json")  # sliding-window resume point
+# _DATA_DIR resolves to GEOBRIDGE_DATA_DIR env var (set by Electron to
+# %APPDATA%\GeoBridge on Windows) so that user-written JSON files survive
+# application reinstalls.  Falls back to _HERE in dev / unpackaged mode.
+# See _data_dir.py for the migration logic that copies existing files on first run.
+from ._data_dir import _DATA_DIR, _HERE
+QB_DATA_FILE           = os.path.join(_DATA_DIR, "qb_customers.json")
+OVERRIDES_FILE         = os.path.join(_DATA_DIR, "billing_overrides.json")
+BILLING_TYPE_OVERRIDES_FILE = os.path.join(_DATA_DIR, "billing_type_overrides.json")
+BILLING_DATE_OVERRIDES_FILE      = os.path.join(_DATA_DIR, "billing_date_overrides.json")
+FIRST_CONNECT_OVERRIDES_FILE     = os.path.join(_DATA_DIR, "first_connect_date_overrides.json")
+BILLING_FREQUENCY_FILE           = os.path.join(_DATA_DIR, "billing_frequency_overrides.json")
+SYNC_CACHE_FILE        = os.path.join(_DATA_DIR, "myadmin_cache.json")   # persisted between restarts
+CONTRACT_CHECKPOINT_FILE = os.path.join(_DATA_DIR, "contract_checkpoint.json")  # sliding-window resume point
 
 def _load_json(path: str, default):
     try:
@@ -1038,7 +1042,7 @@ async def import_qb_customers(file: UploadFile = File(...), force: bool = Query(
     if force:
         _save_json(OVERRIDES_FILE, billing_overrides)
     # Persist the column list so the debug endpoint can report it later
-    _save_json(os.path.join(_HERE, "qb_last_import_columns.json"), csv_columns)
+    _save_json(os.path.join(_DATA_DIR, "qb_last_import_columns.json"), csv_columns)
     print(f"[import-qb] Saved {len(qb_customers)} QB customers to {QB_DATA_FILE}")
 
     msg = f"{imported} customers imported, {skipped} skipped"
@@ -1065,7 +1069,7 @@ async def import_qb_customers(file: UploadFile = File(...), force: bool = Query(
 @router.get("/debug/qb-columns")
 async def debug_qb_columns():
     """Return the column headers that were present in the most recently imported QB CSV."""
-    cols = _load_json(os.path.join(_HERE, "qb_last_import_columns.json"), None)
+    cols = _load_json(os.path.join(_DATA_DIR, "qb_last_import_columns.json"), None)
     if cols is None:
         raise HTTPException(status_code=404, detail="No QB import has been performed yet, or column log is missing.")
     return {"csvColumns": cols, "count": len(cols)}

@@ -47,8 +47,8 @@ from fastapi.responses import StreamingResponse
 router = APIRouter()
 
 # ── Persistence ───────────────────────────────────────────────────────────────
-_HERE         = os.path.dirname(__file__)
-_HISTORY_FILE = os.path.join(_HERE, "qb_sync_history.json")
+from ._data_dir import _DATA_DIR, _HERE
+_HISTORY_FILE = os.path.join(_DATA_DIR, "qb_sync_history.json")
 
 
 def _load_history() -> list:

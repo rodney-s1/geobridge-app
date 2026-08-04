@@ -52,16 +52,12 @@ from .customers import (_sync_cache, _clean_name, _strip_han_cs, _strip_sub_acco
 from .auth import myadmin_call, session_store
 
 # --------------------------------------------------------------------------- #
-#  File paths (same dir as all other geotab data files)                        #
+#  File paths — mutable user data lives in _DATA_DIR (survives reinstalls)    #
 # --------------------------------------------------------------------------- #
-_HERE = os.path.dirname(os.path.abspath(__file__))
+from ._data_dir import _DATA_DIR, _HERE
 
-# --------------------------------------------------------------------------- #
-#  Persistent stores for user-managed overrides                                 #
-# --------------------------------------------------------------------------- #
-
-EXCLUDED_INVOICES_FILE  = os.path.join(_HERE, "excluded_invoices.json")
-SKU_OVERRIDES_FILE      = os.path.join(_HERE, "invoice_sku_overrides.json")
+EXCLUDED_INVOICES_FILE  = os.path.join(_DATA_DIR, "excluded_invoices.json")
+SKU_OVERRIDES_FILE      = os.path.join(_DATA_DIR, "invoice_sku_overrides.json")
 
 def _load_excluded_invoices() -> set:
     """Load the set of excluded invoice keys (customerId|billingMonth)."""
@@ -199,10 +195,10 @@ def _build_indices():
       category_index   : skuKey -> category  (used to exclude non-billable categories)
       plan_promo_index : (planLevel_upper, ratePlanCode_upper) -> skuKey  (Tier 1.5)
     """
-    catalog  = _load_json(os.path.join(_HERE, "sku_catalog.json"), [])
-    mappings = _load_json(os.path.join(_HERE, "sku_mappings.json"), [])
-    cust_maps= _load_json(os.path.join(_HERE, "customer_rate_plan_mappings.json"), [])
-    overrides= _load_json(os.path.join(_HERE, "sku_customer_overrides.json"), [])
+    catalog  = _load_json(os.path.join(_DATA_DIR, "sku_catalog.json"), [])
+    mappings = _load_json(os.path.join(_DATA_DIR, "sku_mappings.json"), [])
+    cust_maps= _load_json(os.path.join(_DATA_DIR, "customer_rate_plan_mappings.json"), [])
+    overrides= _load_json(os.path.join(_DATA_DIR, "sku_customer_overrides.json"), [])
 
     catalog_index: Dict[str, float] = {
         s["skuKey"]: float(s.get("defaultPrice") or 0)
@@ -1862,7 +1858,7 @@ async def get_sku_catalog():
     Return the full SKU catalog (skuKey + fullPath + defaultPrice + category).
     Used by the frontend SKU override picker.
     """
-    catalog = _load_json(os.path.join(_HERE, "sku_catalog.json"), [])
+    catalog = _load_json(os.path.join(_DATA_DIR, "sku_catalog.json"), [])
     return {
         "items": [
             {

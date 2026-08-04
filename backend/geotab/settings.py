@@ -44,15 +44,16 @@ from .auth import require_session
 
 router = APIRouter(dependencies=[Depends(require_session)])
 
-# --- Disk paths --------------------------------------------------------------
-_HERE = os.path.dirname(os.path.abspath(__file__))
-SKU_CATALOG_FILE        = os.path.join(_HERE, "sku_catalog.json")
-SKU_MAPPINGS_FILE       = os.path.join(_HERE, "sku_mappings.json")
-CUST_RATE_PLAN_FILE     = os.path.join(_HERE, "customer_rate_plan_mappings.json")
-CUSTOMER_OVERRIDES_FILE = os.path.join(_HERE, "sku_customer_overrides.json")
-QB_QUANTITIES_FILE          = os.path.join(_HERE, "qb_invoice_quantities.json")
-MYADMIN_CACHE_FILE          = os.path.join(_HERE, "myadmin_cache.json")
-SERIAL_PREFIX_FILE          = os.path.join(_HERE, "serial_prefix_mappings.json")
+# --- Disk paths — mutable user data lives in _DATA_DIR (survives reinstalls) -
+# See _data_dir.py for env var resolution and first-run migration logic.
+from ._data_dir import _DATA_DIR, _HERE
+SKU_CATALOG_FILE        = os.path.join(_DATA_DIR, "sku_catalog.json")
+SKU_MAPPINGS_FILE       = os.path.join(_DATA_DIR, "sku_mappings.json")
+CUST_RATE_PLAN_FILE     = os.path.join(_DATA_DIR, "customer_rate_plan_mappings.json")
+CUSTOMER_OVERRIDES_FILE = os.path.join(_DATA_DIR, "sku_customer_overrides.json")
+QB_QUANTITIES_FILE          = os.path.join(_DATA_DIR, "qb_invoice_quantities.json")
+MYADMIN_CACHE_FILE          = os.path.join(_DATA_DIR, "myadmin_cache.json")
+SERIAL_PREFIX_FILE          = os.path.join(_DATA_DIR, "serial_prefix_mappings.json")
 
 
 def _load(path, default):
@@ -979,6 +980,7 @@ async def debug_settings():
     return {
         "version":        "schema-migration",   # git commit -- if you see this, new code is running
         "here":           _HERE,
+        "data_dir":       _DATA_DIR,
         "cwd":            os.getcwd(),
         "catalog":        file_info(SKU_CATALOG_FILE),
         "mappings":       file_info(SKU_MAPPINGS_FILE),

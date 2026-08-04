@@ -82,9 +82,14 @@ function startPythonBackend() {
   console.log('[backend] runScript:', runScript)
   console.log('[backend] cwd:      ', backendPath)
 
+  // Pass the user-data directory so Python stores mutable JSON files there
+  // (survives reinstalls because the installer never touches %APPDATA%\GeoBridge\).
+  const userDataDir = app.getPath('userData')
+  console.log('[backend] userDataDir:', userDataDir)
+
   backendProcess = spawn(pythonCmd, [runScript], {
     cwd: backendPath,
-    env: { ...process.env }
+    env: { ...process.env, GEOBRIDGE_DATA_DIR: userDataDir }
   })
 
   backendProcess.stdout.on('data', (data) => {
