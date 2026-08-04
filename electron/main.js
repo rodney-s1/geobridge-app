@@ -1,6 +1,7 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog } = require('electron')
 const path = require('path')
 const { spawn } = require('child_process')
+const { autoUpdater } = require('electron-updater')
 
 let mainWindow
 let backendProcess
@@ -9,11 +10,38 @@ let backendProcess
 // Running `npm start` (unpackaged) should still load the built dist/
 const isDev = process.env.APP_ENV === 'development'
 
+// ---------------------------------------------------------------------------
+// Update-blocking guard
+//
+// When an update has been downloaded and is ready to install, we set this flag.
+// The backend's /api/customers endpoint honours a query param ?update_pending=1
+// which the renderer injects when this flag is true — but more importantly,
+// the renderer itself disables the "Sync from MyAdmin" (force_refresh) button
+// and shows a prominent banner so the user installs the update first.
+//
+// This prevents a MyAdmin sync from starting mid-install and leaving the
+// app / data in an inconsistent state.
+// ---------------------------------------------------------------------------
+let updateReadyToInstall = false
+let pendingUpdateVersion  = null   // e.g. "1.2.3" shown in the UI
+
+// ---------------------------------------------------------------------------
+// Auto-updater configuration
+// ---------------------------------------------------------------------------
+autoUpdater.autoDownload        = false   // Always ask first — never silently download
+autoUpdater.autoInstallOnAppQuit = false  // We control install ourselves via IPC
+autoUpdater.allowDowngrade      = false
+autoUpdater.logger              = require('electron-log')
+autoUpdater.logger.transports.file.level = 'info'
+
+// ---------------------------------------------------------------------------
+// Python backend launcher
+// ---------------------------------------------------------------------------
 function startPythonBackend() {
   const backendPath = path.join(__dirname, '../backend')
   const pythonCmd = process.platform === 'win32'
-  ? path.join(__dirname, '../.venv/Scripts/python.exe')
-  : 'python3'
+    ? path.join(__dirname, '../.venv/Scripts/python.exe')
+    : 'python3'
 
   const runScript = path.join(backendPath, 'run_backend.py')
   backendProcess = spawn(pythonCmd, [runScript], {
@@ -34,6 +62,9 @@ function startPythonBackend() {
   })
 }
 
+// ---------------------------------------------------------------------------
+// Window creation
+// ---------------------------------------------------------------------------
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1400,
@@ -60,6 +91,13 @@ function createWindow() {
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show()
+    // Kick off a silent background check ~4 s after the window appears so the
+    // app is fully loaded before any update UI appears.
+    if (!isDev) {
+      setTimeout(() => autoUpdater.checkForUpdates().catch(e =>
+        console.error('[updater] background check failed:', e)
+      ), 4000)
+    }
   })
 
   mainWindow.on('closed', () => {
@@ -67,10 +105,116 @@ function createWindow() {
   })
 }
 
+// ---------------------------------------------------------------------------
+// Auto-updater event handlers
+// ---------------------------------------------------------------------------
+
+// Fired when a new version is found on GitHub Releases
+autoUpdater.on('update-available', (info) => {
+  console.log('[updater] update available:', info.version)
+  if (mainWindow) {
+    mainWindow.webContents.send('update-available', {
+      version:     info.version,
+      releaseNotes: info.releaseNotes || null,
+      releaseDate:  info.releaseDate  || null,
+    })
+  }
+})
+
+// Fired when the current version is already the latest
+autoUpdater.on('update-not-available', (info) => {
+  console.log('[updater] up to date, version:', info.version)
+  if (mainWindow) {
+    mainWindow.webContents.send('update-not-available', { version: info.version })
+  }
+})
+
+// Download progress — forward percentage to renderer for the progress bar
+autoUpdater.on('download-progress', (progress) => {
+  if (mainWindow) {
+    mainWindow.webContents.send('update-download-progress', {
+      percent:          Math.round(progress.percent),
+      transferred:      progress.transferred,
+      total:            progress.total,
+      bytesPerSecond:   progress.bytesPerSecond,
+    })
+  }
+})
+
+// Download complete — update is staged, ready to install
+autoUpdater.on('update-downloaded', (info) => {
+  console.log('[updater] download complete:', info.version)
+  updateReadyToInstall = true
+  pendingUpdateVersion = info.version
+  if (mainWindow) {
+    mainWindow.webContents.send('update-downloaded', { version: info.version })
+  }
+})
+
+// Any error during check or download
+autoUpdater.on('error', (err) => {
+  console.error('[updater] error:', err)
+  if (mainWindow) {
+    mainWindow.webContents.send('update-error', {
+      message: err?.message || String(err)
+    })
+  }
+})
+
+// ---------------------------------------------------------------------------
+// IPC handlers — called from the renderer via window.updaterAPI.*
+// ---------------------------------------------------------------------------
+
+// Renderer asks: is there an update pending install right now?
+ipcMain.handle('updater:get-status', () => ({
+  updateReadyToInstall,
+  pendingUpdateVersion,
+}))
+
+// Renderer requests a fresh check
+ipcMain.handle('updater:check', async () => {
+  try {
+    const result = await autoUpdater.checkForUpdates()
+    return { ok: true, version: result?.updateInfo?.version || null }
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) }
+  }
+})
+
+// Renderer requests download of the staged update
+ipcMain.handle('updater:download', async () => {
+  try {
+    await autoUpdater.downloadUpdate()
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) }
+  }
+})
+
+// Renderer requests install-and-relaunch
+// We kill the Python backend first so it doesn't get orphaned
+ipcMain.handle('updater:install', () => {
+  console.log('[updater] install requested — killing backend and relaunching')
+  if (backendProcess) {
+    backendProcess.kill()
+    backendProcess = null
+  }
+  autoUpdater.quitAndInstall(/* isSilent */ false, /* isForceRunAfter */ true)
+})
+
+// ---------------------------------------------------------------------------
+// Existing IPC handlers
+// ---------------------------------------------------------------------------
+ipcMain.handle('get-app-version', () => app.getVersion())
+
+// Renderer can ask "is an update blocking sync right now?"
+ipcMain.handle('update-blocking-sync', () => updateReadyToInstall)
+
+// ---------------------------------------------------------------------------
+// App lifecycle
+// ---------------------------------------------------------------------------
 app.whenReady().then(() => {
   if (!isDev) {
-    // In dev mode (APP_ENV=development), concurrently already started the backend.
-    // In all other cases (npm start or packaged), Electron owns the backend process.
     startPythonBackend()
   }
   // In dev the backend is already running; give it a moment then open the window.
@@ -90,8 +234,4 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
-})
-
-ipcMain.handle('get-app-version', () => {
-  return app.getVersion()
 })

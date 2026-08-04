@@ -30,15 +30,48 @@
     "files": [
       "electron/**/*",
       "frontend/dist/**/*",
-      "backend/**/*"
+      "backend/**/*",
+      "node_modules/electron-updater/**/*",
+      "node_modules/electron-log/**/*",
+      "node_modules/builder-util-runtime/**/*"
     ],
+    "extraResources": [
+      {
+        "from": ".venv",
+        "to": ".venv",
+        "filter": ["**/*"]
+      }
+    ],
+    "publish": {
+      "provider": "github",
+      "owner": "rodney-s1",
+      "repo": "geobridge-app",
+      "releaseType": "release"
+    },
     "mac": {
       "category": "public.app-category.business",
-      "target": "dmg"
+      "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }]
     },
     "win": {
-      "target": "nsis",
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
       "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "GeoBridge",
+      "installerIcon": "assets/icon.ico",
+      "uninstallerIcon": "assets/icon.ico",
+      "deleteAppDataOnUninstall": false
+    },
+    "linux": {
+      "target": "AppImage"
     }
+  },
+  "dependencies": {
+    "electron-log": "^5.4.4",
+    "electron-updater": "^6.8.9"
   }
 }

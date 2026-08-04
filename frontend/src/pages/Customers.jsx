@@ -1422,7 +1422,7 @@ function SyncProgressInline({ syncProgress, isForcingRefresh, fullHeight = false
 }
 
 // ─── Main Customers page ──────────────────────────────────────────────────────
-export default function Customers({ onDetail }) {
+export default function Customers({ onDetail, syncBlocked = false }) {
   const [customers, setCustomers] = useState([])
   const [loading, setLoading] = useState(false)
   const [loadingStart, setLoadingStart] = useState(null)
@@ -1842,10 +1842,28 @@ export default function Customers({ onDetail }) {
           </div>
 
           <div className="flex flex-col items-end gap-1">
+            {syncBlocked && (
+              <div className="flex items-center gap-1.5 text-xs text-amber-400/90
+                              bg-amber-950/50 border border-amber-700/40 rounded-md
+                              px-2.5 py-1 mb-0.5 max-w-[220px] text-right">
+                <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor"
+                     strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round"
+                        d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2
+                           2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+                </svg>
+                Sync paused — install update first
+              </div>
+            )}
             <button
               onClick={() => fetchCustomers(1, true, true)}
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-sm transition-colors"
+              disabled={loading || syncBlocked}
+              title={syncBlocked
+                ? 'A GeoBridge update is ready to install. Install it first to avoid data loss during the restart.'
+                : 'Pull the latest contracts from Geotab MyAdmin'}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500
+                         disabled:opacity-50 disabled:cursor-not-allowed text-white
+                         rounded-lg text-sm transition-colors"
             >
               <svg className={`w-4 h-4 ${isForcingRefresh ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />

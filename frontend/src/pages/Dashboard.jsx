@@ -7,10 +7,11 @@ import Invoices from './Invoices'
 import Activations from './Activations'
 import Reports from './Reports'
 import QbSync from './QbSync'
+import UpdateNotification from '../components/UpdateNotification'
 
 const API = 'http://127.0.0.1:8001'
 
-function Dashboard({ sessionData, onLogout }) {
+function Dashboard({ sessionData, onLogout, syncBlocked = false }) {
   const [activePage,       setActivePage]       = useState('home')
   const [detailCustomerId, setDetailCustomerId] = useState(null)
   const [detailCustomerName, setDetailCustomerName] = useState('')
@@ -131,6 +132,11 @@ function Dashboard({ sessionData, onLogout }) {
           <button onClick={onLogout} style={styles.logoutBtn}>
             Sign Out
           </button>
+
+          {/* ── Check for Updates ── compact form lives in the sidebar footer */}
+          <div style={{ marginTop: '12px' }}>
+            <UpdateNotification onSyncBlocked={() => {}} />
+          </div>
         </div>
 
       </div>
@@ -175,7 +181,7 @@ function Dashboard({ sessionData, onLogout }) {
                   customerName={detailCustomerName}
                   onBack={handleBackFromDetail}
                 />
-              : <Customers onDetail={handleOpenDetail} />
+              : <Customers onDetail={handleOpenDetail} syncBlocked={syncBlocked} />
             }
           </div>
           {activePage === 'reconciliation' && <Reconciliation onNavigate={handleNavigate} />}
