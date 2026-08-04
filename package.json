@@ -52,7 +52,8 @@
       "provider": "github",
       "owner": "rodney-s1",
       "repo": "geobridge-app",
-      "releaseType": "release"
+      "releaseType": "release",
+      "private": true
     },
     "mac": {
       "category": "public.app-category.business",

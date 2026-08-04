@@ -1,5 +1,6 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron')
 const path = require('path')
+const fs = require('fs')
 const { spawn } = require('child_process')
 const { autoUpdater } = require('electron-updater')
 
@@ -24,6 +25,36 @@ const isDev = process.env.APP_ENV === 'development'
 // ---------------------------------------------------------------------------
 let updateReadyToInstall = false
 let pendingUpdateVersion  = null   // e.g. "1.2.3" shown in the UI
+
+// ---------------------------------------------------------------------------
+// GitHub token loader
+//
+// Reads %APPDATA%\geobridge-app\github_token.json for private-repo update checks.
+// The file must be placed on each machine manually — it is never bundled with
+// the installer or committed to the repo.
+//
+// Format: { "token": "ghp_xxxxxxxxxxxxxxxxxxxx" }
+//
+// If the file is missing or invalid, update checks will fail gracefully with
+// an auth error rather than crashing the app.
+// ---------------------------------------------------------------------------
+function loadGithubToken() {
+  try {
+    const tokenFile = path.join(app.getPath('userData'), 'github_token.json')
+    if (fs.existsSync(tokenFile)) {
+      const data = JSON.parse(fs.readFileSync(tokenFile, 'utf8'))
+      if (data && data.token && typeof data.token === 'string' && data.token.startsWith('gh')) {
+        console.log('[updater] GitHub token loaded from', tokenFile)
+        return data.token
+      }
+    }
+    console.warn('[updater] No github_token.json found at', tokenFile,
+      '— update checks will fail for private repos.')
+  } catch (e) {
+    console.error('[updater] Failed to load github_token.json:', e.message)
+  }
+  return null
+}
 
 // ---------------------------------------------------------------------------
 // Auto-updater configuration
@@ -137,9 +168,16 @@ function createWindow() {
     // Kick off a silent background check ~4 s after the window appears so the
     // app is fully loaded before any update UI appears.
     if (!isDev) {
-      setTimeout(() => autoUpdater.checkForUpdates().catch(e =>
-        console.error('[updater] background check failed:', e)
-      ), 4000)
+      setTimeout(() => {
+        // Inject GitHub token for private-repo release access
+        const ghToken = loadGithubToken()
+        if (ghToken) {
+          autoUpdater.requestHeaders = { Authorization: `token ${ghToken}` }
+        }
+        autoUpdater.checkForUpdates().catch(e =>
+          console.error('[updater] background check failed:', e)
+        )
+      }, 4000)
     }
   })
 
@@ -217,6 +255,11 @@ ipcMain.handle('updater:get-status', () => ({
 // Renderer requests a fresh check
 ipcMain.handle('updater:check', async () => {
   try {
+    // Inject GitHub token for private-repo release access
+    const ghToken = loadGithubToken()
+    if (ghToken) {
+      autoUpdater.requestHeaders = { Authorization: `token ${ghToken}` }
+    }
     const result = await autoUpdater.checkForUpdates()
     return { ok: true, version: result?.updateInfo?.version || null }
   } catch (e) {
