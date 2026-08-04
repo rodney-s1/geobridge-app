@@ -31,6 +31,7 @@
       "electron/**/*",
       "frontend/dist/**/*",
       "backend/**/*",
+      "assets/**/*",
       "node_modules/electron-updater/**/*",
       "node_modules/electron-log/**/*",
       "node_modules/builder-util-runtime/**/*"
@@ -67,7 +68,8 @@
       "deleteAppDataOnUninstall": false
     },
     "linux": {
-      "target": "AppImage"
+      "target": "AppImage",
+      "icon": "assets/icon.png"
     }
   },
   "dependencies": {
