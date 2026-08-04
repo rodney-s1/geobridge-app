@@ -38,12 +38,50 @@ autoUpdater.logger.transports.file.level = 'info'
 // Python backend launcher
 // ---------------------------------------------------------------------------
 function startPythonBackend() {
-  const backendPath = path.join(__dirname, '../backend')
-  const pythonCmd = process.platform === 'win32'
-    ? path.join(__dirname, '../.venv/Scripts/python.exe')
-    : 'python3'
+  // When packaged by electron-builder, app code lives inside app.asar which
+  // is a read-only virtual filesystem.  __dirname resolves inside the asar,
+  // so we CANNOT use it to find extraResources (like .venv or backend/).
+  //
+  // electron-builder places extraResources at:
+  //   <install_dir>/resources/<name>          (packaged)
+  //
+  // process.resourcesPath always points to that resources/ folder whether
+  // the app is packaged or running unpackaged from the project directory.
+  //
+  // Unpackaged (npm start / dev):  process.resourcesPath = <project>/
+  // Packaged:                       process.resourcesPath = <install>/resources/
+  //
+  // .venv is in extraResources → lands at resources/.venv when packaged.
+  // backend/ is in files       → lands at resources/app.asar/backend/ when
+  //                              packaged, but asar is readable for JS files.
+  //                              Python needs a real filesystem path though,
+  //                              so backend/ is also added to extraResources.
+
+  const isPacked = app.isPackaged
+
+  // Python executable --------------------------------------------------------
+  let pythonCmd
+  if (process.platform === 'win32') {
+    pythonCmd = isPacked
+      ? path.join(process.resourcesPath, '.venv', 'Scripts', 'python.exe')
+      : path.join(__dirname, '..', '.venv', 'Scripts', 'python.exe')
+  } else {
+    pythonCmd = isPacked
+      ? path.join(process.resourcesPath, '.venv', 'bin', 'python3')
+      : 'python3'
+  }
+
+  // Backend script -----------------------------------------------------------
+  const backendPath = isPacked
+    ? path.join(process.resourcesPath, 'backend')
+    : path.join(__dirname, '..', 'backend')
 
   const runScript = path.join(backendPath, 'run_backend.py')
+
+  console.log('[backend] pythonCmd:', pythonCmd)
+  console.log('[backend] runScript:', runScript)
+  console.log('[backend] cwd:      ', backendPath)
+
   backendProcess = spawn(pythonCmd, [runScript], {
     cwd: backendPath,
     env: { ...process.env }

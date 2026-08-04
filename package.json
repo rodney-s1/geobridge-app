@@ -41,6 +41,11 @@
         "from": ".venv",
         "to": ".venv",
         "filter": ["**/*"]
+      },
+      {
+        "from": "backend",
+        "to": "backend",
+        "filter": ["**/*"]
       }
     ],
     "publish": {
