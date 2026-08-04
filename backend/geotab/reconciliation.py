@@ -48,6 +48,7 @@ from typing import Dict, Optional, Tuple
 import html as _html
 import json
 import os
+import re
 
 from .auth import require_session
 
@@ -212,7 +213,6 @@ def _normalize_loose(s: str) -> str:
     where we need to match MyAdmin parent names against QB invoice names.
     NOT used for primary lookups (those use _normalize).
     """
-    import re
     # First, apply the same pipe-location and brace-stripping logic as
     # _normalize so we compare the same base name without any location
     # qualifier, sub-account suffix, or Han-CS qualifier.
@@ -234,6 +234,51 @@ def _normalize_loose(s: str) -> str:
     # Collapse multiple spaces
     s = re.sub(r"\s+", " ", s).strip()
     return s.lower()
+
+
+_RE_ENTITY_SUFFIX = re.compile(
+    r",?\s+(?:LLC|LLP|Inc\.?|Corp\.?|Ltd\.?|Co\.?|L\.L\.C\.?)\s*$",
+    re.IGNORECASE,
+)
+
+
+def _normalize_for_qb_lookup(s: str) -> str:
+    """Normalise a customer name for QB-index lookups (ovr_index, qb_qty_index).
+
+    Extends _normalize() with one additional rule: strip trailing legal-entity
+    suffixes (', LLC', 'Inc.', 'Corp', etc.) from the name BEFORE lower-casing.
+    This allows MyAdmin names like 'Architectural Fabrication, LLC' to match QB
+    invoice names like 'Architectural Fabrication' that were entered without the
+    suffix — and vice-versa — without requiring manual data fixups after every
+    QB CSV re-import.
+
+    Examples:
+        'Architectural Fabrication, LLC'  → 'architectural fabrication'
+        'Architectural Fabrication'       → 'architectural fabrication'
+        'AWT Construction Group Inc.'     → 'awt construction group'
+        'AWT Construction Group Inc.'     → 'awt construction group'  (already no comma)
+        'ACES Controls LLC {Han-CS}'      → 'aces controls {han-cs}'   (suffix before brace)
+    """
+    # Apply the same pipe / brace logic as _normalize first, at the string level
+    # (we can't call _normalize directly because we need to strip the suffix before
+    # lower-casing, i.e., before returning).
+    s = (s or "").strip()
+    # Strip pipe-location suffix
+    pipe_pos = s.find(" | ")
+    if pipe_pos != -1:
+        s = s[:pipe_pos].strip()
+    # Brace handling: keep {Han-CS}, strip all other brace suffixes
+    first_open = s.find("{")
+    brace_suffix = ""
+    if first_open != -1:
+        first_close = s.find("}", first_open)
+        first_token = s[first_open + 1 : first_close].strip() if first_close != -1 else ""
+        if first_token.lower() == "han-cs":
+            brace_suffix = " " + s[first_open : first_close + 1].strip()
+        s = s[:first_open].strip()
+    # Strip trailing legal-entity suffix (', LLC', 'Inc.', etc.)
+    s = _RE_ENTITY_SUFFIX.sub("", s).strip()
+    return (s + brace_suffix).lower()
 
 
 def _extract_parent(cname: str):
@@ -463,8 +508,10 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     }
 
     # (norm_customerName, skuKey) -> price
+    # Uses _normalize_for_qb_lookup so 'Architectural Fabrication, LLC' (MyAdmin)
+    # matches 'Architectural Fabrication' (QB/overrides) after entity-suffix stripping.
     ovr_index: Dict[tuple, float] = {
-        (_normalize(o["customerName"]), o["skuKey"]): float(o.get("price") or 0)
+        (_normalize_for_qb_lookup(o["customerName"]), o["skuKey"]): float(o.get("price") or 0)
         for o in overrides
     }
 
@@ -474,14 +521,16 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     # Example: Manage Services mirrorOf "Service Fee Geotab" sums
     #          Base + Pro + ProPlus + Suspend V2 device counts.
     mirror_index: Dict[tuple, str] = {
-        (_normalize(o["customerName"]), o["skuKey"]): o["mirrorOf"]
+        (_normalize_for_qb_lookup(o["customerName"]), o["skuKey"]): o["mirrorOf"]
         for o in overrides
         if o.get("mirrorOf")
     }
 
     # QB invoice quantities: (norm_customerName, skuKey) -> qbQty
+    # Uses _normalize_for_qb_lookup (entity-suffix stripped) so QB names like
+    # 'Architectural Fabrication' match MyAdmin names like 'Architectural Fabrication, LLC'.
     qb_qty_index: Dict[tuple, int] = {
-        (_normalize(q["customerName"]), q["skuKey"]): int(q.get("qbQty") or 0)
+        (_normalize_for_qb_lookup(q["customerName"]), q["skuKey"]): int(q.get("qbQty") or 0)
         for q in qb_qtys
     }
 
@@ -803,10 +852,12 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         # Track SKU usage for active devices so never-activated can inherit
         active_sku_counts: Dict[str, int] = {}
 
-        # QB invoice data (ovr_index, qb_qty_index) is keyed by the bare company
-        # name — QB never carries the MyAdmin "{Han-CS}" suffix.  Strip it before
-        # normalizing so Han-CS customers match their QB invoice lines correctly.
-        _qb_cname = _normalize(_strip_han_cs_tag(cname))
+        # QB invoice data (ovr_index, qb_qty_index) is keyed using
+        # _normalize_for_qb_lookup, which strips both the Han-CS tag and trailing
+        # legal-entity suffixes (, LLC / Inc. / Corp etc.).  Apply the same
+        # normalisation here so MyAdmin names like 'Architectural Fabrication, LLC'
+        # resolve to the same key as QB's 'Architectural Fabrication'.
+        _qb_cname = _normalize_for_qb_lookup(_strip_han_cs_tag(cname))
 
         for dev in devices_to_process:
             promo_code      = dev["promoCode"]       # e.g. "SWELL", "" (most devices)
