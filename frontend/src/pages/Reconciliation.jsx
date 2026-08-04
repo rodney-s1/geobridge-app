@@ -734,13 +734,15 @@ function EmptyState({ icon, title, body }) {
 //  ROOT COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function Reconciliation({ onNavigate }) {
-  const [data,         setData]        = useState(null)
-  const [loading,      setLoading]     = useState(false)
-  const [error,        setError]       = useState(null)
-  const [search,       setSearch]      = useState('')
-  const [qtyFilter,    setQtyFilter]   = useState('')  // '' | 'under_billed' | 'over_billed' | 'no_qb_data' | 'match' | 'periodic'
-  const [sortBy,       setSortBy]      = useState('alpha') // 'alpha' | 'status' | 'under_first' | 'over_first' | 'no_qb_first' | 'match_first' | 'periodic_first'
-  const [catalog,      setCatalog]     = useState([])
+  const [data,                  setData]               = useState(null)
+  const [loading,               setLoading]            = useState(false)
+  const [error,                 setError]              = useState(null)
+  const [search,                setSearch]             = useState('')
+  const [qtyFilter,             setQtyFilter]          = useState('')  // '' | 'under_billed' | 'over_billed' | 'no_qb_data' | 'match' | 'periodic'
+  const [sortBy,                setSortBy]             = useState('alpha') // 'alpha' | 'status' | 'under_first' | 'over_first' | 'no_qb_first' | 'match_first' | 'periodic_first'
+  const [catalog,               setCatalog]            = useState([])
+  const [fallbackDismissed,     setFallbackDismissed]  = useState(false)
+  const [hanCsUnmatchDismissed, setHanCsUnmatchDismissed] = useState(false)
 
   const fetchData = useCallback(async () => {
     setLoading(true)
@@ -929,7 +931,7 @@ export default function Reconciliation({ onNavigate }) {
       )}
 
       {/* ── QB Fallback Warning Banner ── */}
-      {qbFallbackCustomers.length > 0 && (
+      {qbFallbackCustomers.length > 0 && !fallbackDismissed && (
         <div className="rounded-xl border border-amber-600/40 bg-amber-950/30 px-4 py-3">
           <div className="flex items-start gap-3">
             <span className="text-amber-400 text-lg mt-0.5">⚠️</span>
@@ -957,12 +959,17 @@ export default function Reconciliation({ onNavigate }) {
                 ))}
               </div>
             </div>
+            <button
+              onClick={() => setFallbackDismissed(true)}
+              title="Dismiss"
+              className="ml-2 flex-shrink-0 text-amber-400/50 hover:text-amber-300 transition-colors text-lg leading-none"
+            >✕</button>
           </div>
         </div>
       )}
 
       {/* ── QB HANOVER-CS Unmatched Warning Banner ── */}
-      {qbHanCsUnmatched.length > 0 && (
+      {qbHanCsUnmatched.length > 0 && !hanCsUnmatchDismissed && (
         <div className="rounded-xl border border-red-600/40 bg-red-950/30 px-4 py-3">
           <div className="flex items-start gap-3">
             <span className="text-red-400 text-lg mt-0.5">🔴</span>
@@ -991,6 +998,11 @@ export default function Reconciliation({ onNavigate }) {
                 ))}
               </div>
             </div>
+            <button
+              onClick={() => setHanCsUnmatchDismissed(true)}
+              title="Dismiss"
+              className="ml-2 flex-shrink-0 text-red-400/50 hover:text-red-300 transition-colors text-lg leading-none"
+            >✕</button>
           </div>
         </div>
       )}
