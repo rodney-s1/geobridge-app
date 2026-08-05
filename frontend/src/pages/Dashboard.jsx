@@ -8,6 +8,7 @@ import Activations from './Activations'
 import Reports from './Reports'
 import QbSync from './QbSync'
 import UpdateNotification from '../components/UpdateNotification'
+import SyncStatus from '../components/SyncStatus'
 
 const API = 'http://127.0.0.1:8001'
 
@@ -139,6 +140,9 @@ function Dashboard({ sessionData, onLogout, syncBlocked = false }) {
           <div style={{ marginTop: '12px' }}>
             <UpdateNotification onSyncBlocked={() => {}} compact={true} />
           </div>
+
+          {/* ── S3 sync status badge ── hidden when S3 is not configured ── */}
+          <SyncStatus />
         </div>
 
       </div>
@@ -198,6 +202,7 @@ function Dashboard({ sessionData, onLogout, syncBlocked = false }) {
             <Settings
               deepLink={settingsDeepLink}
               onDeepLinkConsumed={() => setSettingsDeepLink(null)}
+              sessionData={sessionData}
             />
           )}
         </div>

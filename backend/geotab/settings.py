@@ -987,3 +987,124 @@ async def debug_settings():
         "overrides":      file_info(CUSTOMER_OVERRIDES_FILE),
         "serialPrefixes": file_info(SERIAL_PREFIX_FILE),
     }
+
+# ===========================================================================
+# S3 Sync endpoints
+# ===========================================================================
+# These are on a separate router with NO session dependency so the setup
+# wizard can test credentials and save config before the user has logged in.
+# ---------------------------------------------------------------------------
+
+from fastapi import APIRouter as _APIRouter
+s3_router = _APIRouter()   # no auth dependency — needed pre-login
+
+try:
+    from geotab import s3_sync as _s3
+    _S3_AVAILABLE = True
+except Exception:
+    _S3_AVAILABLE = False
+
+
+class S3ConfigBody(BaseModel):
+    accessKeyId:     str
+    secretAccessKey: str
+    region:          str = "us-east-1"
+    bucket:          str = "geobridge-data-backup"
+    prefix:          str = "data/"
+
+
+class AdminsBody(BaseModel):
+    admins: list
+
+
+@s3_router.post("/api/s3/test-connection")
+async def s3_test_connection(body: S3ConfigBody):
+    """Validate S3 credentials without saving them. Used by setup wizard."""
+    if not _S3_AVAILABLE:
+        raise HTTPException(503, "boto3 not installed")
+    result = _s3.test_connection(
+        body.accessKeyId, body.secretAccessKey, body.region, body.bucket
+    )
+    return result
+
+
+@s3_router.post("/api/s3/save-config")
+async def s3_save_config(body: S3ConfigBody):
+    """Save AWS credentials to AppData and trigger an initial pull."""
+    if not _S3_AVAILABLE:
+        raise HTTPException(503, "boto3 not installed")
+    _s3.save_config(
+        body.accessKeyId, body.secretAccessKey,
+        body.region, body.bucket, body.prefix
+    )
+    # Pull all shared files immediately so the new machine is up to date
+    results = _s3.pull_all(force=False)
+    updated = [k for k, v in results.items() if v == "updated"]
+    return {"ok": True, "pulled": len(updated), "details": results}
+
+
+@s3_router.get("/api/s3/status")
+async def s3_status():
+    """Return current sync state for the sidebar badge."""
+    if not _S3_AVAILABLE:
+        return {"configured": False, "error": "boto3 not installed"}
+    return _s3.get_sync_state()
+
+
+@s3_router.get("/api/s3/check-configured")
+async def s3_check_configured():
+    """Return whether aws_config.json exists. Used by App.jsx on startup."""
+    if not _S3_AVAILABLE:
+        return {"configured": False, "boto3": False}
+    return {"configured": _s3.is_configured(), "boto3": True}
+
+
+# The remaining S3 endpoints require a valid session
+s3_auth_router = _APIRouter(dependencies=[Depends(require_session)])
+
+
+@s3_auth_router.post("/api/s3/pull")
+async def s3_pull_all():
+    """Force a full pull from S3 (admin action from Settings page)."""
+    if not _S3_AVAILABLE:
+        raise HTTPException(503, "boto3 not installed")
+    results = _s3.pull_all(force=True)
+    updated = [k for k, v in results.items() if v == "updated"]
+    return {"ok": True, "updated": len(updated), "details": results}
+
+
+@s3_auth_router.post("/api/s3/push")
+async def s3_push_all():
+    """Force a full push to S3 (admin backup from Settings page)."""
+    if not _S3_AVAILABLE:
+        raise HTTPException(503, "boto3 not installed")
+    results = _s3.push_all()
+    ok_count = sum(1 for v in results.values() if v)
+    return {"ok": True, "pushed": ok_count, "details": results}
+
+
+@s3_auth_router.get("/api/s3/admins")
+async def get_admins():
+    """Return the current admin list."""
+    if not _S3_AVAILABLE:
+        raise HTTPException(503, "boto3 not installed")
+    return {"admins": _s3.get_admins()}
+
+
+@s3_auth_router.post("/api/s3/admins")
+async def save_admins(body: AdminsBody):
+    """Update the admin list in S3. Only callable by existing admins (enforced in frontend)."""
+    if not _S3_AVAILABLE:
+        raise HTTPException(503, "boto3 not installed")
+    ok = _s3.save_admins_to_s3(body.admins)
+    if ok:
+        _s3.invalidate_admins_cache()
+    return {"ok": ok}
+
+
+@s3_auth_router.get("/api/s3/is-admin/{username}")
+async def check_is_admin(username: str):
+    """Check if a username has admin privileges."""
+    if not _S3_AVAILABLE:
+        return {"isAdmin": False}
+    return {"isAdmin": _s3.is_admin(username)}

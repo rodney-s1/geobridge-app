@@ -1514,10 +1514,387 @@ function SerialPrefixTab({ prefixMappings, catalog, onRefresh }) {
 }
 
 
+// ═══════════════════════════════════════════════════════════════════════════════
+//  TAB — S3 Sync
+//  Admin management (add/remove usernames), force pull/push, re-enter creds.
+// ═══════════════════════════════════════════════════════════════════════════════
+function S3SyncTab({ sessionData }) {
+  const currentUser = sessionData?.username || sessionData?.name || ''
+
+  // ── Sync status ───────────────────────────────────────────────────────────
+  const [syncStatus,  setSyncStatus]  = useState(null)
+
+  // ── Admin state ───────────────────────────────────────────────────────────
+  const [admins,       setAdmins]       = useState(null)
+  const [isAdmin,      setIsAdmin]      = useState(false)
+  const [adminLoading, setAdminLoading] = useState(true)
+
+  // ── Admin form ────────────────────────────────────────────────────────────
+  const [newAdmin,     setNewAdmin]     = useState('')
+  const [adminMsg,     setAdminMsg]     = useState(null)
+  const [savingAdmins, setSavingAdmins] = useState(false)
+
+  // ── Force pull / push ─────────────────────────────────────────────────────
+  const [pullResult, setPullResult] = useState(null)
+  const [pushResult, setPushResult] = useState(null)
+  const [pulling,    setPulling]    = useState(false)
+  const [pushing,    setPushing]    = useState(false)
+  const [actionMsg,  setActionMsg]  = useState(null)
+
+  // ── Re-enter credentials panel ────────────────────────────────────────────
+  const [showReenter,  setShowReenter]  = useState(false)
+  const [reKeyId,      setReKeyId]      = useState('')
+  const [reSecret,     setReSecret]     = useState('')
+  const [reShowKeyId,  setReShowKeyId]  = useState(false)
+  const [reShowSecret, setReShowSecret] = useState(false)
+  const [reRegion,     setReRegion]     = useState('us-east-1')
+  const [reBucket,     setReBucket]     = useState('geobridge-data-backup')
+  const [rePrefix,     setRePrefix]     = useState('data/')
+  const [rePhase,      setRePhase]      = useState('entry')
+  const [reError,      setReError]      = useState('')
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const r = await fetch(`${API}/api/s3/status`)
+        if (r.ok) setSyncStatus(await r.json())
+      } catch { /* ignore */ }
+      if (!currentUser) { setAdminLoading(false); return }
+      try {
+        const [admR, isR] = await Promise.all([
+          fetch(`${API}/api/s3/admins`),
+          fetch(`${API}/api/s3/is-admin/${encodeURIComponent(currentUser)}`),
+        ])
+        if (admR.ok) setAdmins((await admR.json()).admins || [])
+        if (isR.ok)  setIsAdmin((await isR.json()).isAdmin)
+      } catch(e) {
+        setAdminMsg({ type: 'err', text: e.message })
+      } finally {
+        setAdminLoading(false)
+      }
+    }
+    load()
+  }, [currentUser])
+
+  async function handlePull() {
+    setPulling(true); setPullResult(null); setActionMsg(null)
+    try {
+      const r = await fetch(`${API}/api/s3/pull`, { method: 'POST' })
+      const d = await r.json()
+      if (d.ok) { setPullResult(d); setActionMsg({ type: 'ok', text: `Pull complete — ${d.updated} file(s) updated.` }) }
+      else        setActionMsg({ type: 'err', text: d.error || 'Pull failed' })
+    } catch(e) { setActionMsg({ type: 'err', text: e.message }) }
+    finally     { setPulling(false) }
+  }
+
+  async function handlePush() {
+    setPushing(true); setPushResult(null); setActionMsg(null)
+    try {
+      const r = await fetch(`${API}/api/s3/push`, { method: 'POST' })
+      const d = await r.json()
+      if (d.ok) { setPushResult(d); setActionMsg({ type: 'ok', text: `Push complete — ${d.pushed} file(s) uploaded.` }) }
+      else        setActionMsg({ type: 'err', text: d.error || 'Push failed' })
+    } catch(e) { setActionMsg({ type: 'err', text: e.message }) }
+    finally     { setPushing(false) }
+  }
+
+  async function handleSaveAdmins(newList) {
+    setSavingAdmins(true); setAdminMsg(null)
+    try {
+      const r = await fetch(`${API}/api/s3/admins`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body:   JSON.stringify({ admins: newList }),
+      })
+      const d = await r.json()
+      if (d.ok) { setAdmins(newList); setAdminMsg({ type: 'ok', text: 'Admin list saved.' }) }
+      else        setAdminMsg({ type: 'err', text: d.error || 'Save failed' })
+    } catch(e) { setAdminMsg({ type: 'err', text: e.message }) }
+    finally     { setSavingAdmins(false) }
+  }
+
+  function handleAddAdmin() {
+    const u = newAdmin.trim().toLowerCase()
+    if (!u || (admins || []).includes(u)) return
+    setNewAdmin(''); handleSaveAdmins([...(admins || []), u])
+  }
+
+  async function handleReTest() {
+    setRePhase('testing'); setReError('')
+    try {
+      const r = await fetch(`${API}/api/s3/test-connection`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body:   JSON.stringify({ accessKeyId: reKeyId.trim(), secretAccessKey: reSecret.trim(), region: reRegion, bucket: reBucket, prefix: rePrefix }),
+      })
+      const d = await r.json()
+      setRePhase(d.ok ? 'ok' : 'fail')
+      if (!d.ok) setReError(d.error || 'Connection failed')
+    } catch(e) { setRePhase('fail'); setReError(e.message) }
+  }
+
+  async function handleReSave() {
+    setRePhase('saving')
+    try {
+      const r = await fetch(`${API}/api/s3/save-config`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body:   JSON.stringify({ accessKeyId: reKeyId.trim(), secretAccessKey: reSecret.trim(), region: reRegion, bucket: reBucket, prefix: rePrefix }),
+      })
+      const d = await r.json()
+      if (d.ok) {
+        setShowReenter(false); setReKeyId(''); setReSecret(''); setRePhase('entry')
+        setActionMsg({ type: 'ok', text: 'Credentials updated.' })
+      } else { setRePhase('fail'); setReError(d.error || 'Save failed') }
+    } catch(e) { setRePhase('fail'); setReError(e.message) }
+  }
+
+  function timeAgo(iso) {
+    if (!iso) return null
+    try {
+      const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000)
+      if (m < 1)  return 'just now'
+      if (m < 60) return `${m}m ago`
+      const h = Math.round(m / 60)
+      return h < 24 ? `${h}h ago` : `${Math.round(h/24)}d ago`
+    } catch { return null }
+  }
+
+  if (!syncStatus?.configured) {
+    return (
+      <div className="bg-slate-800 border border-slate-700 rounded-xl px-6 py-8 text-center">
+        <div className="text-slate-400 text-sm mb-2">S3 sync is not configured on this machine.</div>
+        <div className="text-xs text-slate-500">
+          Restart GeoBridge — the setup wizard will appear before the login screen.
+        </div>
+      </div>
+    )
+  }
+
+  // ── Detail table helper ────────────────────────────────────────────────────
+  function DetailTable({ details }) {
+    if (!details) return null
+    const rows = Object.entries(details)
+    if (!rows.length) return null
+    return (
+      <div className="mt-4 bg-slate-900/60 border border-slate-700/60 rounded-lg p-3 max-h-48 overflow-y-auto">
+        <table className="w-full text-xs">
+          <tbody>
+            {rows.map(([file, status]) => (
+              <tr key={file}>
+                <td className="py-0.5 text-slate-400 font-mono pr-4">{file}</td>
+                <td className={`py-0.5 text-right ${
+                  status === 'updated'           ? 'text-emerald-400' :
+                  status === 'current'           ? 'text-slate-500'   :
+                  status === 'missing'           ? 'text-amber-400'   :
+                  status === 'error'             ? 'text-red-400'     :
+                  typeof status === 'boolean'    ? (status ? 'text-emerald-400' : 'text-red-400') :
+                  'text-slate-400'
+                }`}>
+                  {typeof status === 'boolean' ? (status ? '✓ pushed' : '✗ failed') : status}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+
+      {/* ── Sync status ── */}
+      <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+        <h3 className="text-sm font-semibold text-slate-200 mb-4">Sync Status</h3>
+        <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-sm">
+          <span className="text-slate-400">Last pull</span>
+          <span className="text-slate-200 font-mono text-xs">
+            {syncStatus?.last_sync ? (timeAgo(syncStatus.last_sync) || syncStatus.last_sync) : '—'}
+          </span>
+          <span className="text-slate-400">Last push</span>
+          <span className="text-slate-200 font-mono text-xs">
+            {syncStatus?.last_push ? (timeAgo(syncStatus.last_push) || syncStatus.last_push) : '—'}
+          </span>
+          {syncStatus?.last_error && (
+            <>
+              <span className="text-red-400">Last error</span>
+              <span className="text-red-300 text-xs break-all">{syncStatus.last_error}</span>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Action feedback */}
+      {actionMsg && (
+        <div className={`px-4 py-2 rounded-lg text-sm ${
+          actionMsg.type === 'ok' ? 'bg-emerald-900/50 text-emerald-300' : 'bg-red-900/50 text-red-300'
+        }`}>
+          {actionMsg.text}
+          <button onClick={() => setActionMsg(null)} className="ml-3 text-slate-400 hover:text-white">✕</button>
+        </div>
+      )}
+
+      {/* ── Force pull / push ── */}
+      <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+        <h3 className="text-sm font-semibold text-slate-200 mb-1">Manual Sync</h3>
+        <p className="text-xs text-slate-500 mb-4">
+          Pull downloads the latest shared files from S3 (newer-wins).
+          Push uploads all local shared files to S3 (admin only).
+        </p>
+        <div className="flex gap-3 flex-wrap">
+          <button disabled={pulling} onClick={handlePull}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded-lg font-medium transition-colors flex items-center gap-2">
+            {pulling && <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>}
+            {pulling ? 'Pulling…' : '↓ Force Pull from S3'}
+          </button>
+          {isAdmin && (
+            <button disabled={pushing} onClick={handlePush}
+              className="px-4 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 text-white text-sm rounded-lg font-medium transition-colors flex items-center gap-2">
+              {pushing && <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/></svg>}
+              {pushing ? 'Pushing…' : '↑ Force Push to S3'}
+            </button>
+          )}
+        </div>
+        <DetailTable details={(pullResult || pushResult)?.details} />
+      </div>
+
+      {/* ── Admin management (admin-only) ── */}
+      {isAdmin && (
+        <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-slate-200 mb-1">Admin Users</h3>
+          <p className="text-xs text-slate-500 mb-4">
+            Admins can push admin-only files (billing config, SKU catalog).
+            <code className="bg-slate-700/60 px-1 mx-1 rounded">developers@bluearrowmail.com</code>
+            is always protected.
+          </p>
+          {adminMsg && (
+            <div className={`px-3 py-2 rounded-lg text-xs mb-3 ${adminMsg.type === 'ok' ? 'bg-emerald-900/50 text-emerald-300' : 'bg-red-900/50 text-red-300'}`}>
+              {adminMsg.text}
+              <button onClick={() => setAdminMsg(null)} className="ml-2 text-slate-400 hover:text-white">✕</button>
+            </div>
+          )}
+          {adminLoading ? (
+            <div className="text-slate-500 text-sm">Loading…</div>
+          ) : (
+            <>
+              <div className="space-y-1 mb-4">
+                {(admins || []).map(a => (
+                  <div key={a} className="flex items-center justify-between px-3 py-2 bg-slate-900/60 rounded-lg group">
+                    <span className="text-sm text-slate-200 font-mono">{a}</span>
+                    <div className="flex items-center gap-2">
+                      {a === currentUser.trim().toLowerCase() && (
+                        <span className="text-xs text-blue-400/70">you</span>
+                      )}
+                      {a === 'developers@bluearrowmail.com'
+                        ? <span className="text-xs text-slate-600">protected</span>
+                        : <DeleteBtn small onConfirm={() => handleSaveAdmins((admins || []).filter(x => x !== a))} />
+                      }
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input value={newAdmin} onChange={e => setNewAdmin(e.target.value.toLowerCase())}
+                  onKeyDown={e => e.key === 'Enter' && handleAddAdmin()}
+                  placeholder="username@example.com"
+                  className="flex-1 bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono" />
+                <button disabled={savingAdmins || !newAdmin.trim()} onClick={handleAddAdmin}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded-lg font-medium transition-colors">
+                  {savingAdmins ? 'Saving…' : 'Add'}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Re-enter credentials ── */}
+      <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-1">
+          <h3 className="text-sm font-semibold text-slate-200">AWS Credentials</h3>
+          <button onClick={() => { setShowReenter(v => !v); setRePhase('entry'); setReError('') }}
+            className="text-xs text-blue-400 hover:text-blue-300 transition-colors">
+            {showReenter ? 'Cancel' : 'Update credentials'}
+          </button>
+        </div>
+        {!showReenter && (
+          <p className="text-xs text-slate-500">Stored locally in AppData — never shown in the UI.</p>
+        )}
+        {showReenter && (
+          <div className="mt-4 space-y-3">
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Access Key ID</label>
+              <div className="relative flex items-center">
+                <input type={reShowKeyId ? 'text' : 'password'} value={reKeyId}
+                  onChange={e => { setReKeyId(e.target.value); setRePhase('entry') }}
+                  placeholder="AKIA…" autoComplete="new-password"
+                  className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 font-mono focus:outline-none focus:border-blue-500 pr-9" />
+                <button type="button" onClick={() => setReShowKeyId(v => !v)}
+                  className="absolute right-2.5 text-slate-500 hover:text-slate-300 text-xs">
+                  {reShowKeyId ? '●' : '○'}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-400 mb-1">Secret Access Key</label>
+              <div className="relative flex items-center">
+                <input type={reShowSecret ? 'text' : 'password'} value={reSecret}
+                  onChange={e => { setReSecret(e.target.value); setRePhase('entry') }}
+                  placeholder="••••••••••••••••••••••••••••••••••••••••" autoComplete="new-password"
+                  className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 font-mono focus:outline-none focus:border-blue-500 pr-9" />
+                <button type="button" onClick={() => setReShowSecret(v => !v)}
+                  className="absolute right-2.5 text-slate-500 hover:text-slate-300 text-xs">
+                  {reShowSecret ? '●' : '○'}
+                </button>
+              </div>
+            </div>
+            <details className="text-xs text-slate-500">
+              <summary className="cursor-pointer select-none hover:text-slate-300 mb-2">Advanced (region / bucket / prefix)</summary>
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Region</label>
+                  <input value={reRegion} onChange={e => setReRegion(e.target.value)}
+                    className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Bucket</label>
+                  <input value={reBucket} onChange={e => setReBucket(e.target.value)}
+                    className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs text-slate-400 mb-1">Prefix</label>
+                  <input value={rePrefix} onChange={e => setRePrefix(e.target.value)}
+                    className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                </div>
+              </div>
+            </details>
+            {rePhase === 'fail' && reError && (
+              <div className="text-xs text-red-300 bg-red-900/40 border border-red-800 rounded-lg px-3 py-2">✕ {reError}</div>
+            )}
+            {rePhase === 'ok' && (
+              <div className="text-xs text-emerald-300 bg-emerald-900/30 border border-emerald-800 rounded-lg px-3 py-2">✓ Connection successful</div>
+            )}
+            <div className="flex gap-2">
+              <button disabled={!reKeyId.trim() || !reSecret.trim() || rePhase === 'testing'} onClick={handleReTest}
+                className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-slate-200 text-sm rounded-lg font-medium transition-colors">
+                {rePhase === 'testing' ? 'Testing…' : 'Test'}
+              </button>
+              <button disabled={rePhase !== 'ok' && rePhase !== 'saving'} onClick={handleReSave}
+                className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded-lg font-medium transition-colors">
+                {rePhase === 'saving' ? 'Saving…' : 'Save'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+    </div>
+  )
+}
+
+
 // ===============================================================================
 //  ROOT COMPONENT
 // ═══════════════════════════════════════════════════════════════════════════════
-export default function Settings({ deepLink = null, onDeepLinkConsumed }) {
+export default function Settings({ deepLink = null, onDeepLinkConsumed, sessionData = null }) {
   // deepLink = { tab: 'mappings', prefill: 'SOME-RATE-CODE' } — passed from Reconciliation
   const [activeTab, setActiveTab] = useState('catalog')
   const [catalog,        setCatalog]        = useState([])
@@ -1642,6 +2019,7 @@ export default function Settings({ deepLink = null, onDeepLinkConsumed }) {
         <TabBtn active={activeTab === 'overrides'}     onClick={() => setActiveTab('overrides')}>Customer Prices</TabBtn>
         <TabBtn active={activeTab === 'serialPrefixes'} onClick={() => setActiveTab('serialPrefixes')}>Serial Prefixes</TabBtn>
         <TabBtn active={activeTab === 'import'}        onClick={() => setActiveTab('import')}>Import CSV</TabBtn>
+        <TabBtn active={activeTab === 's3sync'}        onClick={() => setActiveTab('s3sync')}>☁ S3 Sync</TabBtn>
       </div>
 
       {/* Tab content */}
@@ -1661,6 +2039,7 @@ export default function Settings({ deepLink = null, onDeepLinkConsumed }) {
           {activeTab === 'overrides'      && <CustomerOverridesTab overrides={overrides} catalog={catalog} onRefresh={fetchAll} />}
           {activeTab === 'serialPrefixes' && <SerialPrefixTab prefixMappings={prefixMappings} catalog={catalog} onRefresh={fetchAll} />}
           {activeTab === 'import'         && <ImportCsvTab        onRefresh={fetchAll} />}
+          {activeTab === 's3sync'         && <S3SyncTab sessionData={sessionData} />}
         </>
       )}
     </div>

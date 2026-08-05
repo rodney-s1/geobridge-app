@@ -90,46 +90,22 @@ from geotab.qb_sync import router as qb_sync_router
 app.include_router(qb_sync_router, prefix="/api", tags=["QB Sync"])
 
 # ============================================================
-#  S3 BACKUP  endpoints + startup restore
+#  S3 Sync endpoints (new) + startup pull + background timer
 # ============================================================
-from fastapi import APIRouter as _APIRouter, Depends
-from geotab.auth import require_session
+from geotab.settings import s3_router, s3_auth_router
+app.include_router(s3_router,      tags=["S3 Sync"])
+app.include_router(s3_auth_router, tags=["S3 Sync"])
 
-_s3_router = _APIRouter(dependencies=[Depends(require_session)])
-
-@_s3_router.get("/settings/s3-status")
-def s3_status():
-    """Return S3 sync status for each data file."""
-    try:
-        from geotab.s3_sync import get_status
-        return {"ok": True, "files": get_status()}
-    except Exception as exc:
-        return {"ok": False, "error": str(exc), "files": []}
-
-
-@_s3_router.post("/settings/s3-backup")
-def s3_backup_now():
-    """Force an immediate upload of all data files to S3."""
-    try:
-        from geotab.s3_sync import backup_all
-        results = backup_all()
-        uploaded = sum(1 for v in results.values() if v)
-        return {"ok": True, "uploaded": uploaded, "results": results}
-    except Exception as exc:
-        return {"ok": False, "error": str(exc)}
-
-
-app.include_router(_s3_router, prefix="/api", tags=["S3 Backup"])
-
-
-# S3 restore on startup -- download any missing data files from S3
+# S3 pull on startup — bring this machine up to date with shared S3 data
 try:
-    from geotab.s3_sync import restore_missing
-    _restore_results = restore_missing()
-    _restored = [k for k, v in _restore_results.items() if v == "restored"]
-    if _restored:
-        print(f"[main] S3 restore: pulled {len(_restored)} missing file(s): {_restored}")
+    from geotab.s3_sync import pull_all as _s3_pull_all, is_configured as _s3_configured
+    from geotab.s3_sync import start_background_sync
+    if _s3_configured():
+        _pull_results = _s3_pull_all()
+        _updated = [k for k, v in _pull_results.items() if v == "updated"]
+        print(f"[main] S3 startup pull: {len(_updated)} file(s) updated from S3")
     else:
-        print("[main] S3 restore: all data files already present locally")
+        print("[main] S3 not yet configured — skipping startup pull")
+    start_background_sync()
 except Exception as _exc:
-    print(f"[main] S3 restore skipped: {_exc}")
+    print(f"[main] S3 startup skipped: {_exc}")
