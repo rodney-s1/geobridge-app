@@ -24,6 +24,7 @@
   "build": {
     "appId": "com.geobridge.invoicing",
     "productName": "GeoBridge",
+    "artifactName": "GeoBridge-Setup-${version}.${ext}",
     "directories": {
       "output": "release"
     },
