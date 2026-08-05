@@ -133,9 +133,11 @@ function Dashboard({ sessionData, onLogout, syncBlocked = false }) {
             Sign Out
           </button>
 
-          {/* ── Check for Updates ── compact form lives in the sidebar footer */}
+          {/* ── Check for Updates ── compact form lives in the sidebar footer.   */}
+          {/* compact=true prevents the full-width "ready to install" banner from  */}
+          {/* rendering inside the narrow sidebar — App.jsx shows that at the top. */}
           <div style={{ marginTop: '12px' }}>
-            <UpdateNotification onSyncBlocked={() => {}} />
+            <UpdateNotification onSyncBlocked={() => {}} compact={true} />
           </div>
         </div>
 

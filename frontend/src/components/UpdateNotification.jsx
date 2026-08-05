@@ -32,7 +32,13 @@ function fmtBytes(bytes) {
 }
 
 // ─── component ───────────────────────────────────────────────────────────────
-export default function UpdateNotification({ onSyncBlocked }) {
+/**
+ * compact  — when true (sidebar usage), the "ready to install" full-width
+ *            blocking banner is suppressed; a small clickable reminder is
+ *            shown instead.  The App.jsx top-level instance renders the real
+ *            banner; the sidebar instance just needs idle/check/progress states.
+ */
+export default function UpdateNotification({ onSyncBlocked, compact = false }) {
 
   // ── state machine ──────────────────────────────────────────────────────────
   const [phase, setPhase] = useState('idle')
@@ -295,27 +301,32 @@ export default function UpdateNotification({ onSyncBlocked }) {
   }
 
   // ── render: ready to install ──────────────────────────────────────────────
-  // This is the most important state.  It renders as a full-width banner
-  // at the top of the app (injected into the layout by App.jsx) so it's
-  // impossible to miss, and it clearly explains that MyAdmin sync is blocked.
+  // The full-width blocking banner is rendered by the App.jsx top-level instance.
+  // When compact=true (sidebar), show only a small reminder so the banner text
+  // never wraps into a single-word-per-line column inside the narrow sidebar.
   if (phase === 'ready') {
-    if (snoozed) {
-      // Compact reminder — sync is unblocked, but user can still install
+    if (compact || snoozed) {
+      // Compact reminder — sync is unblocked (if snoozed), or full banner is
+      // already visible at top of app (if compact).
       return (
         <button
-          onClick={() => setSnoozed(false)}
+          onClick={compact ? undefined : () => setSnoozed(false)}
           className="flex items-center gap-1.5 text-xs text-amber-400/80
                      hover:text-amber-300 transition-colors px-2.5 py-1.5
-                     rounded-lg hover:bg-amber-950/40 border border-amber-800/30"
-          title={`v${readyVersion} is ready to install`}
+                     rounded-lg hover:bg-amber-950/40 border border-amber-800/30
+                     w-full"
+          title={`GeoBridge v${readyVersion} is ready to install`}
+          style={{ cursor: compact ? 'default' : 'pointer' }}
         >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor"
+          <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" stroke="currentColor"
                strokeWidth={2} viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round"
                   d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11
                      11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
           </svg>
-          v{readyVersion} ready — click to install
+          <span className="truncate">
+            {compact ? `v${readyVersion} ready to install` : `v${readyVersion} ready — click to install`}
+          </span>
         </button>
       )
     }
