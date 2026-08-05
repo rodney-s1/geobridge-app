@@ -700,14 +700,15 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         import re as _re
         return _re.sub(r'\s*\{Han-CS\}\s*', '', name, flags=_re.IGNORECASE).strip()
 
-    # IMPORTANT: qb_qty_index keys use _normalize() (strict), so we must also
-    # use _normalize() here — not _normalize_loose() — so the set membership
-    # check (_nc not in _myadmin_han_cs_loose) compares like with like.
+    # IMPORTANT: qb_qty_index keys use _normalize_for_qb_lookup() (strips entity
+    # suffixes like LLC/Inc), so we must also use _normalize_for_qb_lookup() here
+    # so the set membership check (_nc not in _myadmin_han_cs_loose) compares
+    # like with like.
     # _strip_han_cs_tag removes " {Han-CS}" before normalizing so that
-    # MyAdmin "ACES Controls LLC {Han-CS}" → "aces controls llc" matches
-    # QB "aces controls llc" (already _normalize()'d in qb_qty_index).
+    # MyAdmin "ACES Controls LLC {Han-CS}" → "aces controls" matches
+    # QB "aces controls" (already _normalize_for_qb_lookup()'d in qb_qty_index).
     _myadmin_han_cs_loose: set = {
-        _normalize(_strip_han_cs_tag(cdata["customerName"]))
+        _normalize_for_qb_lookup(_strip_han_cs_tag(cdata["customerName"]))
         for cdata in company_map.values()
         if "{Han-CS}" in cdata["customerName"]
            or _normalize_loose(cdata["customerName"]) in qb_han_cs_names
