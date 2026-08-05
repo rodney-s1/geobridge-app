@@ -54,8 +54,11 @@ function applyGithubToken() {
       log.info('[updater] Token file contents length:', raw.length)
       const data = JSON.parse(raw)
       if (data && data.token && typeof data.token === 'string' && data.token.length > 4) {
-        autoUpdater.requestHeaders = { Authorization: `token ${data.token}` }
-        log.info('[updater] GitHub token applied — private repo access enabled.')
+        // GHToken is the officially supported electron-updater property for
+        // authenticating against private GitHub repositories. It is passed as
+        // a Bearer token on every request made by the GitHubProvider.
+        autoUpdater.addAuthHeader(`token ${data.token}`)
+        log.info('[updater] GitHub token applied via addAuthHeader — private repo access enabled.')
         return
       } else {
         log.warn('[updater] Token file found but token field is missing or invalid.')
