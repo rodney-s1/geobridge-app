@@ -19,22 +19,37 @@ function App() {
 
   // ── On mount: ask backend whether aws_config.json exists ──────────────────
   // If S3 is not configured → show Setup wizard before Login.
-  // If the backend isn't reachable yet we fall through to login so the app
-  // doesn't get stuck on a white screen.
+  // Retries up to 10 times (every 1.5 s) to handle the backend taking several
+  // seconds to start. Only falls through to login if every attempt fails.
   useEffect(() => {
     let cancelled = false
+
     async function checkS3() {
-      try {
-        const r = await fetch(`${API}/api/s3/check-configured`, { signal: AbortSignal.timeout(4000) })
-        if (!cancelled) {
-          const data = await r.json()
-          setCurrentPage(data.configured ? 'login' : 'setup')
+      const MAX_ATTEMPTS = 10
+      const RETRY_MS     = 1500
+
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+        if (cancelled) return
+        try {
+          const r = await fetch(`${API}/api/s3/check-configured`,
+            { signal: AbortSignal.timeout(3000) })
+          if (!cancelled) {
+            const data = await r.json()
+            setCurrentPage(data.configured ? 'login' : 'setup')
+          }
+          return  // success — stop retrying
+        } catch {
+          if (attempt === MAX_ATTEMPTS) {
+            // Backend never came up — fall through to login
+            if (!cancelled) setCurrentPage('login')
+          } else {
+            // Wait before retrying
+            await new Promise(res => setTimeout(res, RETRY_MS))
+          }
         }
-      } catch {
-        // Backend not ready or boto3 missing — skip setup, go straight to login
-        if (!cancelled) setCurrentPage('login')
       }
     }
+
     checkS3()
     return () => { cancelled = true }
   }, [])
