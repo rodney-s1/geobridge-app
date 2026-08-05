@@ -9,7 +9,12 @@ Run from project root:
 """
 import json, os, sys
 
+_data_dir_env = os.environ.get("GEOBRIDGE_DATA_DIR", "").strip()
 _CANDIDATES = [
+    *(
+        [os.path.join(_data_dir_env, "myadmin_cache.json")]
+        if _data_dir_env else []
+    ),
     os.path.join(os.path.dirname(__file__), "myadmin_cache.json"),
     os.path.join(os.path.dirname(__file__), "..", "..", "myadmin_cache.json"),
     "myadmin_cache.json",

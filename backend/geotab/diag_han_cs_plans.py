@@ -16,7 +16,14 @@ Run from project root:
 import json, os, sys, html, collections, datetime, time
 
 # ── locate cache ───────────────────────────────────────────────────────────────
+# Check GEOBRIDGE_DATA_DIR first (set by Electron → mutable files live there),
+# then fall back to legacy bundle path and CWD for development runs.
+_data_dir_env = os.environ.get("GEOBRIDGE_DATA_DIR", "").strip()
 _CANDIDATES = [
+    *(
+        [os.path.join(_data_dir_env, "myadmin_cache.json")]
+        if _data_dir_env else []
+    ),
     os.path.join(os.path.dirname(__file__), "myadmin_cache.json"),
     os.path.join(os.path.dirname(__file__), "..", "..", "myadmin_cache.json"),
     "myadmin_cache.json",

@@ -1,6 +1,6 @@
 {
   "name": "geobridge-app",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "GeoBridge Invoicing Suite - Geotab MyAdmin to QuickBooks Bridge",
   "main": "electron/main.js",
   "scripts": {
@@ -40,12 +40,16 @@
       {
         "from": ".venv",
         "to": ".venv",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "backend",
         "to": "backend",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "publish": {
@@ -57,10 +61,25 @@
     },
     "mac": {
       "category": "public.app-category.business",
-      "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }]
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ]
     },
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "assets/icon.ico"
     },
     "nsis": {

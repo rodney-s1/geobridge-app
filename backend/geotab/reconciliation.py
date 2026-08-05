@@ -534,6 +534,16 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         for q in qb_qtys
     }
 
+    # Secondary lookup: qb_customers is keyed by plain normalize(name) but
+    # qb_qty_index keys use _normalize_for_qb_lookup (entity-suffix stripped).
+    # Build a reverse map so display-name lookups work for both key forms.
+    # Example: "aces controls" (lookup key) → {"name": "Aces Controls LLC", ...}
+    _qb_customers_by_lookup: Dict[str, dict] = {
+        _normalize_for_qb_lookup(v["name"]): v
+        for v in _qb_customers.values()
+        if v.get("name")
+    }
+
     # Set of LOOSELY-normalised QB customer names that have a HANOVER or Han-CS
     # line on their invoice.  Using _normalize_loose (punctuation-stripped) allows
     # matching MyAdmin names against QB invoice names even when they differ in
@@ -720,7 +730,9 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 and _nc not in _myadmin_han_cs_loose
                 and _nc != _HIG_LOOSE):
             # Look up display name and QB qty
-            _qb_rec   = _qb_customers.get(_nc) or {}
+            # _nc uses _normalize_for_qb_lookup keys, so try that map first,
+            # then fall back to the plain-normalize qb_customers dict.
+            _qb_rec   = _qb_customers_by_lookup.get(_nc) or _qb_customers.get(_nc) or {}
             _disp     = _qb_rec.get("name") or _nc.title()
             _qb_qty   = qb_qty_index.get((_nc, _sk), 0)
             _qb_han_cs_unmatched.append({
@@ -1797,8 +1809,10 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
               f"han_cs_myadmin_total={han_cs_myadmin_total}")
 
         for norm_nc, sku_entries in sorted(qb_only_names.items()):
-            # Look up display name and billing type from qb_customers
-            qb_rec       = _qb_customers.get(norm_nc) or {}
+            # Look up display name and billing type from qb_customers.
+            # norm_nc uses _normalize_for_qb_lookup keys; try that map first,
+            # then fall back to the plain-normalize qb_customers dict.
+            qb_rec       = _qb_customers_by_lookup.get(norm_nc) or _qb_customers.get(norm_nc) or {}
             display_name = qb_rec.get("name") or norm_nc.title()
             bt           = qb_rec.get("billingType") or "Unknown"
 
