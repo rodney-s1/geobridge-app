@@ -32,6 +32,14 @@ MYADMIN_ACCOUNT = "CELU01"
 # application reinstalls.  Falls back to _HERE in dev / unpackaged mode.
 # See _data_dir.py for the migration logic that copies existing files on first run.
 from ._data_dir import _DATA_DIR, _HERE
+
+# S3 sync — push shared files to S3 after every local save
+try:
+    from geotab.s3_sync import upload_file_async as _s3_push
+except Exception:
+    def _s3_push(filename: str) -> None:  # type: ignore
+        pass
+
 QB_DATA_FILE           = os.path.join(_DATA_DIR, "qb_customers.json")
 OVERRIDES_FILE         = os.path.join(_DATA_DIR, "billing_overrides.json")
 BILLING_TYPE_OVERRIDES_FILE = os.path.join(_DATA_DIR, "billing_type_overrides.json")
@@ -53,6 +61,10 @@ def _save_json(path: str, data) -> None:
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
     os.replace(tmp, path)
+    # Mirror to S3 in a background thread — never blocks the response.
+    # LOCAL_ONLY files (cache, checkpoint, history) are silently skipped
+    # inside upload_file_async itself.
+    _s3_push(os.path.basename(path))
 
 # --- In-memory stores -- pre-loaded from disk on startup ----------------------
 billing_overrides:       Dict[str, str]  = _load_json(OVERRIDES_FILE, {})
