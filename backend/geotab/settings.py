@@ -1079,7 +1079,7 @@ async def s3_push_all():
     if not _S3_AVAILABLE:
         raise HTTPException(503, "boto3 not installed")
     results = _s3.push_all()
-    ok_count = sum(1 for v in results.values() if v)
+    ok_count = sum(1 for v in results.values() if v == "pushed")
     return {"ok": True, "pushed": ok_count, "details": results}
 
 

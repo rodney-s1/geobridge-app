@@ -382,11 +382,15 @@ def pull_all(force: bool = False) -> Dict[str, str]:
     return results
 
 
-def push_all() -> Dict[str, bool]:
+def push_all() -> Dict[str, str]:
     """Upload every shared file that exists locally. Used by admin backup."""
-    results: Dict[str, bool] = {}
+    results: Dict[str, str] = {}
     for filename in sorted(SHARED_FILES):
-        results[filename] = upload_file(filename)
+        local_path = _DATA_DIR / filename
+        if not local_path.exists():
+            results[filename] = "skipped"
+        else:
+            results[filename] = "pushed" if upload_file(filename) else "error"
     return results
 
 

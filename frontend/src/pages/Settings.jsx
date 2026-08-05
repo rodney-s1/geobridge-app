@@ -1681,14 +1681,18 @@ function S3SyncTab({ sessionData }) {
               <tr key={file}>
                 <td className="py-0.5 text-slate-400 font-mono pr-4">{file}</td>
                 <td className={`py-0.5 text-right ${
-                  status === 'updated'           ? 'text-emerald-400' :
-                  status === 'current'           ? 'text-slate-500'   :
-                  status === 'missing'           ? 'text-amber-400'   :
-                  status === 'error'             ? 'text-red-400'     :
-                  typeof status === 'boolean'    ? (status ? 'text-emerald-400' : 'text-red-400') :
+                  status === 'updated'  ? 'text-emerald-400' :
+                  status === 'pushed'   ? 'text-emerald-400' :
+                  status === 'current'  ? 'text-slate-500'   :
+                  status === 'skipped'  ? 'text-slate-500'   :
+                  status === 'missing'  ? 'text-amber-400'   :
+                  status === 'error'    ? 'text-red-400'     :
+                  typeof status === 'boolean' ? (status ? 'text-emerald-400' : 'text-red-400') :
                   'text-slate-400'
                 }`}>
-                  {typeof status === 'boolean' ? (status ? '✓ pushed' : '✗ failed') : status}
+                  {status === 'skipped' ? '– not on disk' :
+                   status === 'pushed'  ? '✓ pushed' :
+                   typeof status === 'boolean' ? (status ? '✓ pushed' : '✗ failed') : status}
                 </td>
               </tr>
             ))}
