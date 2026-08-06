@@ -366,7 +366,6 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
   const [addCode, setAddCode] = useState('')
   const [addSkuKeys, setAddSkuKeys] = useState([])   // ordered list of QB SKUs for add form
   const [addSkuPick, setAddSkuPick] = useState('')   // currently selected in dropdown
-  const [addPrice, setAddPrice] = useState('')
   const [addNotes, setAddNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
@@ -400,17 +399,12 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
   // Add a SKU to the ordered list (add form)
   function addSkuToList(key) {
     if (!key || addSkuKeys.includes(key)) return
-    const updated = [...addSkuKeys, key]
-    setAddSkuKeys(updated)
+    setAddSkuKeys(prev => [...prev, key])
     setAddSkuPick('')
-    // Auto-fill price from first SKU added
-    if (updated.length === 1) {
-      const found = catalog.find(s => s.skuKey === key)
-      if (found) setAddPrice(String(found.defaultPrice))
-    }
   }
 
   // Reusable SKU tag list component (ordered, removable, first = primary)
+  // Shows per-SKU price from catalog inline
   function SkuTagList({ skuKeys, onChange }) {
     function remove(idx) { onChange(skuKeys.filter((_, i) => i !== idx)) }
     function moveUp(idx) {
@@ -419,18 +413,26 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
     }
     return (
       <div className="flex flex-col gap-1">
-        {skuKeys.map((k, i) => (
-          <div key={k} className="flex items-center gap-1 bg-slate-700/80 border border-slate-600/60 rounded px-2 py-1">
-            <span className={`text-xs font-bold w-12 shrink-0 ${i === 0 ? 'text-blue-400' : 'text-slate-500'}`}>
-              {i === 0 ? 'Primary' : `Alt ${i}`}
-            </span>
-            <span className="font-mono text-xs text-slate-200 flex-1 truncate" title={k}>{k}</span>
-            {i > 0 && (
-              <button onClick={() => moveUp(i)} title="Move up (make primary)" className="text-slate-500 hover:text-blue-300 text-xs px-1">↑</button>
-            )}
-            <button onClick={() => remove(i)} className="text-slate-500 hover:text-red-400 text-xs px-1" title="Remove">✕</button>
-          </div>
-        ))}
+        {skuKeys.map((k, i) => {
+          const catEntry = catalog.find(s => s.skuKey === k)
+          const price = catEntry ? `$${Number(catEntry.defaultPrice).toFixed(2)}` : '—'
+          return (
+            <div key={k} className="flex items-center gap-1 bg-slate-700/80 border border-slate-600/60 rounded px-2 py-1">
+              <span className={`text-xs font-bold w-12 shrink-0 ${i === 0 ? 'text-blue-400' : 'text-slate-500'}`}>
+                {i === 0 ? 'Primary' : `Alt ${i}`}
+              </span>
+              <span className="font-mono text-xs text-slate-200 flex-1 truncate" title={k}>{k}</span>
+              <span className="text-xs text-slate-400 font-mono shrink-0 mr-1" title="Price from SKU Catalog">{price}</span>
+              {i > 0 && (
+                <button onClick={() => moveUp(i)} title="Make primary (used for invoicing)" className="text-slate-500 hover:text-blue-300 text-xs px-1">↑</button>
+              )}
+              <button onClick={() => remove(i)} className="text-slate-500 hover:text-red-400 text-xs px-1" title="Remove">✕</button>
+            </div>
+          )
+        })}
+        {skuKeys.length > 0 && (
+          <p className="text-xs text-slate-600 mt-0.5">Prices are per-SKU from the SKU Catalog. Edit prices there if needed.</p>
+        )}
       </div>
     )
   }
@@ -452,7 +454,7 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
       setEditCode(null)
       setEditOriginalCode(null)
       setAdding(false)
-      setAddCode(''); setAddSkuKeys([]); setAddSkuPick(''); setAddPrice(''); setAddNotes('')
+      setAddCode(''); setAddSkuKeys([]); setAddSkuPick(''); setAddNotes('')
       onRefresh()
     } catch (e) {
       setMsg({ type: 'err', text: e.message })
@@ -587,16 +589,11 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
             (e.g. <code className="font-mono bg-slate-700/60 px-1 rounded">PROPLUS MODE</code>, <code className="font-mono bg-slate-700/60 px-1 rounded">BASE MODE: LIVE</code>). Most customers use a billing plan name.
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div>
+            <div className="col-span-2">
               <label className="block text-xs text-slate-400 mb-1">Rate Plan Code or Billing Plan Name *</label>
               <input value={addCode} onChange={e => setAddCode(e.target.value.toUpperCase())}
                 placeholder="e.g. PROPLUS MODE or SWELL-NOINS3"
                 className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 font-mono focus:outline-none focus:border-blue-500" />
-            </div>
-            <div>
-              <label className="block text-xs text-slate-400 mb-1">Default Price</label>
-              <input type="number" step="0.01" value={addPrice} onChange={e => setAddPrice(e.target.value)}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
             </div>
             <div className="col-span-2">
               <label className="block text-xs text-slate-400 mb-1">
@@ -623,7 +620,7 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
           </div>
           <div className="flex gap-2">
             <button disabled={saving || !addCode.trim() || addSkuKeys.length === 0}
-              onClick={() => saveMapping({ ratePlanCode: addCode, skuKeys: addSkuKeys, defaultPrice: parseFloat(addPrice) || 0, notes: addNotes })}
+              onClick={() => saveMapping({ ratePlanCode: addCode, skuKeys: addSkuKeys, defaultPrice: 0, notes: addNotes })}
               className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded-lg font-medium">
               {saving ? 'Saving…' : 'Save'}
             </button>
@@ -648,7 +645,7 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
             <tr className="text-xs text-slate-500 border-b border-slate-700 bg-slate-750">
               <th className="text-left px-4 py-3 font-medium">Rate Plan Code</th>
               <th className="text-left px-4 py-3 font-medium">QB SKU</th>
-              <th className="text-right px-4 py-3 font-medium">Default Price</th>
+              <th className="text-right px-4 py-3 font-medium">Price</th>
               <th className="text-left px-4 py-3 font-medium hidden lg:table-cell">Notes</th>
               <th className="px-4 py-3"></th>
             </tr>
@@ -666,17 +663,11 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
                   <tr className="border-b border-slate-700/50 bg-slate-750">
                     <td className="px-4 py-2" colSpan={5}>
                       <div className="grid grid-cols-2 gap-3 mb-2">
-                        <div>
+                        <div className="col-span-2">
                           <label className="block text-xs text-slate-400 mb-1">Rate Plan Code</label>
                           <input value={editForm.ratePlanCode || ''}
                             onChange={e => setEditForm(f => ({ ...f, ratePlanCode: e.target.value.toUpperCase() }))}
                             className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm font-mono text-slate-100 focus:outline-none focus:border-blue-500" />
-                        </div>
-                        <div>
-                          <label className="block text-xs text-slate-400 mb-1">Default Price</label>
-                          <input type="number" step="0.01" value={editForm.defaultPrice}
-                            onChange={e => setEditForm(f => ({ ...f, defaultPrice: e.target.value }))}
-                            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
                         </div>
                         <div className="col-span-2">
                           <label className="block text-xs text-slate-400 mb-1">
@@ -744,10 +735,21 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
                     </td>
                     <td className="px-4 py-2.5 text-right font-mono text-slate-200">
                       <div className="flex flex-col items-end gap-0.5">
-                        <span>{fmtPrice(m.defaultPrice)}</span>
-                        {(m.cost > 0) && (
-                          <span className="text-xs text-slate-500" title="Our cost">cost {fmtPrice(m.cost)}</span>
-                        )}
+                        {(() => {
+                          const keys = m.skuKeys || (m.skuKey ? [m.skuKey] : [])
+                          if (keys.length <= 1) {
+                            const entry = catalog.find(s => s.skuKey === keys[0])
+                            return <span>{entry ? fmtPrice(entry.defaultPrice) : fmtPrice(m.defaultPrice)}</span>
+                          }
+                          return keys.map((k, i) => {
+                            const entry = catalog.find(s => s.skuKey === k)
+                            return (
+                              <span key={k} className={i === 0 ? '' : 'text-xs text-slate-500'}>
+                                {entry ? fmtPrice(entry.defaultPrice) : '—'}
+                              </span>
+                            )
+                          })
+                        })()}
                       </div>
                     </td>
                     <td className="px-4 py-2.5 text-slate-400 text-xs hidden lg:table-cell truncate" title={m.notes}>{m.notes || '—'}</td>
