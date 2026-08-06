@@ -367,6 +367,7 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
   const [addSku, setAddSku] = useState('')
   const [addPrice, setAddPrice] = useState('')
   const [addNotes, setAddNotes] = useState('')
+  const [addAliases, setAddAliases] = useState('')
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
   const [search, setSearch] = useState('')
@@ -420,7 +421,7 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
       setEditCode(null)
       setEditOriginalCode(null)
       setAdding(false)
-      setAddCode(''); setAddSku(''); setAddPrice(''); setAddNotes('')
+      setAddCode(''); setAddSku(''); setAddPrice(''); setAddNotes(''); setAddAliases('')
       onRefresh()
     } catch (e) {
       setMsg({ type: 'err', text: e.message })
@@ -579,10 +580,22 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
               <input value={addNotes} onChange={e => setAddNotes(e.target.value)}
                 className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
             </div>
+            <div className="col-span-2">
+              <label className="block text-xs text-slate-400 mb-1">QB Aliases <span className="text-slate-600">(comma-separated QB SKU names that also count as this SKU during reconciliation)</span></label>
+              <input
+                value={addAliases}
+                onChange={e => setAddAliases(e.target.value)}
+                id="add-mapping-aliases"
+                placeholder="e.g. Service Fee Geotab (Base V2)"
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+            </div>
           </div>
           <div className="flex gap-2">
             <button disabled={saving || !addCode.trim() || !addSku}
-              onClick={() => saveMapping({ ratePlanCode: addCode, skuKey: addSku, defaultPrice: parseFloat(addPrice) || 0, notes: addNotes })}
+              onClick={() => {
+                const aliases = addAliases.split(',').map(s => s.trim()).filter(Boolean)
+                saveMapping({ ratePlanCode: addCode, skuKey: addSku, defaultPrice: parseFloat(addPrice) || 0, notes: addNotes, qbAliases: aliases })
+              }}
               className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded-lg font-medium">
               {saving ? 'Saving…' : 'Save'}
             </button>
@@ -656,6 +669,13 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
                             onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
                             className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
                         </div>
+                        <div className="col-span-2">
+                          <label className="block text-xs text-slate-400 mb-1">QB Aliases <span className="text-slate-600">(comma-separated QB SKU names that count as this SKU during reconciliation)</span></label>
+                          <input value={(editForm.qbAliases || []).join(', ')}
+                            onChange={e => setEditForm(f => ({ ...f, qbAliases: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }))}
+                            placeholder="e.g. Service Fee Geotab (Base V2)"
+                            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                        </div>
                       </div>
                       <div className="flex gap-2">
                         <button disabled={saving}
@@ -676,9 +696,18 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
                     </td>
                     <td className="px-4 py-2.5 overflow-hidden">
                       {m.skuKey ? (
-                        <span className="font-mono text-xs bg-slate-700 text-blue-300 px-1.5 py-0.5 rounded block truncate" title={m.skuKey}>
-                          {m.skuKey}
-                        </span>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-mono text-xs bg-slate-700 text-blue-300 px-1.5 py-0.5 rounded block truncate" title={m.skuKey}>
+                            {m.skuKey}
+                          </span>
+                          {m.qbAliases && m.qbAliases.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {m.qbAliases.map(a => (
+                                <span key={a} className="font-mono text-xs bg-slate-700/60 text-slate-400 px-1 py-0 rounded truncate" title={`QB alias: ${a}`}>+ {a}</span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-slate-600 text-xs italic">not mapped</span>
                       )}

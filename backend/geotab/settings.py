@@ -126,12 +126,21 @@ def _normalize_mapping(m: dict) -> dict:
     # Only keep 'notes' if it's genuinely different from the code itself.
     raw_notes = m.get("notes") or m.get("label") or ""
     notes = "" if raw_notes.strip().upper() == code else raw_notes
-    return {
+    result = {
         "ratePlanCode": code,
         "skuKey":       m.get("skuKey") or "",
         "defaultPrice": float(m.get("defaultPrice") or 0),
         "notes":        notes,
     }
+    # Preserve optional fields that should not be stripped during normalisation
+    if m.get("planLevel"):
+        result["planLevel"] = m["planLevel"]
+    if m.get("cost") is not None:
+        result["cost"] = float(m["cost"])
+    aliases = m.get("qbAliases")
+    if aliases:
+        result["qbAliases"] = [a for a in aliases if isinstance(a, str) and a.strip()]
+    return result
 
 
 def _mappings() -> list:
@@ -222,6 +231,7 @@ class MappingUpsert(BaseModel):
     skuKey: str
     defaultPrice: float = 0.0
     notes: str = ""
+    qbAliases: list = []
 
 
 @router.get("/settings/sku-mappings")
@@ -237,8 +247,14 @@ async def upsert_mapping(body: MappingUpsert):
     existing = next((m for m in sku_mappings if m["ratePlanCode"].upper() == body.ratePlanCode.upper()), None)
     data = body.dict()
     data["ratePlanCode"] = data["ratePlanCode"].upper()
+    # Strip empty alias lists so we don't pollute the JSON with "qbAliases": []
+    if not data.get("qbAliases"):
+        data.pop("qbAliases", None)
     if existing:
         existing.update(data)
+        # If aliases were not sent (empty list), preserve the existing ones
+        if "qbAliases" not in data and existing.get("qbAliases"):
+            pass  # already in existing dict, update() didn't touch it
     else:
         sku_mappings.append(data)
     _save(SKU_MAPPINGS_FILE, sku_mappings)

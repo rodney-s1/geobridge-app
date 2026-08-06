@@ -307,7 +307,8 @@
     "skuKey": "Service Fee Geotab (Base)",
     "defaultPrice": 16.95,
     "notes": "MyAdmin billing plan - base service tier",
-    "cost": 7.0
+    "cost": 7.0,
+    "qbAliases": ["Service Fee Geotab (Base V2)"]
   },
   {
     "ratePlanCode": "GO",

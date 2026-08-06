@@ -493,6 +493,22 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         if key and key not in mapping_index:          # first entry wins (GO Core default)
             mapping_index[key] = m.get("skuKey") or ""
 
+    # qbAliases: skuKey -> [alias_sku_key, ...]
+    # When comparing MyAdmin SKU counts against QB invoice quantities, the QB qty
+    # for an aliased SKU is added to the primary SKU's QB qty.
+    # Example: "Service Fee Geotab (Base)" aliases "Service Fee Geotab (Base V2)"
+    # so a customer billed as Base V2 in QB still matches Base Mode devices in MyAdmin.
+    sku_alias_index: Dict[str, list] = {}
+    for m in mappings:
+        sku = m.get("skuKey") or ""
+        aliases = m.get("qbAliases") or []
+        if sku and aliases:
+            existing = sku_alias_index.get(sku, [])
+            for a in aliases:
+                if a not in existing:
+                    existing.append(a)
+            sku_alias_index[sku] = existing
+
     # Tier 1.5: (planLevel_upper, ratePlanCode_upper) -> skuKey
     # Resolves promoCodes that map to different QB SKUs depending on the
     # MyAdmin billing plan (e.g. BUNDLE-GO on GO Core → "GO Core Bundle Plan",
@@ -1582,8 +1598,12 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         # All SKUs seen either in MyAdmin mapping or in QB invoice for this customer.
         # Use _qb_cname (Han-CS suffix stripped) so QB lines keyed to the bare name
         # are included even when MyAdmin carries the "{Han-CS}" suffix.
+        # Exclude QB alias SKUs — they are folded into their primary SKU's QB qty
+        # above and must not generate a separate row (which would show as Over-billed).
+        _all_alias_skus = {a for aliases in sku_alias_index.values() for a in aliases}
         all_skus = set(myadmin_by_sku.keys()) | {
-            sk for (nc, sk) in qb_qty_index.keys() if nc == _qb_cname
+            sk for (nc, sk) in qb_qty_index.keys()
+            if nc == _qb_cname and sk not in _all_alias_skus
         }
 
         # Count unmapped devices (no rate plan OR no mapping, excl. never_activated)
@@ -1607,6 +1627,16 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             else:
                 myadmin_count = myadmin_by_sku.get(sku_key, 0)
             qb_qty        = qb_qty_index.get((_qb_cname, sku_key), None)
+
+            # QB aliases: if this SKU has aliases defined in sku_mappings.json
+            # (e.g. "Service Fee Geotab (Base)" aliases "Service Fee Geotab (Base V2)"),
+            # add the alias QB quantities to the primary SKU's QB qty so a customer
+            # billed under an alias SKU in QB still matches the MyAdmin device count.
+            _aliases = sku_alias_index.get(sku_key, [])
+            for _alias_sku in _aliases:
+                _alias_qty = qb_qty_index.get((_qb_cname, _alias_sku), None)
+                if _alias_qty is not None:
+                    qb_qty = (qb_qty or 0) + _alias_qty
 
             # Hanover-consolidated: "Geotab Service Fee (HANOVER)" and HAN_CS_CUST_SKU
             # are both invoiced under Hanover Insurance Group's QB master account —
