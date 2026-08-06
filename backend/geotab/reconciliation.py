@@ -493,21 +493,26 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         if key and key not in mapping_index:          # first entry wins (GO Core default)
             mapping_index[key] = m.get("skuKey") or ""
 
-    # qbAliases: skuKey -> [alias_sku_key, ...]
-    # When comparing MyAdmin SKU counts against QB invoice quantities, the QB qty
-    # for an aliased SKU is added to the primary SKU's QB qty.
-    # Example: "Service Fee Geotab (Base)" aliases "Service Fee Geotab (Base V2)"
-    # so a customer billed as Base V2 in QB still matches Base Mode devices in MyAdmin.
+    # skuKeys alias index: primary_skuKey -> [additional_skuKeys...]
+    # Built from the skuKeys array on each mapping (skuKeys[1:] are QB-equivalent SKUs).
+    # Also handles legacy qbAliases field during transition.
+    # When comparing MyAdmin device counts against QB invoice quantities, all QB SKUs
+    # in the list are summed into the primary SKU's QB qty — so a customer billed as
+    # "Service Fee Geotab (Base V2)" in QB still matches "Base Mode" devices in MyAdmin.
     sku_alias_index: Dict[str, list] = {}
     for m in mappings:
-        sku = m.get("skuKey") or ""
-        aliases = m.get("qbAliases") or []
-        if sku and aliases:
-            existing = sku_alias_index.get(sku, [])
-            for a in aliases:
-                if a not in existing:
+        primary = m.get("skuKey") or ""
+        if not primary:
+            continue
+        extra_keys = (m.get("skuKeys") or [])[1:]   # skuKeys[1:] are the extra QB SKUs
+        legacy     = m.get("qbAliases") or []        # backward-compat during migration
+        all_extras = list(dict.fromkeys(extra_keys + legacy))  # deduplicated, order preserved
+        if all_extras:
+            existing = sku_alias_index.get(primary, [])
+            for a in all_extras:
+                if a and a != primary and a not in existing:
                     existing.append(a)
-            sku_alias_index[sku] = existing
+            sku_alias_index[primary] = existing
 
     # Tier 1.5: (planLevel_upper, ratePlanCode_upper) -> skuKey
     # Resolves promoCodes that map to different QB SKUs depending on the

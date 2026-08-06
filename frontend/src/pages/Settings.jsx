@@ -364,10 +364,10 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
   const [editForm, setEditForm] = useState({})
   const [adding, setAdding] = useState(false)
   const [addCode, setAddCode] = useState('')
-  const [addSku, setAddSku] = useState('')
+  const [addSkuKeys, setAddSkuKeys] = useState([])   // ordered list of QB SKUs for add form
+  const [addSkuPick, setAddSkuPick] = useState('')   // currently selected in dropdown
   const [addPrice, setAddPrice] = useState('')
   const [addNotes, setAddNotes] = useState('')
-  const [addAliases, setAddAliases] = useState('')
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
   const [search, setSearch] = useState('')
@@ -394,14 +394,45 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
 
   const filtered = mappings.filter(m =>
     !search || m.ratePlanCode.toLowerCase().includes(search.toLowerCase()) ||
-    m.skuKey.toLowerCase().includes(search.toLowerCase())
+    (m.skuKeys || [m.skuKey]).some(k => k.toLowerCase().includes(search.toLowerCase()))
   )
 
-  // When SKU is selected in add form, prefill price from catalog
-  function onAddSkuChange(key) {
-    setAddSku(key)
-    const found = catalog.find(s => s.skuKey === key)
-    if (found) setAddPrice(String(found.defaultPrice))
+  // Add a SKU to the ordered list (add form)
+  function addSkuToList(key) {
+    if (!key || addSkuKeys.includes(key)) return
+    const updated = [...addSkuKeys, key]
+    setAddSkuKeys(updated)
+    setAddSkuPick('')
+    // Auto-fill price from first SKU added
+    if (updated.length === 1) {
+      const found = catalog.find(s => s.skuKey === key)
+      if (found) setAddPrice(String(found.defaultPrice))
+    }
+  }
+
+  // Reusable SKU tag list component (ordered, removable, first = primary)
+  function SkuTagList({ skuKeys, onChange }) {
+    function remove(idx) { onChange(skuKeys.filter((_, i) => i !== idx)) }
+    function moveUp(idx) {
+      if (idx === 0) return
+      const a = [...skuKeys]; [a[idx-1], a[idx]] = [a[idx], a[idx-1]]; onChange(a)
+    }
+    return (
+      <div className="flex flex-col gap-1">
+        {skuKeys.map((k, i) => (
+          <div key={k} className="flex items-center gap-1 bg-slate-700/80 border border-slate-600/60 rounded px-2 py-1">
+            <span className={`text-xs font-bold w-12 shrink-0 ${i === 0 ? 'text-blue-400' : 'text-slate-500'}`}>
+              {i === 0 ? 'Primary' : `Alt ${i}`}
+            </span>
+            <span className="font-mono text-xs text-slate-200 flex-1 truncate" title={k}>{k}</span>
+            {i > 0 && (
+              <button onClick={() => moveUp(i)} title="Move up (make primary)" className="text-slate-500 hover:text-blue-300 text-xs px-1">↑</button>
+            )}
+            <button onClick={() => remove(i)} className="text-slate-500 hover:text-red-400 text-xs px-1" title="Remove">✕</button>
+          </div>
+        ))}
+      </div>
+    )
   }
 
   async function saveMapping(data, originalCode = null) {
@@ -421,7 +452,7 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
       setEditCode(null)
       setEditOriginalCode(null)
       setAdding(false)
-      setAddCode(''); setAddSku(''); setAddPrice(''); setAddNotes(''); setAddAliases('')
+      setAddCode(''); setAddSkuKeys([]); setAddSkuPick(''); setAddPrice(''); setAddNotes('')
       onRefresh()
     } catch (e) {
       setMsg({ type: 'err', text: e.message })
@@ -563,39 +594,36 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
                 className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 font-mono focus:outline-none focus:border-blue-500" />
             </div>
             <div>
-              <label className="block text-xs text-slate-400 mb-1">QB SKU *</label>
-              <select value={addSku} onChange={e => onAddSkuChange(e.target.value)}
-                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
-                <option value="">— select SKU —</option>
-                {skuOptions.map(k => <option key={k} value={k}>{k}</option>)}
-              </select>
-            </div>
-            <div>
               <label className="block text-xs text-slate-400 mb-1">Default Price</label>
               <input type="number" step="0.01" value={addPrice} onChange={e => setAddPrice(e.target.value)}
                 className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
             </div>
-            <div>
+            <div className="col-span-2">
+              <label className="block text-xs text-slate-400 mb-1">
+                QB SKUs * <span className="text-slate-600 font-normal">— first is the invoice SKU; additional SKUs are also accepted as valid QB matches during reconciliation</span>
+              </label>
+              <div className="flex gap-2 mb-2">
+                <select value={addSkuPick} onChange={e => setAddSkuPick(e.target.value)}
+                  className="flex-1 bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+                  <option value="">— select SKU to add —</option>
+                  {skuOptions.filter(k => !addSkuKeys.includes(k)).map(k => <option key={k} value={k}>{k}</option>)}
+                </select>
+                <button onClick={() => addSkuToList(addSkuPick)} disabled={!addSkuPick}
+                  className="px-3 py-1.5 bg-slate-600 hover:bg-slate-500 disabled:opacity-40 text-white text-sm rounded font-medium">
+                  + Add
+                </button>
+              </div>
+              {addSkuKeys.length > 0 && <SkuTagList skuKeys={addSkuKeys} onChange={setAddSkuKeys} />}
+            </div>
+            <div className="col-span-2">
               <label className="block text-xs text-slate-400 mb-1">Notes</label>
               <input value={addNotes} onChange={e => setAddNotes(e.target.value)}
                 className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
             </div>
-            <div className="col-span-2">
-              <label className="block text-xs text-slate-400 mb-1">QB Aliases <span className="text-slate-600">(comma-separated QB SKU names that also count as this SKU during reconciliation)</span></label>
-              <input
-                value={addAliases}
-                onChange={e => setAddAliases(e.target.value)}
-                id="add-mapping-aliases"
-                placeholder="e.g. Service Fee Geotab (Base V2)"
-                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
-            </div>
           </div>
           <div className="flex gap-2">
-            <button disabled={saving || !addCode.trim() || !addSku}
-              onClick={() => {
-                const aliases = addAliases.split(',').map(s => s.trim()).filter(Boolean)
-                saveMapping({ ratePlanCode: addCode, skuKey: addSku, defaultPrice: parseFloat(addPrice) || 0, notes: addNotes, qbAliases: aliases })
-              }}
+            <button disabled={saving || !addCode.trim() || addSkuKeys.length === 0}
+              onClick={() => saveMapping({ ratePlanCode: addCode, skuKeys: addSkuKeys, defaultPrice: parseFloat(addPrice) || 0, notes: addNotes })}
               className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded-lg font-medium">
               {saving ? 'Saving…' : 'Save'}
             </button>
@@ -645,41 +673,47 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
                             className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm font-mono text-slate-100 focus:outline-none focus:border-blue-500" />
                         </div>
                         <div>
-                          <label className="block text-xs text-slate-400 mb-1">QB SKU</label>
-                          <select value={editForm.skuKey}
-                            onChange={e => {
-                              const key = e.target.value
-                              const found = catalog.find(s => s.skuKey === key)
-                              setEditForm(f => ({ ...f, skuKey: key, defaultPrice: found ? found.defaultPrice : f.defaultPrice }))
-                            }}
-                            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
-                            <option value="">— select SKU —</option>
-                            {skuOptions.map(k => <option key={k} value={k}>{k}</option>)}
-                          </select>
-                        </div>
-                        <div>
                           <label className="block text-xs text-slate-400 mb-1">Default Price</label>
                           <input type="number" step="0.01" value={editForm.defaultPrice}
                             onChange={e => setEditForm(f => ({ ...f, defaultPrice: e.target.value }))}
                             className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
                         </div>
-                        <div>
+                        <div className="col-span-2">
+                          <label className="block text-xs text-slate-400 mb-1">
+                            QB SKUs <span className="text-slate-600 font-normal">— first is the invoice SKU; additional SKUs are also accepted as valid QB matches during reconciliation</span>
+                          </label>
+                          <div className="flex gap-2 mb-2">
+                            <select value=""
+                              onChange={e => {
+                                const key = e.target.value
+                                if (!key) return
+                                const current = editForm.skuKeys || (editForm.skuKey ? [editForm.skuKey] : [])
+                                if (current.includes(key)) return
+                                const updated = [...current, key]
+                                setEditForm(f => ({ ...f, skuKeys: updated, skuKey: updated[0] }))
+                              }}
+                              className="flex-1 bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+                              <option value="">— select SKU to add —</option>
+                              {skuOptions.filter(k => !(editForm.skuKeys || [editForm.skuKey]).includes(k)).map(k => <option key={k} value={k}>{k}</option>)}
+                            </select>
+                          </div>
+                          {(editForm.skuKeys || (editForm.skuKey ? [editForm.skuKey] : [])).length > 0 && (
+                            <SkuTagList
+                              skuKeys={editForm.skuKeys || (editForm.skuKey ? [editForm.skuKey] : [])}
+                              onChange={keys => setEditForm(f => ({ ...f, skuKeys: keys, skuKey: keys[0] || '' }))}
+                            />
+                          )}
+                        </div>
+                        <div className="col-span-2">
                           <label className="block text-xs text-slate-400 mb-1">Notes</label>
                           <input value={editForm.notes || ''}
                             onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
                             className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
                         </div>
-                        <div className="col-span-2">
-                          <label className="block text-xs text-slate-400 mb-1">QB Aliases <span className="text-slate-600">(comma-separated QB SKU names that count as this SKU during reconciliation)</span></label>
-                          <input value={(editForm.qbAliases || []).join(', ')}
-                            onChange={e => setEditForm(f => ({ ...f, qbAliases: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }))}
-                            placeholder="e.g. Service Fee Geotab (Base V2)"
-                            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
-                        </div>
                       </div>
                       <div className="flex gap-2">
                         <button disabled={saving}
-                          onClick={() => saveMapping({ ...editForm, defaultPrice: parseFloat(editForm.defaultPrice) || 0 }, editOriginalCode)}
+                          onClick={() => saveMapping({ ...editForm, skuKeys: editForm.skuKeys || [editForm.skuKey], defaultPrice: parseFloat(editForm.defaultPrice) || 0 }, editOriginalCode)}
                           className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded font-medium">
                           {saving ? 'Saving…' : 'Save'}
                         </button>
@@ -695,22 +729,18 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
                       </span>
                     </td>
                     <td className="px-4 py-2.5 overflow-hidden">
-                      {m.skuKey ? (
-                        <div className="flex flex-col gap-0.5">
-                          <span className="font-mono text-xs bg-slate-700 text-blue-300 px-1.5 py-0.5 rounded block truncate" title={m.skuKey}>
-                            {m.skuKey}
-                          </span>
-                          {m.qbAliases && m.qbAliases.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-0.5">
-                              {m.qbAliases.map(a => (
-                                <span key={a} className="font-mono text-xs bg-slate-700/60 text-slate-400 px-1 py-0 rounded truncate" title={`QB alias: ${a}`}>+ {a}</span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span className="text-slate-600 text-xs italic">not mapped</span>
-                      )}
+                      {(() => {
+                        const keys = m.skuKeys || (m.skuKey ? [m.skuKey] : [])
+                        if (!keys.length) return <span className="text-slate-600 text-xs italic">not mapped</span>
+                        return (
+                          <div className="flex flex-col gap-0.5">
+                            <span className="font-mono text-xs bg-slate-700 text-blue-300 px-1.5 py-0.5 rounded block truncate" title={keys[0]}>{keys[0]}</span>
+                            {keys.slice(1).map(k => (
+                              <span key={k} className="font-mono text-xs bg-slate-700/50 text-slate-400 px-1.5 py-0.5 rounded block truncate" title={`Also matches: ${k}`}>+ {k}</span>
+                            ))}
+                          </div>
+                        )
+                      })()}
                     </td>
                     <td className="px-4 py-2.5 text-right font-mono text-slate-200">
                       <div className="flex flex-col items-end gap-0.5">
