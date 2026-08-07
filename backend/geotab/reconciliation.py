@@ -139,6 +139,11 @@ QB_AUTHORITATIVE_SKUS: frozenset = frozenset({
     # not a device, no MyAdmin counterpart.  Always exclude from qty reconciliation.
     "International Payment Fee",
 
+    # --- Rasters Plan — database-level add-in subscription (Geotab Marketplace).
+    # Billed per account in QB; there is no per-device MyAdmin rate plan for it.
+    # QB enrolled-device count has no MyAdmin counterpart to diff against.
+    "Rasters Plan",
+
     # NOTE: "Geotab Service Fee (HANOVER)" is intentionally NOT listed here.
     # It is handled in two places:
     #   1. Per Hanover customer (billing_type=="Hanover"): hanoverConsolidated branch
