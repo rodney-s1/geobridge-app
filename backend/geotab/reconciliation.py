@@ -878,10 +878,28 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         active_devices       = [d for d in devices if not d.get("neverActivated")]
         never_activated_devs = [d for d in devices if d.get("neverActivated")]
 
+        # Surfsight cameras are ALWAYS billed as active devices — even on CUA /
+        # Hanover / Han-CS / Sourcewell accounts and even when they show
+        # "Never Activated" in MyAdmin.  Identify them before the CUA filter
+        # using the same two criteria as Tier 0.5a / NA-0.5e:
+        #   • sub_account_tag == "cameras" and NOT a GE/GF serial (Tier 0.5a)
+        #   • serial starts with "EVD-MKH-SRF" (NA-0.5e)
+        # This helper mirrors the Tier 0.5a gate exactly so the two stay in sync.
+        def _is_surfsight_device(dev: dict) -> bool:
+            _serial  = (dev.get("serialNumber") or "").upper()
+            _sub_tag = (dev.get("subAccountTag") or "").lower()
+            _ge_gf   = _serial.startswith("GE") or _serial.startswith("GF")
+            return (_sub_tag == "cameras" and not _ge_gf) or _serial.startswith("EVD-MKH-SRF")
+
         # CUA / Hanover / Han-CS customers: never-activated devices are not billed — skip entirely.
+        # EXCEPTION: Surfsight cameras on CUA accounts are always included regardless.
         # Standard customers: process active devices first, then inherit SKU for
         # never-activated devices from the most common active SKU on the account.
-        devices_to_process = active_devices if is_cua else devices
+        if is_cua:
+            ss_never_activated = [d for d in never_activated_devs if _is_surfsight_device(d)]
+            devices_to_process = active_devices + ss_never_activated
+        else:
+            devices_to_process = devices
 
         # Track SKU usage for active devices so never-activated can inherit
         active_sku_counts: Dict[str, int] = {}
@@ -902,10 +920,12 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             sub_account_tag = dev.get("subAccountTag") or ""  # e.g. "Han-CS", "3rd Party Devices"
             dev_location    = dev.get("location") or ""       # e.g. "Charlotte", "" for non-pipe
 
-            # CUA: already filtered above.
-            # Standard: never-activated devices inherit the most common active SKU —
-            # handled after the active-devices loop below (skip normal lookup for them).
-            if never_activated:
+            # CUA: already filtered above — EXCEPT Surfsight never-activated devices
+            # which were explicitly re-added to devices_to_process and must go
+            # through normal SKU lookup (they resolve to SS Service Fee via Tier 0.5a).
+            # Standard: other never-activated devices inherit the most common active
+            # SKU — handled after the active-devices loop below.
+            if never_activated and not _is_surfsight_device(dev):
                 # Defer to post-loop processing
                 continue
 
