@@ -1754,7 +1754,16 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
         # CUA (Charge Upon Activation) customers: never-activated devices are
         # not billed and are excluded from the QB invoice.  Subtract them from
         # the MyAdmin total so the header delta only reflects billed devices.
-        _cua_never_activated = len(never_activated_devs) if is_cua else 0
+        # EXCEPTION: Surfsight never-activated devices on CUA accounts ARE billed
+        # (they were re-added to devices_to_process above), so they must NOT be
+        # subtracted here — they appear in device_rows and must count toward the
+        # header MyAdmin total.  Only subtract truly-excluded never-activated devs.
+        if is_cua:
+            _cua_never_activated = sum(
+                1 for d in never_activated_devs if not _is_surfsight_device(d)
+            )
+        else:
+            _cua_never_activated = 0
         # Also subtract HANOVER never-activated devices excluded above on Standard accounts.
         _cua_never_activated += _hanover_na_excluded
 
