@@ -135,6 +135,10 @@ QB_AUTHORITATIVE_SKUS: frozenset = frozenset({
     "Pledge - Enterprise",
     "Pairing Script",
 
+    # --- International Payment Fee — flat per-account charge for non-US customers;
+    # not a device, no MyAdmin counterpart.  Always exclude from qty reconciliation.
+    "International Payment Fee",
+
     # NOTE: "Geotab Service Fee (HANOVER)" is intentionally NOT listed here.
     # It is handled in two places:
     #   1. Per Hanover customer (billing_type=="Hanover"): hanoverConsolidated branch
