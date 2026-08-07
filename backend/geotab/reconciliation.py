@@ -144,6 +144,11 @@ QB_AUTHORITATIVE_SKUS: frozenset = frozenset({
     # QB enrolled-device count has no MyAdmin counterpart to diff against.
     "Rasters Plan",
 
+    # --- Service Fee CalAmp (Asset) — quantity comes from the CalAmp vendor
+    # invoice, not from MyAdmin device records.  QB is the authoritative source;
+    # C3-serial devices in MyAdmin are informational only and must not be diffed.
+    "Service Fee CalAmp (Asset)",
+
     # NOTE: "Geotab Service Fee (HANOVER)" is intentionally NOT listed here.
     # It is handled in two places:
     #   1. Per Hanover customer (billing_type=="Hanover"): hanoverConsolidated branch
