@@ -196,7 +196,16 @@ def _get_stores():
     cust_maps    = _load(os.path.join(_DATA_DIR, "customer_rate_plan_mappings.json"),     [])
     overrides    = _load(os.path.join(_DATA_DIR, "sku_customer_overrides.json"),          [])
     qb_qtys      = _load(os.path.join(_DATA_DIR, "qb_invoice_quantities.json"),           [])
-    return catalog, mappings, cust_maps, overrides, qb_qtys
+
+    # --- QB_AUTHORITATIVE_SKUS: prefer the user-editable JSON file; fall back to
+    #     the compiled-in frozenset so cold deploys work without a Settings visit.
+    _auth_file   = _load(os.path.join(_DATA_DIR, "qb_authoritative_skus.json"),           None)
+    if _auth_file is not None:
+        _auth_skus = frozenset(e["skuKey"] for e in _auth_file if e.get("skuKey"))
+    else:
+        _auth_skus = QB_AUTHORITATIVE_SKUS      # compiled-in fallback
+
+    return catalog, mappings, cust_maps, overrides, qb_qtys, _auth_skus
 
 
 def _normalize(s: str) -> str:
@@ -498,7 +507,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             billing_type_index[cid_raw] = enriched.get("billingType") or "Standard"
 
     # -- Build indexes ---------------------------------------------------------
-    catalog, mappings, cust_maps, overrides, qb_qtys = _get_stores()
+    catalog, mappings, cust_maps, overrides, qb_qtys, _auth_skus = _get_stores()
 
     # skuKey -> defaultPrice
     catalog_index: Dict[str, float] = {
@@ -1757,7 +1766,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             # as over-billed, and exclude them from the customer delta totals.
             # Also covers the Hanover Insurance Group master account row which holds
             # the aggregated Geotab Service Fee (HANOVER) QB qty for all sub-customers.
-            if sku_key in QB_AUTHORITATIVE_SKUS:
+            if sku_key in _auth_skus:
                 effective_myadmin = qb_qty if qb_qty is not None else 0
                 qty_rows.append({
                     "skuKey":              sku_key,
@@ -2128,7 +2137,7 @@ async def get_billing_plans():
     from geotab.customers import _sync_cache
 
     contracts = _sync_cache.get("contracts") or []
-    _, mappings, _, _, _ = _get_stores()
+    _, mappings, _, _, _, _ = _get_stores()
 
     # Build mapping index (upper) -> skuKey
     mapping_index = {

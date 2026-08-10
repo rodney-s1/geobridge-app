@@ -54,6 +54,7 @@ CUSTOMER_OVERRIDES_FILE = os.path.join(_DATA_DIR, "sku_customer_overrides.json")
 QB_QUANTITIES_FILE          = os.path.join(_DATA_DIR, "qb_invoice_quantities.json")
 MYADMIN_CACHE_FILE          = os.path.join(_DATA_DIR, "myadmin_cache.json")
 SERIAL_PREFIX_FILE          = os.path.join(_DATA_DIR, "serial_prefix_mappings.json")
+QB_AUTH_SKUS_FILE           = os.path.join(_DATA_DIR, "qb_authoritative_skus.json")
 
 
 def _load(path, default):
@@ -99,6 +100,7 @@ def _save(path, data):
 
 def _catalog()          -> list: return _load(SKU_CATALOG_FILE,        [])
 def _serial_prefixes()  -> list: return _load(SERIAL_PREFIX_FILE,      [])
+def _qb_auth_skus()     -> list: return _load(QB_AUTH_SKUS_FILE,        [])
 def _cust_mappings()    -> list:
     data = _load(CUST_RATE_PLAN_FILE, None)
     if data is None:
@@ -448,6 +450,49 @@ async def delete_serial_prefix(prefix: str):
     serial_prefixes = [p for p in serial_prefixes if p["prefix"].upper() != norm_prefix]
     _save(SERIAL_PREFIX_FILE, serial_prefixes)
     return {"success": True, "removed": before - len(serial_prefixes)}
+
+
+# ================================================================================
+#  QB AUTHORITATIVE SKUS  (skuKey + optional notes)
+#  These SKUs use QB invoice qty as ground truth and are excluded from the
+#  MyAdmin vs QB diff.  Stored in qb_authoritative_skus.json so they can be
+#  maintained from the Settings UI without touching reconciliation.py.
+# ================================================================================
+
+class QbAuthSkuUpsert(BaseModel):
+    skuKey: str
+    notes:  str = ""
+
+
+@router.get("/settings/qb-authoritative-skus")
+async def list_qb_auth_skus():
+    data = _qb_auth_skus()
+    return sorted(data, key=lambda x: x.get("skuKey", "").lower())
+
+
+@router.post("/settings/qb-authoritative-skus")
+async def upsert_qb_auth_sku(body: QbAuthSkuUpsert):
+    sku_key = body.skuKey.strip()
+    if not sku_key:
+        raise HTTPException(status_code=400, detail="skuKey must not be empty")
+    data = _qb_auth_skus()
+    existing = next((e for e in data if e["skuKey"] == sku_key), None)
+    entry = {"skuKey": sku_key, "notes": body.notes.strip()}
+    if existing:
+        existing.update(entry)
+    else:
+        data.append(entry)
+    _save(QB_AUTH_SKUS_FILE, data)
+    return {"success": True, "entry": entry}
+
+
+@router.delete("/settings/qb-authoritative-skus/{sku_key:path}")
+async def delete_qb_auth_sku(sku_key: str):
+    data = _qb_auth_skus()
+    before = len(data)
+    data = [e for e in data if e["skuKey"] != sku_key]
+    _save(QB_AUTH_SKUS_FILE, data)
+    return {"success": True, "removed": before - len(data)}
 
 
 # ================================================================================

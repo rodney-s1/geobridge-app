@@ -1576,6 +1576,192 @@ function SerialPrefixTab({ prefixMappings, catalog, onRefresh }) {
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
+//  TAB — QB Authoritative SKUs
+//  SKUs where QB invoice qty is ground truth (no MyAdmin diff generated).
+//  Backed by qb_authoritative_skus.json — editable without touching source code.
+// ═══════════════════════════════════════════════════════════════════════════════
+function QbAuthSkusTab({ authSkus, onRefresh }) {
+  const [skuKey,  setSkuKey]  = useState('')
+  const [notes,   setNotes]   = useState('')
+  const [saving,  setSaving]  = useState(false)
+  const [error,   setError]   = useState(null)
+  const [search,  setSearch]  = useState('')
+
+  const filtered = (authSkus || []).filter(e => {
+    const q = search.toLowerCase()
+    return !q
+      || (e.skuKey || '').toLowerCase().includes(q)
+      || (e.notes  || '').toLowerCase().includes(q)
+  })
+
+  async function handleAdd(ev) {
+    ev.preventDefault()
+    const key = skuKey.trim()
+    if (!key) return
+    setSaving(true); setError(null)
+    try {
+      const res = await fetch(`${API}/api/settings/qb-authoritative-skus`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skuKey: key, notes }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || `HTTP ${res.status}`)
+      }
+      setSkuKey(''); setNotes('')
+      await onRefresh()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete(key) {
+    try {
+      await fetch(`${API}/api/settings/qb-authoritative-skus/${encodeURIComponent(key)}`, {
+        method: 'DELETE',
+      })
+      await onRefresh()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+
+      {/* ── Info banner ──────────────────────────────────────────── */}
+      <div className="bg-slate-800/60 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-400 leading-relaxed">
+        SKUs listed here use the <span className="text-amber-400 font-medium">QB invoice quantity as ground truth</span>.
+        They are excluded from the MyAdmin vs QB diff and will never appear as over- or under-billed.
+        Use this for platform add-ons, third-party service fees, and anything that has no
+        per-device MyAdmin counterpart.
+      </div>
+
+      {/* ── Add form ─────────────────────────────────────────────── */}
+      <form onSubmit={handleAdd}
+        className="bg-slate-800 border border-slate-700 rounded-xl p-5 space-y-4">
+        <h3 className="text-sm font-semibold text-slate-200 uppercase tracking-wide">
+          Add / Update QB Authoritative SKU
+        </h3>
+
+        {error && (
+          <div className="text-sm text-red-400 bg-red-900/30 border border-red-800 rounded-lg px-3 py-2">
+            {error}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* SKU key — free-text, must match skuKey in QB invoice */}
+          <div className="flex flex-col gap-1 sm:col-span-1">
+            <label className="text-xs text-slate-400 font-medium">QB SKU Key *</label>
+            <input
+              value={skuKey}
+              onChange={e => setSkuKey(e.target.value)}
+              placeholder="e.g. FleetShare Hosting"
+              className="bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm
+                text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500"
+            />
+          </div>
+
+          {/* Notes */}
+          <div className="flex flex-col gap-1 sm:col-span-1">
+            <label className="text-xs text-slate-400 font-medium">Notes</label>
+            <input
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="Why is this QB-authoritative?"
+              className="bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm
+                text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500"
+            />
+          </div>
+
+          {/* Submit */}
+          <div className="flex flex-col gap-1 justify-end">
+            <button
+              type="submit"
+              disabled={saving || !skuKey.trim()}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40
+                text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              {saving ? 'Saving…' : 'Save SKU'}
+            </button>
+          </div>
+        </div>
+      </form>
+
+      {/* ── Table ────────────────────────────────────────────────── */}
+      <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+        {/* Table toolbar */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
+          <span className="text-sm font-semibold text-slate-200">
+            QB Authoritative SKUs
+            <span className="ml-2 text-xs text-slate-500 font-normal">
+              ({(authSkus || []).length} entries)
+            </span>
+          </span>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">🔍</span>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Filter…"
+              className="pl-8 pr-7 py-1.5 bg-slate-900 border border-slate-600 rounded-lg
+                text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500 w-44"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500
+                  hover:text-slate-200 transition-colors leading-none"
+                title="Clear"
+              >✕</button>
+            )}
+          </div>
+        </div>
+
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-700 bg-slate-900/50">
+              <th className="px-4 py-2.5 text-left text-xs text-slate-400 font-semibold uppercase tracking-wide">QB SKU Key</th>
+              <th className="px-4 py-2.5 text-left text-xs text-slate-400 font-semibold uppercase tracking-wide">Notes</th>
+              <th className="px-4 py-2.5 w-12" />
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={3} className="px-4 py-8 text-center text-slate-500 text-sm">
+                  {search ? 'No entries match your filter.' : 'No QB authoritative SKUs defined.'}
+                </td>
+              </tr>
+            )}
+            {filtered.map(e => (
+              <tr key={e.skuKey} className="border-b border-slate-700/50 hover:bg-slate-700/30 group transition-colors">
+                <td className="px-4 py-2.5">
+                  <Badge color="amber">{e.skuKey}</Badge>
+                </td>
+                <td className="px-4 py-2.5 text-slate-400 text-xs max-w-sm truncate" title={e.notes}>
+                  {e.notes || <span className="text-slate-700">—</span>}
+                </td>
+                <td className="px-4 py-2.5 text-right">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <DeleteBtn small onConfirm={() => handleDelete(e.skuKey)} />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
 //  TAB — S3 Sync
 //  Admin management (add/remove usernames), force pull/push, re-enter creds.
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1970,13 +2156,14 @@ export default function Settings({ deepLink = null, onDeepLinkConsumed, sessionD
   const [summary,        setSummary]        = useState(null)
   const [loading,        setLoading]        = useState(true)
   const [prefixMappings, setPrefixMappings] = useState([])
+  const [authSkus,        setAuthSkus]        = useState([])
 
   const [fetchError, setFetchError] = useState(null)
 
   const fetchAll = useCallback(async () => {
     setFetchError(null)
     // Use allSettled so one failing endpoint doesn't cancel the others
-    const [catR, mapR, ovrR, crpR, unmR, sumR, sprR] = await Promise.allSettled([
+    const [catR, mapR, ovrR, crpR, unmR, sumR, sprR, authR] = await Promise.allSettled([
       fetch(`${API}/api/settings/sku-catalog`),
       fetch(`${API}/api/settings/sku-mappings`),
       fetch(`${API}/api/settings/customer-overrides`),
@@ -1984,6 +2171,7 @@ export default function Settings({ deepLink = null, onDeepLinkConsumed, sessionD
       fetch(`${API}/api/settings/unmapped-rate-plans`),
       fetch(`${API}/api/settings/summary`),
       fetch(`${API}/api/settings/serial-prefix-mappings`),
+      fetch(`${API}/api/settings/qb-authoritative-skus`),
     ])
     const errors = []
     try {
@@ -2015,6 +2203,10 @@ export default function Settings({ deepLink = null, onDeepLinkConsumed, sessionD
     try {
       if (sprR.status === 'fulfilled' && sprR.value.ok) setPrefixMappings(await sprR.value.json())
       // serial prefix mappings non-critical
+    } catch(e) { /* non-critical */ }
+    try {
+      if (authR.status === 'fulfilled' && authR.value.ok) setAuthSkus(await authR.value.json())
+      // qb authoritative skus non-critical
     } catch(e) { /* non-critical */ }
     if (errors.length) setFetchError(`Fetch errors — ${errors.join(', ')}`)
     setLoading(false)
@@ -2083,6 +2275,7 @@ export default function Settings({ deepLink = null, onDeepLinkConsumed, sessionD
         <TabBtn active={activeTab === 'custRatePlans'} onClick={() => setActiveTab('custRatePlans')}>Customer Rate Plans</TabBtn>
         <TabBtn active={activeTab === 'overrides'}     onClick={() => setActiveTab('overrides')}>Customer Prices</TabBtn>
         <TabBtn active={activeTab === 'serialPrefixes'} onClick={() => setActiveTab('serialPrefixes')}>Serial Prefixes</TabBtn>
+        <TabBtn active={activeTab === 'qbAuthSkus'}    onClick={() => setActiveTab('qbAuthSkus')}>QB Auth SKUs</TabBtn>
         <TabBtn active={activeTab === 'import'}        onClick={() => setActiveTab('import')}>Import CSV</TabBtn>
         <TabBtn active={activeTab === 's3sync'}        onClick={() => setActiveTab('s3sync')}>☁ S3 Sync</TabBtn>
       </div>
@@ -2103,6 +2296,7 @@ export default function Settings({ deepLink = null, onDeepLinkConsumed, sessionD
           {activeTab === 'custRatePlans'  && <CustRatePlanTab custMappings={custMappings} catalog={catalog} onRefresh={fetchAll} />}
           {activeTab === 'overrides'      && <CustomerOverridesTab overrides={overrides} catalog={catalog} onRefresh={fetchAll} />}
           {activeTab === 'serialPrefixes' && <SerialPrefixTab prefixMappings={prefixMappings} catalog={catalog} onRefresh={fetchAll} />}
+          {activeTab === 'qbAuthSkus'    && <QbAuthSkusTab authSkus={authSkus} onRefresh={fetchAll} />}
           {activeTab === 'import'         && <ImportCsvTab        onRefresh={fetchAll} />}
           {activeTab === 's3sync'         && <S3SyncTab sessionData={sessionData} />}
         </>

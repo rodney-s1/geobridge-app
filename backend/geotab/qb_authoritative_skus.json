@@ -1,0 +1,142 @@
+[
+  {
+    "skuKey": "BlueArrow Fuel Service",
+    "notes": "Sourced from BlueArrow fuel platform, not MyAdmin."
+  },
+  {
+    "skuKey": "Service Fee Rosco (Basic)",
+    "notes": "Rosco camera service fee — sourced from Rosco platform, not MyAdmin."
+  },
+  {
+    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "notes": "Rosco camera service fee — sourced from Rosco platform, not MyAdmin."
+  },
+  {
+    "skuKey": "Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
+    "notes": "Rosco camera service fee — sourced from Rosco platform, not MyAdmin."
+  },
+  {
+    "skuKey": "VisionTrack Service Plan",
+    "notes": "Sourced from VisionTrack camera platform, not MyAdmin."
+  },
+  {
+    "skuKey": "IFTA Plus",
+    "notes": "Sourced from IFTA reporting platform, not MyAdmin."
+  },
+  {
+    "skuKey": "Predictive Coach",
+    "notes": "Sourced from Predictive Coach platform, not MyAdmin."
+  },
+  {
+    "skuKey": "Predictive Coach Service Fee (Predictive Coach Service Fee - Automated Driver C...",
+    "notes": "Sourced from Predictive Coach platform, not MyAdmin."
+  },
+  {
+    "skuKey": "Service Fee Fleetio (Advanced)",
+    "notes": "Fleetio fleet management platform — not MyAdmin."
+  },
+  {
+    "skuKey": "Service Fee Fleetio Pro",
+    "notes": "Fleetio fleet management platform — not MyAdmin."
+  },
+  {
+    "skuKey": "Service Fee Drivewyze",
+    "notes": "Drivewyze weigh-station bypass — sourced from Drivewyze platform."
+  },
+  {
+    "skuKey": "Haas Alert",
+    "notes": "Haas Alert safety platform — not MyAdmin."
+  },
+  {
+    "skuKey": "LifeSaver Service",
+    "notes": "LifeSaver distracted-driving platform — not MyAdmin."
+  },
+  {
+    "skuKey": "Service Fee DoForms (Basic)",
+    "notes": "DoForms mobile data capture platform — not MyAdmin."
+  },
+  {
+    "skuKey": "Service Fee Route4Me",
+    "notes": "Route4Me route optimisation platform — not MyAdmin."
+  },
+  {
+    "skuKey": "Service Fee Starlite",
+    "notes": "Starlite platform — not MyAdmin."
+  },
+  {
+    "skuKey": "Service Fee TopFly Basic",
+    "notes": "TopFly tracking platform — not MyAdmin."
+  },
+  {
+    "skuKey": "Service Fee Xirgo (Basic)",
+    "notes": "Xirgo device platform — not MyAdmin."
+  },
+  {
+    "skuKey": "Service Fee GoCam+",
+    "notes": "GoCam+ camera platform — not MyAdmin."
+  },
+  {
+    "skuKey": "ORIGOInspect Plan",
+    "notes": "ORIGOInspect inspection platform — not MyAdmin."
+  },
+  {
+    "skuKey": "Oyster3",
+    "notes": "Oyster3 asset tracker — not MyAdmin."
+  },
+  {
+    "skuKey": "Pressure Pro FX Service",
+    "notes": "Pressure Pro tyre monitoring — not MyAdmin."
+  },
+  {
+    "skuKey": "AA Lithium",
+    "notes": "AA Lithium hardware add-on — one-off, not a MyAdmin device."
+  },
+  {
+    "skuKey": "Nano Sim",
+    "notes": "Nano Sim hardware add-on — one-off, not a MyAdmin device."
+  },
+  {
+    "skuKey": "Geoforce Service (GT1s)",
+    "notes": "Geoforce asset tracking platform — not MyAdmin."
+  },
+  {
+    "skuKey": "Geoforce Service (GT2c)",
+    "notes": "Geoforce asset tracking platform — not MyAdmin."
+  },
+  {
+    "skuKey": "Geoforce Service (GT2h)",
+    "notes": "Geoforce asset tracking platform — not MyAdmin."
+  },
+  {
+    "skuKey": "GoAnalytics",
+    "notes": "GoAnalytics analytics platform add-on — not device-based."
+  },
+  {
+    "skuKey": "Pledge - Enterprise",
+    "notes": "Per-account fee — not a device count."
+  },
+  {
+    "skuKey": "Pairing Script",
+    "notes": "Per-account fee — not a device count."
+  },
+  {
+    "skuKey": "International Payment Fee",
+    "notes": "Flat per-account charge for non-US customers — not a device."
+  },
+  {
+    "skuKey": "Rasters Plan",
+    "notes": "Database-level add-in subscription (Geotab Marketplace) — billed per account, no per-device MyAdmin rate plan."
+  },
+  {
+    "skuKey": "Service Fee CalAmp (Asset)",
+    "notes": "Quantity comes from the CalAmp vendor invoice, not MyAdmin device records. C3-serial devices in MyAdmin are informational only."
+  },
+  {
+    "skuKey": "SS Service Fee (Standalone)",
+    "notes": "Surfsight cameras managed through the standalone Surfsight portal, NOT through MyAdmin. QB line item is 'Surfsight Service:SS Service Fee'; disambiguated from 'Geotab Service:SS Service Fee' (MyAdmin-tracked) during invoice import."
+  },
+  {
+    "skuKey": "FleetShare Hosting",
+    "notes": "Hosting/platform fee with no per-device MyAdmin counterpart. QB qty is authoritative."
+  }
+]
