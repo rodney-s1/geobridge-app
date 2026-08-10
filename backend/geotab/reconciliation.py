@@ -1011,6 +1011,8 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             if (sku_key is None
                     and (serial_upper.startswith("EG") or serial_upper.startswith("EK"))):
                 _ek_sentinel  = cust_mapping_index.get((norm_cname, "EK_EG_SERIAL_PRO MODE"))
+                # DEBUG: log norm_cname so mismatches are visible in the backend console
+                print(f"[DEBUG Tier0.5c] serial={serial!r} cname={cname!r} norm_cname={norm_cname!r} sentinel={_ek_sentinel!r}", flush=True)
                 sku_key      = _ek_sentinel if _ek_sentinel else "Tracking Fee"
                 mapping_tier = "serial_prefix"
                 lookup_code  = "EG/EK serial prefix (Phillips Connect)"
