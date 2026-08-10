@@ -507,15 +507,5 @@
     "skuKey": "AEMP Service (Premium)",
     "defaultPrice": 7.5,
     "notes": "Generic AEMP Premium billing plan fallback for non-OEM-specific AEMP devices"
-  },
-  {
-    "ratePlanCode": "_ALIAS_TRACKING_FEE",
-    "skuKey": "Tracking Fee",
-    "skuKeys": [
-      "Tracking Fee",
-      "Geotab Only"
-    ],
-    "defaultPrice": 14.95,
-    "notes": "Phillips Connect alias: 'Geotab Only' QB SKU folds into 'Tracking Fee' MyAdmin count. Some customers (e.g. Combs Produce) are invoiced under the Geotab Only item code instead of Tracking Fee."
   }
 ]

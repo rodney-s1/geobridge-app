@@ -118,5 +118,12 @@
     "skuKey": "Service Fee Geotab (HOS V2)",
     "defaultPrice": 22.95,
     "notes": "Regulatory Mode billed at HOS V2 per QB invoice"
+  },
+  {
+    "id": "Combs produce Wholesale Co.|EK_EG_SERIAL_PRO MODE",
+    "customerName": "Combs produce Wholesale Co.",
+    "ratePlanCode": "EK_EG_SERIAL_PRO MODE",
+    "skuKey": "Geotab Only",
+    "notes": "Phillips Connect EK/EG devices on this account are invoiced under 'Geotab Only' in QB, not 'Tracking Fee'. Tier 0.5c checks this before defaulting to Tracking Fee."
   }
 ]

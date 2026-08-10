@@ -992,15 +992,21 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             else:
                 is_hn_serial = False   # only relevant when we actually triggered Tier 0.5b
 
-            # -- Tier 0.5c: EG / EK serial prefix = Phillips Connect Tracking Fee --
+            # -- Tier 0.5c: EG / EK serial prefix = Phillips Connect -----------
             # Phillips Connect devices carry serial numbers starting with "EG" or "EK".
             # MyAdmin reports their activeDevicePlan as "Pro Mode" — identical to
             # standard Geotab GO devices — so the normal billing-plan lookup would
             # incorrectly route them to "Service Fee Geotab (Pro)".
             # The serial prefix is the only reliable discriminator.
+            #
+            # Default QB SKU is "Tracking Fee", but some customers are invoiced
+            # under a different Phillips Connect SKU (e.g. "Geotab Only").
+            # A customer_rate_plan_mappings.json entry keyed to the sentinel
+            # "EK_EG_SERIAL_PRO MODE" overrides the default for that customer.
             if (sku_key is None
                     and (serial_upper.startswith("EG") or serial_upper.startswith("EK"))):
-                sku_key      = "Tracking Fee"
+                _ek_sentinel  = cust_mapping_index.get((norm_cname, "EK_EG_SERIAL_PRO MODE"))
+                sku_key      = _ek_sentinel if _ek_sentinel else "Tracking Fee"
                 mapping_tier = "serial_prefix"
                 lookup_code  = "EG/EK serial prefix (Phillips Connect)"
 
@@ -1431,10 +1437,12 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                     na_sku_key      = "DM Service Fee"
                     na_price_source = "serial_prefix"
 
-                # NA-0.5c: EG / EK serial → Phillips Connect Tracking Fee
+                # NA-0.5c: EG / EK serial → Phillips Connect (Tracking Fee default,
+                # or customer override via EK_EG_SERIAL_PRO MODE sentinel)
                 if (na_sku_key is None
                         and (na_serial.startswith("EG") or na_serial.startswith("EK"))):
-                    na_sku_key      = "Tracking Fee"
+                    _na_ek_sentinel = cust_mapping_index.get((norm_cname, "EK_EG_SERIAL_PRO MODE"))
+                    na_sku_key      = _na_ek_sentinel if _na_ek_sentinel else "Tracking Fee"
                     na_price_source = "serial_prefix"
 
                 # NA-0.5d: C3 serial → CalAmp Asset Service Fee
