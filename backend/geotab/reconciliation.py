@@ -156,6 +156,10 @@ QB_AUTHORITATIVE_SKUS: frozenset = frozenset({
     # No MyAdmin device counterpart exists for these, so QB qty is authoritative.
     "SS Service Fee (Standalone)",
 
+    # --- FleetShare Hosting — hosting/platform fee with no per-device MyAdmin
+    # counterpart.  QB qty is authoritative; exclude from reconciliation diff.
+    "FleetShare Hosting",
+
     # NOTE: "Geotab Service Fee (HANOVER)" is intentionally NOT listed here.
     # It is handled in two places:
     #   1. Per Hanover customer (billing_type=="Hanover"): hanoverConsolidated branch
