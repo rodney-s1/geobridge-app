@@ -1580,12 +1580,41 @@ function SerialPrefixTab({ prefixMappings, catalog, onRefresh }) {
 //  SKUs where QB invoice qty is ground truth (no MyAdmin diff generated).
 //  Backed by qb_authoritative_skus.json — editable without touching source code.
 // ═══════════════════════════════════════════════════════════════════════════════
-function QbAuthSkusTab({ authSkus, onRefresh }) {
-  const [skuKey,  setSkuKey]  = useState('')
-  const [notes,   setNotes]   = useState('')
-  const [saving,  setSaving]  = useState(false)
-  const [error,   setError]   = useState(null)
-  const [search,  setSearch]  = useState('')
+function QbAuthSkusTab({ authSkus, catalog, onRefresh }) {
+  const [skuKey,      setSkuKey]      = useState('')
+  const [notes,       setNotes]       = useState('')
+  const [saving,      setSaving]      = useState(false)
+  const [error,       setError]       = useState(null)
+  const [search,      setSearch]      = useState('')
+  // Combobox state
+  const [inputText,   setInputText]   = useState('')
+  const [dropOpen,    setDropOpen]    = useState(false)
+  const comboRef = useRef(null)
+
+  // Sorted unique SKU keys from catalog — used as dropdown options
+  const catalogOptions = [...new Set(
+    (catalog || []).map(s => s.skuKey).filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b))
+
+  // Options filtered by whatever the user has typed
+  const comboFiltered = inputText.trim()
+    ? catalogOptions.filter(k => k.toLowerCase().includes(inputText.toLowerCase()))
+    : catalogOptions
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function onDown(e) {
+      if (comboRef.current && !comboRef.current.contains(e.target)) setDropOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [])
+
+  function selectOption(val) {
+    setSkuKey(val)
+    setInputText(val)
+    setDropOpen(false)
+  }
 
   const filtered = (authSkus || []).filter(e => {
     const q = search.toLowerCase()
@@ -1609,7 +1638,7 @@ function QbAuthSkusTab({ authSkus, onRefresh }) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.detail || `HTTP ${res.status}`)
       }
-      setSkuKey(''); setNotes('')
+      setSkuKey(''); setInputText(''); setNotes('')
       await onRefresh()
     } catch (err) {
       setError(err.message)
@@ -1654,16 +1683,62 @@ function QbAuthSkusTab({ authSkus, onRefresh }) {
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {/* SKU key — free-text, must match skuKey in QB invoice */}
-          <div className="flex flex-col gap-1 sm:col-span-1">
+          {/* SKU key — searchable combobox from catalog, also accepts free-text */}
+          <div className="flex flex-col gap-1 sm:col-span-1" ref={comboRef}>
             <label className="text-xs text-slate-400 font-medium">QB SKU Key *</label>
-            <input
-              value={skuKey}
-              onChange={e => setSkuKey(e.target.value)}
-              placeholder="e.g. FleetShare Hosting"
-              className="bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm
-                text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500"
-            />
+            <div className="relative">
+              <input
+                value={inputText}
+                onChange={e => {
+                  setInputText(e.target.value)
+                  setSkuKey(e.target.value)   // allow free-text too
+                  setDropOpen(true)
+                }}
+                onFocus={() => setDropOpen(true)}
+                placeholder="Search or type a SKU…"
+                autoComplete="off"
+                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm
+                  text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500 pr-8"
+              />
+              {/* chevron toggle */}
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setDropOpen(v => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500
+                  hover:text-slate-300 transition-colors"
+              >
+                <svg className={`w-4 h-4 transition-transform ${dropOpen ? 'rotate-180' : ''}`}
+                  viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10
+                    11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0
+                    01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                </svg>
+              </button>
+
+              {/* dropdown list */}
+              {dropOpen && (
+                <ul className="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto
+                  bg-slate-900 border border-slate-600 rounded-lg shadow-xl text-sm">
+                  {comboFiltered.length === 0 ? (
+                    <li className="px-3 py-2 text-slate-500 italic">No matches — will save as typed</li>
+                  ) : (
+                    comboFiltered.map(opt => (
+                      <li
+                        key={opt}
+                        onMouseDown={() => selectOption(opt)}
+                        className={`px-3 py-2 cursor-pointer truncate transition-colors
+                          hover:bg-slate-700 hover:text-white
+                          ${ skuKey === opt ? 'bg-slate-700/60 text-amber-300' : 'text-slate-200' }`}
+                        title={opt}
+                      >
+                        {opt}
+                      </li>
+                    ))
+                  )}
+                </ul>
+              )}
+            </div>
           </div>
 
           {/* Notes */}
@@ -2296,7 +2371,7 @@ export default function Settings({ deepLink = null, onDeepLinkConsumed, sessionD
           {activeTab === 'custRatePlans'  && <CustRatePlanTab custMappings={custMappings} catalog={catalog} onRefresh={fetchAll} />}
           {activeTab === 'overrides'      && <CustomerOverridesTab overrides={overrides} catalog={catalog} onRefresh={fetchAll} />}
           {activeTab === 'serialPrefixes' && <SerialPrefixTab prefixMappings={prefixMappings} catalog={catalog} onRefresh={fetchAll} />}
-          {activeTab === 'qbAuthSkus'    && <QbAuthSkusTab authSkus={authSkus} onRefresh={fetchAll} />}
+          {activeTab === 'qbAuthSkus'    && <QbAuthSkusTab authSkus={authSkus} catalog={catalog} onRefresh={fetchAll} />}
           {activeTab === 'import'         && <ImportCsvTab        onRefresh={fetchAll} />}
           {activeTab === 's3sync'         && <S3SyncTab sessionData={sessionData} />}
         </>
