@@ -65,6 +65,7 @@ _MUTABLE_FILES = [
     "sku_customer_overrides.json",
     "qb_invoice_quantities.json",
     "serial_prefix_mappings.json",
+    "qb_authoritative_skus.json",
     # qb_sync.py
     "qb_sync_history.json",
 ]

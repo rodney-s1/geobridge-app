@@ -59,6 +59,7 @@ ADMIN_ONLY_FILES = {
     "customer_rate_plan_mappings.json",
     "sku_customer_overrides.json",
     "serial_prefix_mappings.json",
+    "qb_authoritative_skus.json",
 }
 
 # All users can push these
