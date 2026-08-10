@@ -159,6 +159,16 @@ QB_AUTHORITATIVE_SKUS: frozenset = frozenset({
 
 from ._data_dir import _DATA_DIR, _HERE
 
+# --- Phillips Connect SKU family ---------------------------------------------
+# EG / EK serial-prefix devices (Phillips Connect hardware) can be invoiced
+# under any of these QB SKUs depending on how the customer's QB item is set up.
+# Tier 0.5c uses this set to find which SKU the customer's QB invoice already
+# uses, rather than hard-coding a default or requiring a manual sentinel entry.
+_PHILLIPS_CONNECT_SKUS: frozenset = frozenset({
+    "Tracking Fee",
+    "Geotab Only",
+})
+
 # --- Shared stores (imported lazily so circular-import safe) -----------------
 def _load(path, default):
     try:
@@ -1004,14 +1014,18 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             # incorrectly route them to "Service Fee Geotab (Pro)".
             # The serial prefix is the only reliable discriminator.
             #
-            # Default QB SKU is "Tracking Fee", but some customers are invoiced
-            # under a different Phillips Connect SKU (e.g. "Geotab Only").
-            # A customer_rate_plan_mappings.json entry keyed to the sentinel
-            # "EK_EG_SERIAL_PRO MODE" overrides the default for that customer.
+            # The correct QB SKU varies per customer ("Tracking Fee", "Geotab Only",
+            # etc.).  Rather than a hard-coded default or a manual sentinel, we look
+            # up which Phillips Connect SKU the customer already has a QB quantity
+            # for and route to that.  If none found, fall back to "Tracking Fee".
             if (sku_key is None
                     and (serial_upper.startswith("EG") or serial_upper.startswith("EK"))):
-                _ek_sentinel  = cust_mapping_index.get((norm_cname, "EK_EG_SERIAL_PRO MODE"))
-                sku_key      = _ek_sentinel if _ek_sentinel else "Tracking Fee"
+                _pc_sku = next(
+                    (s for s in _PHILLIPS_CONNECT_SKUS
+                     if qb_qty_index.get((_qb_cname, s), 0) > 0),
+                    "Tracking Fee",
+                )
+                sku_key      = _pc_sku
                 mapping_tier = "serial_prefix"
                 lookup_code  = "EG/EK serial prefix (Phillips Connect)"
 
@@ -1442,12 +1456,17 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                     na_sku_key      = "DM Service Fee"
                     na_price_source = "serial_prefix"
 
-                # NA-0.5c: EG / EK serial → Phillips Connect (Tracking Fee default,
-                # or customer override via EK_EG_SERIAL_PRO MODE sentinel)
+                # NA-0.5c: EG / EK serial → Phillips Connect
+                # Mirror Tier 0.5c: look up which Phillips Connect SKU the
+                # customer has in QB rather than hard-coding a default.
                 if (na_sku_key is None
                         and (na_serial.startswith("EG") or na_serial.startswith("EK"))):
-                    _na_ek_sentinel = cust_mapping_index.get((norm_cname, "EK_EG_SERIAL_PRO MODE"))
-                    na_sku_key      = _na_ek_sentinel if _na_ek_sentinel else "Tracking Fee"
+                    _na_pc_sku = next(
+                        (s for s in _PHILLIPS_CONNECT_SKUS
+                         if qb_qty_index.get((_qb_cname, s), 0) > 0),
+                        "Tracking Fee",
+                    )
+                    na_sku_key      = _na_pc_sku
                     na_price_source = "serial_prefix"
 
                 # NA-0.5d: C3 serial → CalAmp Asset Service Fee
