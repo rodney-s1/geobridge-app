@@ -498,6 +498,17 @@ def _parse_item(item_str: str) -> Tuple[str, str, str]:
     return group, sku_name, desc
 
 
+# Mapping of (group, sku_name) -> disambiguated skuKey for QB items where the
+# same SKU name appears under two different QB groups with different meanings.
+# Without this, e.g. "Surfsight Service:SS Service Fee" (standalone portal cameras,
+# no MyAdmin counterpart) and "Geotab Service:SS Service Fee" (MyAdmin-tracked
+# cameras) would both collapse to skuKey="SS Service Fee" and their QB quantities
+# would be summed, producing a false over-billed result.
+_QB_GROUP_SKU_REMAP: dict = {
+    ("Surfsight Service", "SS Service Fee"): "SS Service Fee (Standalone)",
+}
+
+
 def _parse_qb_csv(content: str) -> dict:
     """
     Parse QB invoice CSV (doubled-comma format).
@@ -558,6 +569,9 @@ def _parse_qb_csv(content: str) -> dict:
             qty = 1
 
         group, sku_name, desc = _parse_item(item_raw)
+
+        # Disambiguate SKU names that appear under multiple QB groups.
+        sku_name = _QB_GROUP_SKU_REMAP.get((group, sku_name), sku_name)
 
         if not sku_name:
             continue
@@ -777,6 +791,9 @@ def _parse_price_list_csv(content: str) -> List[dict]:
         sku_name = item_raw[colon + 1:].strip()
         if not sku_name:
             continue
+
+        # Disambiguate SKU names that appear under multiple QB groups.
+        sku_name = _QB_GROUP_SKU_REMAP.get((group, sku_name), sku_name)
 
         items.append({
             'skuKey':       sku_name,

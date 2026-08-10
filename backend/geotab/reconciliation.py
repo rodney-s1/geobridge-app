@@ -149,6 +149,13 @@ QB_AUTHORITATIVE_SKUS: frozenset = frozenset({
     # C3-serial devices in MyAdmin are informational only and must not be diffed.
     "Service Fee CalAmp (Asset)",
 
+    # --- SS Service Fee (Standalone) — Surfsight cameras managed through the
+    # standalone Surfsight portal, NOT through MyAdmin.  QB line item is
+    # "Surfsight Service:SS Service Fee"; disambiguated from "Geotab Service:SS
+    # Service Fee" (which IS MyAdmin-tracked) during invoice import.
+    # No MyAdmin device counterpart exists for these, so QB qty is authoritative.
+    "SS Service Fee (Standalone)",
+
     # NOTE: "Geotab Service Fee (HANOVER)" is intentionally NOT listed here.
     # It is handled in two places:
     #   1. Per Hanover customer (billing_type=="Hanover"): hanoverConsolidated branch
