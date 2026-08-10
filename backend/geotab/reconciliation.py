@@ -491,8 +491,13 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     }
 
     # Tier 1: (norm_customerName, ratePlanCode_upper) -> skuKey
+    # IMPORTANT: keyed with _normalize_for_qb_lookup (not plain _normalize) so
+    # that entity suffixes (Co., Inc., LLC …) are stripped consistently with
+    # how norm_cname is computed per device during the reconciliation loop.
+    # Using plain _normalize here caused mismatches for any customer whose name
+    # ends in a strippable suffix (e.g. "Combs Produce Wholesale Co.").
     cust_mapping_index: Dict[tuple, str] = {
-        (_normalize(m["customerName"]), (m.get("ratePlanCode") or "").upper()): m.get("skuKey") or ""
+        (_normalize_for_qb_lookup(m["customerName"]), (m.get("ratePlanCode") or "").upper()): m.get("skuKey") or ""
         for m in cust_maps
     }
 
