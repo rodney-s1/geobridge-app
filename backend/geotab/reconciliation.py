@@ -908,8 +908,7 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             _serial  = (dev.get("serialNumber") or "").upper()
             _sub_tag = (dev.get("subAccountTag") or "").lower()
             _ge_gf   = _serial.startswith("GE") or _serial.startswith("GF")
-            _ek_eg   = _serial.startswith("EK") or _serial.startswith("EG")
-            return (_sub_tag == "cameras" and not _ge_gf and not _ek_eg) or _serial.startswith("EVD-MKH-SRF")
+            return (_sub_tag == "cameras" and not _ge_gf) or _serial.startswith("EVD-MKH-SRF")
 
         # CUA / Hanover / Han-CS customers: never-activated devices are not billed — skip entirely.
         # EXCEPTION: Surfsight cameras on CUA accounts are always included regardless.
@@ -964,24 +963,19 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
             #
             # The sub_account_tag "Cameras" is the reliable discriminator.
             #
-            # Three device types on {Cameras} sub-accounts must fall through to
+            # Two device types on {Cameras} sub-accounts must fall through to
             # their own SKU resolution instead of being locked to SS Service Fee:
             #   1. GE/GF serials — GO Focus Plus (GE) and GO Focus (GF) are
             #      distinct Geotab hardware, NOT Surfsight cameras.  They are
             #      handled by Tier 0.5f below.
-            #   2. EG/EK serials — Phillips Connect devices.  They share the same
-            #      {Cameras} sub-account tag on some accounts but are NOT Surfsight
-            #      cameras.  They must reach Tier 0.5c so the per-customer sentinel
-            #      (EK_EG_SERIAL_PRO MODE) or the default "Tracking Fee" applies.
-            #   3. Surfsight devices with a bundle promoCode (SURF-BUNDLE,
+            #   2. Surfsight devices with a bundle promoCode (SURF-BUNDLE,
             #      SURF-BND-PROMO) that maps to a more specific SS Service Fee
             #      variant — their promoCode resolution is more precise.
             serial_upper = serial.upper()
             _is_ge_gf         = serial_upper.startswith("GE") or serial_upper.startswith("GF")
-            _is_ek_eg         = serial_upper.startswith("EK") or serial_upper.startswith("EG")
             _resolved_promo_sku = mapping_index.get(promo_code, "") if promo_code else ""
             _promo_maps_to_ss = _resolved_promo_sku.startswith("SS Service Fee")
-            if sub_account_tag.lower() == "cameras" and not _is_ge_gf and not _is_ek_eg and not _promo_maps_to_ss:
+            if sub_account_tag.lower() == "cameras" and not _is_ge_gf and not _promo_maps_to_ss:
                 sku_key      = "SS Service Fee"
                 mapping_tier = "sub_account_tag"
                 lookup_code  = "Cameras sub-account"
@@ -1432,15 +1426,13 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 na_resolved_promo_sku = mapping_index.get(na_promo, "") if na_promo else ""
                 na_promo_maps_to_ss  = na_resolved_promo_sku.startswith("SS Service Fee")
                 na_is_ge_gf          = na_serial.startswith("GE") or na_serial.startswith("GF")
-                na_is_ek_eg          = na_serial.startswith("EK") or na_serial.startswith("EG")
                 na_sku_key = None
                 na_price_source = "none"
 
                 # NA-0.5a: {Cameras} sub-account → SS Service Fee
-                # (same exclusions as Tier 0.5a: GE/GF hardware, EK/EG Phillips Connect, and SS bundle promoCodes)
+                # (same exclusions as Tier 0.5a: GE/GF hardware and SS bundle promoCodes)
                 if (na_sub_tag == "cameras"
                         and not na_is_ge_gf
-                        and not na_is_ek_eg
                         and not na_promo_maps_to_ss):
                     na_sku_key      = "SS Service Fee"
                     na_price_source = "serial_prefix"
