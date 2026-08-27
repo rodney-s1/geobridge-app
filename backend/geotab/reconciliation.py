@@ -1922,9 +1922,17 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
     # Only inject when not filtering by a specific customer_id (the QB-only
     # account won't have a matching MyAdmin cid anyway).
     if not customer_id:
-        # Collect the set of normalised names already covered by company_map
+        # Collect the set of normalised names already covered by company_map.
+        # IMPORTANT: qb_qty_index keys use _normalize_for_qb_lookup() (strips
+        # trailing entity suffixes like LLC/Inc./Co.), so this set MUST use the
+        # same function or the membership check below (nc not in covered_norm_names)
+        # never matches for any customer whose name ends in such a suffix —
+        # e.g. "Combs Produce Wholesale Co." normalizes to "combs produce
+        # wholesale co." here but "combs produce wholesale" in qb_qty_index,
+        # causing the customer to be wrongly re-injected as a duplicate
+        # "QB Only" stub row even though it's already reconciled above.
         covered_norm_names: set = {
-            _normalize(_strip_han_cs_tag(c["customerName"])) for c in result_customers
+            _normalize_for_qb_lookup(_strip_han_cs_tag(c["customerName"])) for c in result_customers
         }
 
         # Group qb_qty_index keys by customer name
