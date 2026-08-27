@@ -9,7 +9,8 @@
     "dev:backend": "cd backend && ..\\.venv\\Scripts\\python.exe run_backend.py",
     "build:frontend": "cd frontend && npm run build",
     "build": "npm run build:frontend && electron-builder",
-    "start": "electron ."
+    "start": "electron .",
+    "release": "node scripts/release.js"
   },
   "keywords": [],
   "author": "GeoBridge",
