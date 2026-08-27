@@ -17,12 +17,112 @@ function App() {
   // the MyAdmin force-sync button until the user installs or snoozes.
   const [syncBlocked, setSyncBlocked] = useState(false)
 
-  // ── On mount: ask backend whether aws_config.json exists ──────────────────
-  // If S3 is not configured → show Setup wizard before Login.
-  // Retries up to 10 times (every 1.5 s) to handle the backend taking several
-  // seconds to start. Only falls through to login if every attempt fails.
+  // ── On mount: ask backend whether aws_config.json exists, then try to get
+  // straight into the app without showing the Login screen if at all possible.
+  //
+  // Order of attempts once S3 is configured:
+  //   1. POST /api/geotab/session/restore — resume a still-valid MyAdmin
+  //      session token that was persisted to disk on a previous run.
+  //   2. If no valid saved session, and the user opted into "Remember me",
+  //      silently re-authenticate using the encrypted credentials stored via
+  //      Electron's safeStorage (window.credentialsAPI).
+  //   3. Otherwise, fall back to showing the normal Login screen.
+  //
+  // Retries the S3 check up to 10 times (every 1.5 s) to handle the backend
+  // taking several seconds to start. Only falls through to login if every
+  // attempt fails.
   useEffect(() => {
     let cancelled = false
+
+    // Attempt silent session restore, then silent "remember me" re-login.
+    // Resolves by calling setCurrentPage('dashboard') or setCurrentPage('login').
+    async function attemptAutoLogin() {
+      // ── 1. Resume a persisted MyAdmin session, if still valid ──────────
+      try {
+        const r = await fetch(`${API}/api/geotab/session/restore`, {
+          method: 'POST',
+          signal: AbortSignal.timeout(8000),
+        })
+        if (r.ok) {
+          const data = await r.json()
+          if (!cancelled && data.restored) {
+            setSessionData({
+              success: true,
+              name: data.name,
+              accounts: data.accounts || [],
+              account_id: data.account_id,
+            })
+            setCurrentPage('dashboard')
+            return
+          }
+        }
+      } catch {
+        // Backend unreachable or restore failed — fall through to next step.
+      }
+
+      if (cancelled) return
+
+      // ── 2. No valid saved session — try silent "Remember me" re-login ──
+      // window.credentialsAPI is only present when running inside Electron
+      // with the preload script loaded (never in a plain browser tab).
+      if (window.credentialsAPI) {
+        try {
+          const { ok, credentials } = await window.credentialsAPI.load()
+          if (ok && credentials && credentials.username && credentials.password) {
+            const loginRes = await fetch(`${API}/api/geotab/login`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                username: credentials.username,
+                password: credentials.password,
+              }),
+              signal: AbortSignal.timeout(15000),
+            })
+            const loginData = await loginRes.json()
+
+            if (!cancelled && loginRes.ok && loginData.success) {
+              const accts = loginData.accounts || []
+              let accountIdToUse = null
+
+              if (accts.length === 0) {
+                // No account selection needed at all.
+                setSessionData(loginData)
+                setCurrentPage('dashboard')
+                return
+              } else if (accts.length === 1) {
+                accountIdToUse = accts[0].accountId
+              } else if (
+                credentials.accountId &&
+                accts.some(a => a.accountId === credentials.accountId)
+              ) {
+                // Multiple accounts, but we remember which one was picked last time.
+                accountIdToUse = credentials.accountId
+              }
+
+              if (accountIdToUse) {
+                const selRes = await fetch(`${API}/api/geotab/select-account`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ account_id: accountIdToUse }),
+                })
+                const selData = await selRes.json()
+                if (!cancelled && selRes.ok && selData.success) {
+                  setSessionData({ ...loginData, account_id: accountIdToUse })
+                  setCurrentPage('dashboard')
+                  return
+                }
+              }
+              // Ambiguous multi-account case with no matching saved accountId,
+              // or account selection failed — fall through to manual login.
+            }
+          }
+        } catch {
+          // Silent auto-login failed for any reason — fall through to manual login.
+        }
+      }
+
+      if (!cancelled) setCurrentPage('login')
+    }
 
     async function checkS3() {
       const MAX_ATTEMPTS = 10
@@ -33,9 +133,12 @@ function App() {
         try {
           const r = await fetch(`${API}/api/s3/check-configured`,
             { signal: AbortSignal.timeout(3000) })
-          if (!cancelled) {
-            const data = await r.json()
-            setCurrentPage(data.configured ? 'login' : 'setup')
+          if (cancelled) return
+          const data = await r.json()
+          if (data.configured) {
+            await attemptAutoLogin()
+          } else {
+            setCurrentPage('setup')
           }
           return  // success — stop retrying
         } catch {
@@ -59,7 +162,19 @@ function App() {
     setCurrentPage('dashboard')
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    // Best-effort: clear the persisted MyAdmin session on the backend so a
+    // relaunch doesn't silently resume the account the user just signed out of.
+    try {
+      await fetch(`${API}/api/geotab/logout`, { method: 'POST' })
+    } catch {
+      // Backend unreachable — nothing more we can do; still clear local state.
+    }
+    // Also forget any "Remember me" encrypted credentials — an explicit
+    // Sign Out means the user wants to be logged out, full stop.
+    if (window.credentialsAPI) {
+      try { await window.credentialsAPI.clear() } catch { /* ignore */ }
+    }
     setSessionData(null)
     setCurrentPage('login')
   }

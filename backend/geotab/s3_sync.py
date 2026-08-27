@@ -76,6 +76,10 @@ LOCAL_ONLY_FILES = {
     "contract_checkpoint.json",
     "qb_sync_history.json",
     "qb_last_import_columns.json",
+    # session.json holds the persisted MyAdmin session token (auth.py) so the
+    # user isn't forced to log in on every launch. Per-machine, per-user
+    # sensitive session state — must NEVER be synced/shared between machines.
+    "session.json",
 }
 
 SHARED_FILES = ADMIN_ONLY_FILES | ALL_USER_FILES

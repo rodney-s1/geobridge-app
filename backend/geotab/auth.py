@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from typing import Optional
 import httpx
 import os
 import json
+from ._data_dir import _DATA_DIR
 
 router = APIRouter()
 
@@ -42,6 +44,95 @@ session_store = {
     "accounts": [],
     "account_id": None,   # currently selected accountId for API calls
 }
+
+# ---------------------------------------------------------------------------
+# Session persistence — "stay logged in" (Option #1)
+# ---------------------------------------------------------------------------
+# A MyAdmin sessionId is valid for up to 1 week (per Geotab's Authenticate
+# docs) or until the MyGeotab server restarts, whichever comes first.  The
+# Python backend is a fresh process every time Electron launches though, so
+# session_store above is always empty on startup — the user had to log in
+# on every single launch even though the underlying MyAdmin session was
+# often still perfectly valid.
+#
+# Fix: persist ONLY the session token (never the password) to a local JSON
+# file in the per-user data directory.  On startup, load it and validate it
+# with one cheap authenticated MyAdmin call before trusting it — if MyAdmin
+# says the session has expired, we silently discard the file and fall back
+# to the normal Login screen.
+#
+# This file is intentionally NOT added to ADMIN_ONLY_FILES / ALL_USER_FILES
+# in s3_sync.py — it is per-machine, per-user sensitive session state and
+# must never be synced to S3 or shared between machines.
+# ---------------------------------------------------------------------------
+SESSION_FILE = os.path.join(_DATA_DIR, "session.json")
+
+
+def _save_session_to_disk() -> None:
+    """Persist the current session token to disk so it survives app restarts.
+
+    Only the session token + display info is written — never the password.
+    Best-effort: failures are logged but never raised (a stale/missing
+    session file just means the user logs in again next launch).
+    """
+    try:
+        tmp = SESSION_FILE + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump({
+                "user_id":    session_store.get("user_id"),
+                "session_id": session_store.get("session_id"),
+                "username":   session_store.get("username"),
+                "accounts":   session_store.get("accounts") or [],
+                "account_id": session_store.get("account_id"),
+            }, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, SESSION_FILE)
+    except Exception as e:
+        print(f"[auth] WARNING: could not persist session to disk: {e}")
+
+
+def _clear_session_from_disk() -> None:
+    """Remove the persisted session file (called on logout)."""
+    try:
+        if os.path.exists(SESSION_FILE):
+            os.remove(SESSION_FILE)
+    except Exception as e:
+        print(f"[auth] WARNING: could not remove session file: {e}")
+
+
+def _load_session_from_disk() -> Optional[dict]:
+    """Load a previously-persisted session token from disk, if present."""
+    try:
+        if os.path.exists(SESSION_FILE):
+            with open(SESSION_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            if data.get("user_id") and data.get("session_id"):
+                return data
+    except Exception as e:
+        print(f"[auth] WARNING: could not read session file: {e}")
+    return None
+
+
+async def _validate_session(user_id: str, session_id: str) -> bool:
+    """Return True if this (userId, sessionId) pair is still accepted by MyAdmin.
+
+    Uses GetDevicePlans as a cheap, side-effect-free authenticated call —
+    it requires a valid session but returns a small, account-agnostic payload
+    (no forAccount / pagination needed), so it's a lightweight way to check
+    "is this session still valid?" without pulling any real business data.
+
+    A SessionExpiredException (or any other error) from MyAdmin — or a
+    network failure — is treated as "not valid", so the app safely falls
+    back to the normal Login screen rather than getting stuck.
+    """
+    try:
+        result = await myadmin_call("GetDevicePlans", {
+            "apiKey":    user_id,
+            "sessionId": session_id,
+        }, timeout=15.0)
+        return "error" not in result
+    except Exception as e:
+        print(f"[auth] Session validation failed: {e}")
+        return False
 
 # ---------------------------------------------------------------------------
 # Auth dependency — import and use in any router that needs protection:
@@ -108,6 +199,10 @@ async def login(request: LoginRequest):
         session_store["username"] = session_data.get("name") or session_data.get("userName")
         session_store["accounts"] = accounts
 
+        # Persist the session token to disk so the app can resume without a
+        # fresh login next launch (see _save_session_to_disk() docstring).
+        _save_session_to_disk()
+
         print(f"[auth] Login successful: user={session_store['username']!r} accounts={len(accounts)}")
 
         return {
@@ -130,6 +225,7 @@ async def logout():
     session_store["username"] = None
     session_store["accounts"] = []
     session_store["account_id"] = None
+    _clear_session_from_disk()
     return {"success": True, "message": "Logged out successfully"}
 
 # --- Session Check Route --------------------------------------
@@ -140,6 +236,49 @@ async def get_session():
     return {
         "active": True,
         "username": session_store["username"]
+    }
+
+# --- Session Restore Route -------------------------------------
+# Called once by the frontend on startup, BEFORE showing the Login screen.
+# Attempts to silently resume a previously-persisted MyAdmin session so the
+# user isn't forced to log in on every launch (see module docstring above).
+@router.post("/session/restore")
+async def restore_session():
+    # Already have a live session in memory this run — nothing to do.
+    if session_store.get("session_id"):
+        return {
+            "restored": True,
+            "name": session_store.get("username"),
+            "accounts": session_store.get("accounts") or [],
+            "account_id": session_store.get("account_id"),
+        }
+
+    saved = _load_session_from_disk()
+    if not saved:
+        return {"restored": False, "reason": "no_saved_session"}
+
+    is_valid = await _validate_session(saved["user_id"], saved["session_id"])
+    if not is_valid:
+        # Session expired (>1 week old, or MyGeotab server restarted) —
+        # discard the stale file so we don't keep retrying it every launch.
+        _clear_session_from_disk()
+        return {"restored": False, "reason": "session_expired"}
+
+    # Session still valid — restore it into memory and let the user straight
+    # into the app without re-entering credentials.
+    session_store["user_id"]    = saved["user_id"]
+    session_store["session_id"] = saved["session_id"]
+    session_store["username"]   = saved["username"]
+    session_store["accounts"]   = saved.get("accounts") or []
+    session_store["account_id"] = saved.get("account_id")
+
+    print(f"[auth] Session restored from disk: user={session_store['username']!r}")
+
+    return {
+        "restored": True,
+        "name": session_store.get("username"),
+        "accounts": session_store.get("accounts") or [],
+        "account_id": session_store.get("account_id"),
     }
 
 # --- Accounts Route -------------------------------------------
@@ -164,5 +303,7 @@ async def select_account(request: SelectAccountRequest):
     if request.account_id not in valid_ids:
         raise HTTPException(status_code=400, detail=f"Invalid account: {request.account_id}")
     session_store["account_id"] = request.account_id
+    # Keep the persisted session file in sync so a restore picks the same account.
+    _save_session_to_disk()
     print(f"[auth] Account selected: {request.account_id!r}")
     return {"success": True, "account_id": request.account_id}

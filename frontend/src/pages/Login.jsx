@@ -2,11 +2,20 @@ import { useState } from 'react'
 
 const API = 'http://127.0.0.1:8001'
 
+// Electron's safeStorage bridge (window.credentialsAPI) is only present when
+// running inside the packaged/dev Electron shell — never in a plain browser.
+const hasCredentialsAPI = typeof window !== 'undefined' && !!window.credentialsAPI
+
 function Login({ onLoginSuccess }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // "Remember me" — optional, encrypted (Electron safeStorage) credential
+  // storage so the app can silently re-auth on next launch without the
+  // saved-session token (auth.py's session.json) needing to still be valid.
+  const [rememberMe, setRememberMe] = useState(false)
 
   // Account selection step
   const [accounts, setAccounts] = useState([])
@@ -40,6 +49,7 @@ function Login({ onLoginSuccess }) {
           setSessionData(data)
         } else {
           // No accounts returned — proceed anyway
+          await maybeSaveRememberedCredentials(null)
           onLoginSuccess(data)
         }
       } else {
@@ -49,6 +59,21 @@ function Login({ onLoginSuccess }) {
       setError('Cannot connect to backend. Please try again.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Persist (or clear) the encrypted "Remember me" credentials via the
+  // Electron main process (safeStorage). Best-effort — never blocks login.
+  const maybeSaveRememberedCredentials = async (accountId) => {
+    if (!hasCredentialsAPI) return
+    try {
+      if (rememberMe) {
+        await window.credentialsAPI.save({ username, password, accountId })
+      } else {
+        await window.credentialsAPI.clear()
+      }
+    } catch {
+      // Non-fatal — "Remember me" is a convenience feature only.
     }
   }
 
@@ -63,6 +88,7 @@ function Login({ onLoginSuccess }) {
       })
       const data = await res.json()
       if (res.ok && data.success) {
+        await maybeSaveRememberedCredentials(accountId)
         onLoginSuccess({ ...(sessData || sessionData), account_id: accountId })
       } else {
         setError(data.detail || 'Failed to select account')
@@ -166,6 +192,18 @@ function Login({ onLoginSuccess }) {
             />
           </div>
 
+          {hasCredentialsAPI && (
+            <label style={styles.checkboxRow}>
+              <input
+                type="checkbox"
+                checked={rememberMe}
+                onChange={(e) => setRememberMe(e.target.checked)}
+                style={styles.checkbox}
+              />
+              <span>Remember me on this device</span>
+            </label>
+          )}
+
           {error && <div style={styles.error}>{error}</div>}
 
           <button
@@ -254,6 +292,21 @@ const styles = {
     color: '#f1f5f9',
     fontSize: '15px',
     outline: 'none',
+  },
+  checkboxRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    fontSize: '13px',
+    color: '#94a3b8',
+    cursor: 'pointer',
+    marginTop: '-8px',
+  },
+  checkbox: {
+    width: '15px',
+    height: '15px',
+    cursor: 'pointer',
+    accentColor: '#3b82f6',
   },
   error: {
     background: '#450a0a',

@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, safeStorage } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const { spawn } = require('child_process')
@@ -68,6 +68,63 @@ function applyGithubToken() {
     }
   } catch (e) {
     log.error('[updater] Failed to load github_token.json:', e.message)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// "Remember me" encrypted credential storage
+//
+// Optional companion to the backend's session.json persistence (auth.py).
+// session.json survives restarts as long as the MyAdmin session token is
+// still valid (~1 week per Geotab docs). Once it expires, the app would
+// normally have to show the Login screen again — UNLESS the user opted
+// into "Remember me", in which case we can silently re-authenticate using
+// the MyAdmin username/password stored here.
+//
+// Credentials are encrypted at rest using Electron's safeStorage API, which
+// delegates to the OS-native credential vault (Windows DPAPI / macOS
+// Keychain / Linux libsecret) — GeoBridge's own code never sees or handles
+// a raw encryption key. The encrypted blob is written to a JSON file in
+// app.getPath('userData'), mirroring the existing github_token.json pattern
+// used by applyGithubToken() above.
+//
+// File format: { "encrypted": "<base64 ciphertext>" }
+// Decrypted JSON payload: { "username": "...", "password": "...", "accountId": "..." }
+// ---------------------------------------------------------------------------
+function credentialsFilePath() {
+  return path.join(app.getPath('userData'), 'remembered_credentials.json')
+}
+
+function saveRememberedCredentials(username, password, accountId) {
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error('OS-level encryption is not available on this device')
+  }
+  const payload = JSON.stringify({ username, password, accountId: accountId || null })
+  const encryptedBuffer = safeStorage.encryptString(payload)
+  const fileContents = JSON.stringify({ encrypted: encryptedBuffer.toString('base64') })
+  fs.writeFileSync(credentialsFilePath(), fileContents, 'utf8')
+}
+
+function loadRememberedCredentials() {
+  const file = credentialsFilePath()
+  if (!fs.existsSync(file)) return null
+  if (!safeStorage.isEncryptionAvailable()) return null
+  try {
+    const raw = fs.readFileSync(file, 'utf8')
+    const { encrypted } = JSON.parse(raw)
+    if (!encrypted) return null
+    const decrypted = safeStorage.decryptString(Buffer.from(encrypted, 'base64'))
+    return JSON.parse(decrypted)
+  } catch (e) {
+    log.error('[credentials] Failed to decrypt remembered credentials:', e.message)
+    return null
+  }
+}
+
+function clearRememberedCredentials() {
+  const file = credentialsFilePath()
+  if (fs.existsSync(file)) {
+    fs.unlinkSync(file)
   }
 }
 
@@ -291,6 +348,39 @@ ipcMain.handle('get-app-version', () => app.getVersion())
 
 // Renderer can ask "is an update blocking sync right now?"
 ipcMain.handle('update-blocking-sync', () => updateReadyToInstall)
+
+// ---------------------------------------------------------------------------
+// "Remember me" credential IPC handlers — called via window.credentialsAPI.*
+// ---------------------------------------------------------------------------
+ipcMain.handle('credentials:save', (_event, { username, password, accountId }) => {
+  try {
+    saveRememberedCredentials(username, password, accountId)
+    return { ok: true }
+  } catch (e) {
+    log.error('[credentials] save failed:', e.message)
+    return { ok: false, error: e.message }
+  }
+})
+
+ipcMain.handle('credentials:load', () => {
+  try {
+    const credentials = loadRememberedCredentials()
+    return { ok: true, credentials }
+  } catch (e) {
+    log.error('[credentials] load failed:', e.message)
+    return { ok: false, credentials: null, error: e.message }
+  }
+})
+
+ipcMain.handle('credentials:clear', () => {
+  try {
+    clearRememberedCredentials()
+    return { ok: true }
+  } catch (e) {
+    log.error('[credentials] clear failed:', e.message)
+    return { ok: false, error: e.message }
+  }
+})
 
 // ---------------------------------------------------------------------------
 // App lifecycle
