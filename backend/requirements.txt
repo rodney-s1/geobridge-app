@@ -7,6 +7,11 @@ python-dotenv>=1.0.0,<2.0.0
 boto3>=1.34.0,<2.0.0
 botocore>=1.34.0,<2.0.0
 
+# Required by FastAPI's UploadFile/File(...) form-data parsing (used by the
+# QB customer CSV import endpoint). Without this, importing the app raises:
+# RuntimeError: Form data requires "python-multipart" to be installed.
+python-multipart>=0.0.9,<1.0.0
+
 # QuickBooks Desktop integration (QBFC via COM automation).
 # Windows-only — the environment marker below means `pip install` skips this
 # line entirely on Linux/macOS, so it's safe even though this repo is also

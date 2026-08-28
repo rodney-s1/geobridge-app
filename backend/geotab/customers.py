@@ -939,6 +939,81 @@ async def get_dashboard_stats():
     }
 
 
+# --- Shared QB-customer merge logic ------------------------------------------
+# Used by BOTH the manual CSV import (POST /api/customers/import-qb) and the
+# live QBFC pull (POST /api/customers/refresh-from-qb) so a customer record
+# is merged into qb_customers.json identically regardless of which path
+# produced it. Each source module is responsible for shaping its raw data
+# into this canonical row dict BEFORE calling _merge_qb_customer_row():
+#   {name, qbFullName, jobType, accountNo, terms, qbClass, balance (str),
+#    billTo1..billTo5}
+def _parse_balance(balance_str: str) -> float:
+    balance_str = (balance_str or "0").replace("$", "").replace(",", "").strip()
+    if balance_str.startswith("(") and balance_str.endswith(")"):
+        balance_str = "-" + balance_str[1:-1]
+    try:
+        return float(balance_str) if balance_str else 0.0
+    except ValueError:
+        return 0.0
+
+
+def _merge_qb_customer_row(row: dict, force: bool, source_label: str) -> str:
+    """
+    Merge one canonical QB-customer row into the module-level qb_customers
+    dict, respecting GeoBridge billing-type overrides unless force=True.
+
+    Returns one of: "merged", "skipped" (no name), "protected" (override kept).
+    Mutates qb_customers and (if force clears an override) billing_overrides
+    in place — callers are responsible for persisting both after the loop.
+    """
+    name = (row.get("name") or "").strip()
+    if not name:
+        return "skipped"
+
+    qb_full_name = row.get("qbFullName") or name
+    job_type     = row.get("jobType") or ""
+    account_no   = row.get("accountNo") or ""
+    terms        = row.get("terms") or ""
+    qb_class     = row.get("qbClass") or ""
+    balance      = _parse_balance(row.get("balance") or "0")
+
+    new_billing_type = map_billing_type(job_type)
+    norm_name         = normalize(name)
+    company_id        = name_to_company_id.get(norm_name, "")
+
+    has_override = bool(billing_overrides.get(company_id))
+    existing      = qb_customers.get(norm_name) or {}
+    result        = "merged"
+    if has_override and not force:
+        preserved_billing = existing.get("billingType") or new_billing_type
+        result = "protected"
+        _print(f"[{source_label}] Override protected '{name}': "
+               f"QB='{new_billing_type}' -> keeping '{preserved_billing}'")
+    else:
+        preserved_billing = new_billing_type
+        if has_override and force:
+            del billing_overrides[company_id]
+            _print(f"[{source_label}] Force-override: cleared override for "
+                   f"'{name}', using QB='{new_billing_type}'")
+
+    qb_customers[norm_name] = {
+        "name":        name,
+        "qbFullName":  qb_full_name,
+        "accountNo":   account_no,
+        "billingType": preserved_billing,
+        "jobType":     job_type,
+        "terms":       terms,
+        "qbClass":     qb_class,
+        "balance":     balance,
+        "billTo1":     (row.get("billTo1") or "").strip(),
+        "billTo2":     (row.get("billTo2") or "").strip(),
+        "billTo3":     (row.get("billTo3") or "").strip(),
+        "billTo4":     (row.get("billTo4") or "").strip(),
+        "billTo5":     (row.get("billTo5") or "").strip(),
+    }
+    return result
+
+
 # --- POST /api/customers/import-qb --------------------------------------------
 @router.post("/customers/import-qb")
 async def import_qb_customers(file: UploadFile = File(...), force: bool = Query(False)):
@@ -951,6 +1026,12 @@ async def import_qb_customers(file: UploadFile = File(...), force: bool = Query(
 
     Default (``force=false``) — preserves manually-set GeoBridge overrides so
     that a routine re-import never silently overwrites your manual edits.
+
+    NOTE: This manual CSV path is kept as a fallback / offline option now that
+    POST /api/customers/refresh-from-qb can pull the same data live via QBFC.
+    Both paths share the exact same merge logic (_merge_qb_customer_row) so a
+    customer ends up identical in qb_customers.json regardless of which was
+    used.
     """
     global qb_customers
     content = await file.read()
@@ -991,63 +1072,36 @@ async def import_qb_customers(file: UploadFile = File(...), force: bool = Query(
         if ":" in name:
             name = name.rsplit(":", 1)[-1].strip()
 
-        job_type    = row.get("Job Type") or row.get("Customer Type") or row.get("Type") or ""
-        account_no  = (
-            row.get("Account No.") or row.get("Account Number")
-            or row.get("Account #") or row.get("Acct No") or ""
-        )
-        terms       = row.get("Terms") or row.get("Payment Terms") or ""
-        qb_class    = row.get("Class") or row.get("QB Class") or ""
-        balance_str = (
-            row.get("Balance Total") or row.get("Balance")
-            or row.get("Current Balance") or "0"
-        )
-        balance_str = balance_str.replace("$", "").replace(",", "").strip()
-        if balance_str.startswith("(") and balance_str.endswith(")"):
-            balance_str = "-" + balance_str[1:-1]
-        try:
-            balance = float(balance_str) if balance_str else 0.0
-        except ValueError:
-            balance = 0.0
-
-        new_billing_type = map_billing_type(job_type)
-        norm_name        = normalize(name)
-        company_id       = name_to_company_id.get(norm_name, "")
-
-        has_override = bool(billing_overrides.get(company_id))
-        existing     = qb_customers.get(norm_name) or {}
-        if has_override and not force:
-            preserved_billing = existing.get("billingType") or new_billing_type
-            protected += 1
-            _print(f"[import-qb] Override protected '{name}': "
-               f"QB='{new_billing_type}' -> keeping '{preserved_billing}'")
-        else:
-            preserved_billing = new_billing_type
-            if has_override and force:
-                # Force mode: clear the stored override so QB wins going forward
-                del billing_overrides[company_id]
-                _print(f"[import-qb] Force-override: cleared override for '{name}', "
-                       f"using QB='{new_billing_type}'")
-
-        qb_customers[norm_name] = {
+        canonical_row = {
             "name":        name,
-            "qbFullName":  qb_full_name,   # original "Parent:Child" key from QB CSV
-            "accountNo":   account_no,
-            "billingType": preserved_billing,
-            "jobType":     job_type,
-            "terms":       terms,
-            "qbClass":     qb_class,
-            "balance":     balance,
+            "qbFullName":  qb_full_name,
+            "jobType":     row.get("Job Type") or row.get("Customer Type") or row.get("Type") or "",
+            "accountNo":   (
+                row.get("Account No.") or row.get("Account Number")
+                or row.get("Account #") or row.get("Acct No") or ""
+            ),
+            "terms":       row.get("Terms") or row.get("Payment Terms") or "",
+            "qbClass":     row.get("Class") or row.get("QB Class") or "",
+            "balance":     (
+                row.get("Balance Total") or row.get("Balance")
+                or row.get("Current Balance") or "0"
+            ),
             # QB exports address as free-form lines in columns "Bill to 1"–"Bill to 5".
             # Store all five as-is; the PDF renderer skips line 1 when it
             # duplicates the customer name (QB always repeats it there).
-            "billTo1":     row.get("Bill to 1", "").strip(),
-            "billTo2":     row.get("Bill to 2", "").strip(),
-            "billTo3":     row.get("Bill to 3", "").strip(),
-            "billTo4":     row.get("Bill to 4", "").strip(),
-            "billTo5":     row.get("Bill to 5", "").strip(),
+            "billTo1":     row.get("Bill to 1", ""),
+            "billTo2":     row.get("Bill to 2", ""),
+            "billTo3":     row.get("Bill to 3", ""),
+            "billTo4":     row.get("Bill to 4", ""),
+            "billTo5":     row.get("Bill to 5", ""),
         }
-        imported += 1
+
+        result = _merge_qb_customer_row(canonical_row, force, "import-qb")
+        if result == "protected":
+            protected += 1
+            imported += 1
+        elif result == "merged":
+            imported += 1
 
     _save_json(QB_DATA_FILE, qb_customers)
     # If force mode cleared any billing overrides, persist the updated dict
@@ -1071,6 +1125,79 @@ async def import_qb_customers(file: UploadFile = File(...), force: bool = Query(
         "protected":  protected,
         "total":      len(qb_customers),
         "csvColumns": csv_columns,   # actual column names seen in this CSV — useful for debugging address mapping
+    }
+
+
+# --- POST /api/customers/refresh-from-qb --------------------------------------
+@router.post("/customers/refresh-from-qb")
+async def refresh_customers_from_qb(force: bool = Query(False)):
+    """
+    Live-pull the full Customer list directly from QuickBooks Desktop via
+    QBFC (COM automation) and merge it into qb_customers.json — the same
+    cache POST /api/customers/import-qb populates from a manual CSV upload.
+
+    This is the preferred path going forward (confirmed via
+    qb_test_connection.py that QBFC exposes Job Type, Terms, Class, and
+    Account Number identically to the CSV export). The CSV import endpoint
+    remains available as a manual fallback.
+
+    WINDOWS ONLY — requires QuickBooks Desktop open locally with the
+    company file loaded, and pywin32 installed. Returns HTTP 502 with a
+    clear message if QB isn't reachable (never a raw 500).
+
+    ``force`` behaves identically to import-qb: true clears any existing
+    GeoBridge billing-type override so QB's Job Type wins; default false
+    preserves manual GeoBridge edits.
+    """
+    global qb_customers
+
+    from . import qb_connection
+    try:
+        qb_rows = qb_connection.fetch_customers_from_qb()
+    except qb_connection.QBConnectionError as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    if not qb_rows:
+        raise HTTPException(
+            status_code=502,
+            detail="QuickBooks returned zero customers — check that the "
+                   "correct company file is open."
+        )
+
+    merged    = 0
+    skipped   = 0
+    protected = 0
+
+    for row in qb_rows:
+        result = _merge_qb_customer_row(row, force, "refresh-from-qb")
+        if result == "skipped":
+            skipped += 1
+        elif result == "protected":
+            protected += 1
+            merged += 1
+        else:
+            merged += 1
+
+    _save_json(QB_DATA_FILE, qb_customers)
+    if force:
+        _save_json(OVERRIDES_FILE, billing_overrides)
+    print(f"[refresh-from-qb] Saved {len(qb_customers)} QB customers to {QB_DATA_FILE}")
+
+    msg = f"{merged} customers refreshed live from QuickBooks"
+    if skipped:
+        msg += f", {skipped} skipped (no name)"
+    if protected:
+        msg += f", {protected} GeoBridge billing overrides preserved"
+    if force and merged > 0:
+        msg += " (force mode: QB values applied to all customers)"
+
+    return {
+        "success":   True,
+        "message":   msg,
+        "merged":    merged,
+        "skipped":   skipped,
+        "protected": protected,
+        "total":     len(qb_customers),
     }
 
 
