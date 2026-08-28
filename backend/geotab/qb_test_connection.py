@@ -89,12 +89,16 @@ def qbxml_header(version: str = "13.0") -> str:
     )
 
 
+# NOTE: MaxReturned is set high enough to sweep past the "** Estimates" /
+# "** ..." placeholder customers QuickBooks auto-creates (which have no Job
+# Type / Terms set) and reach real customer records that DO have those
+# fields populated, so we can confirm whether QBFC returns them at all.
 CUSTOMER_QUERY_XML = (
     qbxml_header() +
     "<QBXML>\n"
     "  <QBXMLMsgsRq onError=\"stopOnError\">\n"
     "    <CustomerQueryRq requestID=\"1\">\n"
-    "      <MaxReturned>1</MaxReturned>\n"
+    "      <MaxReturned>60</MaxReturned>\n"
     "      <OwnerID>0</OwnerID>\n"
     "    </CustomerQueryRq>\n"
     "  </QBXMLMsgsRq>\n"
@@ -106,7 +110,7 @@ ITEM_QUERY_XML = (
     "<QBXML>\n"
     "  <QBXMLMsgsRq onError=\"stopOnError\">\n"
     "    <ItemQueryRq requestID=\"1\">\n"
-    "      <MaxReturned>1</MaxReturned>\n"
+    "      <MaxReturned>60</MaxReturned>\n"
     "      <OwnerID>0</OwnerID>\n"
     "    </ItemQueryRq>\n"
     "  </QBXMLMsgsRq>\n"
@@ -114,7 +118,8 @@ ITEM_QUERY_XML = (
 )
 
 
-def run_query(processor, ticket, label: str, request_xml: str, out_file: str):
+def run_query(processor, ticket, label: str, request_xml: str, out_file: str,
+              scan_tags: list | None = None):
     print(f"\n{'=' * 70}")
     print(f"  {label}")
     print("=" * 70)
@@ -127,8 +132,27 @@ def run_query(processor, ticket, label: str, request_xml: str, out_file: str):
     with open(out_file, "w", encoding="utf-8") as f:
         f.write(response_xml)
 
-    print(response_xml)
-    print(f"\n  (saved full response to {out_file})")
+    # Don't dump 60 full records to the console — just report counts, then
+    # scan for the specific tags we care about and print short context
+    # snippets so we can confirm field availability without a wall of text.
+    lines = response_xml.count("\n") + 1
+    print(f"  Response received: {len(response_xml):,} chars, ~{lines} lines")
+    print(f"  (saved full response to {out_file})")
+
+    if scan_tags:
+        print("\n  --- Tag scan ---")
+        for tag in scan_tags:
+            open_tag = f"<{tag}>"
+            count = response_xml.count(open_tag)
+            print(f"  {tag}: found {count} time(s)")
+            if count > 0:
+                idx = response_xml.find(open_tag)
+                # Print a small window of context around the first hit,
+                # walking back to the nearest <Name> or <FullName> so we
+                # can see WHICH record it belongs to.
+                start = max(0, idx - 400)
+                snippet = response_xml[start:idx + 150]
+                print(f"    context (first hit):\n    ...{snippet}...\n")
 
 
 def main():
@@ -153,15 +177,19 @@ def main():
     try:
         run_query(
             processor, ticket,
-            "CUSTOMER — raw qbXML response (1 customer)",
+            "CUSTOMER — raw qbXML response (up to 60 customers)",
             CUSTOMER_QUERY_XML,
             "qb_test_customer_response.xml",
+            scan_tags=["JobTypeRef", "TermsRef", "ClassRef", "AccountNumber",
+                       "CustomerTypeRef", "JobStatus"],
         )
         run_query(
             processor, ticket,
-            "ITEM — raw qbXML response (1 item)",
+            "ITEM — raw qbXML response (up to 60 items)",
             ITEM_QUERY_XML,
             "qb_test_item_response.xml",
+            scan_tags=["FullName", "SalesPrice", "PurchaseCost", "ItemDesc",
+                       "Desc"],
         )
     finally:
         close_processor(processor, ticket)
