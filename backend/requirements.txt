@@ -6,3 +6,9 @@ requests>=2.32.0,<3.0.0
 python-dotenv>=1.0.0,<2.0.0
 boto3>=1.34.0,<2.0.0
 botocore>=1.34.0,<2.0.0
+
+# QuickBooks Desktop integration (QBFC via COM automation).
+# Windows-only — the environment marker below means `pip install` skips this
+# line entirely on Linux/macOS, so it's safe even though this repo is also
+# read/edited from a Linux sandbox.
+pywin32>=306; platform_system=="Windows"
