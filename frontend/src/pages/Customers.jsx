@@ -1440,6 +1440,7 @@ export default function Customers({ onDetail, syncBlocked = false }) {
   const [importMsg,    setImportMsg]    = useState('')
   const [importCols,     setImportCols]     = useState(null)  // CSV columns from last import
   const [forceQbImport,  setForceQbImport]  = useState(false) // force QB values to override GeoBridge overrides
+  const [refreshingQb, setRefreshingQb] = useState(false) // true while live QBFC refresh is in progress
 
   // ── Bulk selection state ──────────────────────────────────────────────────
   const [selectedIds,    setSelectedIds]    = useState(new Set())  // Set of customer .id strings
@@ -1696,6 +1697,36 @@ export default function Customers({ onDetail, syncBlocked = false }) {
     }
   }
 
+  const handleQbRefresh = async () => {
+    setRefreshingQb(true)
+    setImportMsg('')
+    try {
+      const url = forceQbImport
+        ? `${API}/api/customers/refresh-from-qb?force=true`
+        : `${API}/api/customers/refresh-from-qb`
+      const res = await fetch(url, { method: 'POST' })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        const detail = body.detail || `Server error (HTTP ${res.status})`
+        // 502 == QuickBooks not reachable (not open / no company file / permission not yet granted)
+        const hint = res.status === 502
+          ? ' — make sure QuickBooks is open on this machine with the company file loaded.'
+          : ''
+        throw new Error(`${detail}${hint}`)
+      }
+      const data = await res.json()
+      setImportMsg(`✓ ${data.message || `Refreshed from QuickBooks: ${data.merged} merged, ${data.skipped} skipped, ${data.protected} protected (${data.total} total).`}`)
+      // Refresh customer list and summary
+      fetchCustomers(1, true)
+      const sum = await fetch(`${API}/api/customers/qb-data/summary`)
+      if (sum.ok) setQbSummary(await sum.json())
+    } catch (e) {
+      setImportMsg(`✗ Refresh failed: ${e.message}`)
+    } finally {
+      setRefreshingQb(false)
+    }
+  }
+
   // Group customers into parent/sub-account hierarchy
   const customerGroups = groupCustomers(customers)
 
@@ -1809,22 +1840,44 @@ export default function Customers({ onDetail, syncBlocked = false }) {
         </div>
 
         <div className="flex items-start gap-3">
-          {/* QB Import button + force-override option */}
+          {/* QB Refresh (live QBFC pull) + Import (CSV fallback) + shared force-override option */}
           <div className="flex flex-col items-end gap-1">
-            <label className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors ${
-              importingQb
-                ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                : forceQbImport
-                  ? 'bg-amber-700/60 hover:bg-amber-700/80 text-amber-200 ring-1 ring-amber-500/50'
-                  : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
-            }`}>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-              </svg>
-              {importingQb ? 'Importing...' : forceQbImport ? 'Import QB (force override)' : 'Import QB Customers'}
-              <input type="file" accept=".csv" className="hidden" onChange={handleQbImport} disabled={importingQb} />
-            </label>
-            {/* Force QB override toggle */}
+            <div className="flex items-center gap-2">
+              {/* Refresh from QuickBooks — live pull via QBFC, preferred path */}
+              <button
+                onClick={handleQbRefresh}
+                disabled={refreshingQb || importingQb}
+                title="Pull customers live from QuickBooks Desktop (requires QuickBooks open on this machine)"
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                  refreshingQb || importingQb
+                    ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                    : forceQbImport
+                      ? 'bg-amber-700/60 hover:bg-amber-700/80 text-amber-200 ring-1 ring-amber-500/50'
+                      : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+                }`}
+              >
+                <svg className={`w-4 h-4 ${refreshingQb ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                {refreshingQb ? 'Refreshing...' : forceQbImport ? 'Refresh from QB (force)' : 'Refresh from QuickBooks'}
+              </button>
+
+              {/* CSV import — manual/offline fallback when QuickBooks isn't open here */}
+              <label className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors ${
+                importingQb || refreshingQb
+                  ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
+                  : forceQbImport
+                    ? 'bg-amber-700/60 hover:bg-amber-700/80 text-amber-200 ring-1 ring-amber-500/50'
+                    : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+              }`}>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+                {importingQb ? 'Importing...' : forceQbImport ? 'Import CSV (force)' : 'Import CSV'}
+                <input type="file" accept=".csv" className="hidden" onChange={handleQbImport} disabled={importingQb || refreshingQb} />
+              </label>
+            </div>
+            {/* Force QB override toggle — shared by both refresh and CSV import */}
             <label
               className="flex items-center gap-1.5 cursor-pointer select-none"
               onClick={e => e.stopPropagation()}
