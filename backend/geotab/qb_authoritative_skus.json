@@ -138,5 +138,9 @@
   {
     "skuKey": "FleetShare Hosting",
     "notes": "Hosting/platform fee with no per-device MyAdmin counterpart. QB qty is authoritative."
+  },
+  {
+    "skuKey": "Extendable Services - Pro",
+    "notes": "Per-account data-streaming add-on (Geotab Service:Extendable Services - Pro) — no per-device MyAdmin rate plan. QB qty is authoritative."
   }
 ]

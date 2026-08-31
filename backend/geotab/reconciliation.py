@@ -160,6 +160,11 @@ QB_AUTHORITATIVE_SKUS: frozenset = frozenset({
     # counterpart.  QB qty is authoritative; exclude from reconciliation diff.
     "FleetShare Hosting",
 
+    # --- Extendable Services - Pro — per-account data-streaming add-on
+    # (Geotab Service:Extendable Services - Pro), not a per-device MyAdmin
+    # rate plan.  QB qty is authoritative; exclude from reconciliation diff.
+    "Extendable Services - Pro",
+
     # NOTE: "Geotab Service Fee (HANOVER)" is intentionally NOT listed here.
     # It is handled in two places:
     #   1. Per Hanover customer (billing_type=="Hanover"): hanoverConsolidated branch
