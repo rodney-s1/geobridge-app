@@ -41,6 +41,7 @@ except Exception:
         pass
 
 QB_DATA_FILE           = os.path.join(_DATA_DIR, "qb_customers.json")
+QB_ITEMS_FILE          = os.path.join(_DATA_DIR, "qb_items.json")
 OVERRIDES_FILE         = os.path.join(_DATA_DIR, "billing_overrides.json")
 BILLING_TYPE_OVERRIDES_FILE = os.path.join(_DATA_DIR, "billing_type_overrides.json")
 BILLING_DATE_OVERRIDES_FILE      = os.path.join(_DATA_DIR, "billing_date_overrides.json")
@@ -97,7 +98,12 @@ def _load_billing_frequency_overrides() -> Dict[str, dict]:
     return migrated
 billing_frequency_overrides: Dict[str, dict] = _load_billing_frequency_overrides()
 qb_customers:       Dict[str, dict] = _load_json(QB_DATA_FILE, {})
-qb_items:           List[dict]      = []
+# List of {skuKey, fullPath, defaultPrice, desc, isActive} — populated by
+# POST /api/customers/refresh-from-qb (live QBFC pull) and persisted to
+# QB_ITEMS_FILE so the preflight/report check has data across restarts
+# without requiring QuickBooks to be open. There is no CSV-import fallback
+# for items (unlike customers) — QBFC live-refresh is the only source.
+qb_items:           List[dict]      = _load_json(QB_ITEMS_FILE, [])
 name_to_company_id: Dict[str, str]  = {}   # normalize(name) -> companyId, built on sync
 
 # --- MyAdmin sync cache -------------------------------------------------------
@@ -112,6 +118,8 @@ _sync_lock = asyncio.Lock()
 _qb_loaded = bool(qb_customers)
 print(f"[customers] QB data: {len(qb_customers)} customers loaded from disk"
       if _qb_loaded else "[customers] QB data: no saved file -- import a CSV to populate")
+print(f"[customers] QB items: {len(qb_items)} items loaded from disk"
+      if qb_items else "[customers] QB items: no saved file -- use Refresh from QuickBooks to populate")
 if _sync_cache.get("fetched_at"):
     age_h = (time.time() - _sync_cache["fetched_at"]) / 3600
     print(f"[customers] MyAdmin cache: {len(_sync_cache.get('contracts', []))} contracts, "
@@ -1132,14 +1140,19 @@ async def import_qb_customers(file: UploadFile = File(...), force: bool = Query(
 @router.post("/customers/refresh-from-qb")
 async def refresh_customers_from_qb(force: bool = Query(False)):
     """
-    Live-pull the full Customer list directly from QuickBooks Desktop via
-    QBFC (COM automation) and merge it into qb_customers.json — the same
-    cache POST /api/customers/import-qb populates from a manual CSV upload.
+    Live-pull the full Customer list AND Item list directly from
+    QuickBooks Desktop via QBFC (COM automation).
+
+    Customers are merged into qb_customers.json — the same cache
+    POST /api/customers/import-qb populates from a manual CSV upload.
+    Items are a straight replace into qb_items.json (there's no manual
+    CSV/override path for items to protect, unlike customers) and feed
+    the "no-QB-item-match" bucket of the preflight/report check.
 
     This is the preferred path going forward (confirmed via
     qb_test_connection.py that QBFC exposes Job Type, Terms, Class, and
     Account Number identically to the CSV export). The CSV import endpoint
-    remains available as a manual fallback.
+    remains available as a manual fallback for customers only.
 
     WINDOWS ONLY — requires QuickBooks Desktop open locally with the
     company file loaded, and pywin32 installed. Returns HTTP 502 with a
@@ -1147,9 +1160,15 @@ async def refresh_customers_from_qb(force: bool = Query(False)):
 
     ``force`` behaves identically to import-qb: true clears any existing
     GeoBridge billing-type override so QB's Job Type wins; default false
-    preserves manual GeoBridge edits.
+    preserves manual GeoBridge edits. Item refresh is unaffected by
+    ``force`` since there's nothing to protect on the item side.
+
+    If the customer pull succeeds but the item pull fails (e.g. a
+    transient QB error), the customer merge is still saved and reported —
+    the item failure is surfaced as a non-fatal warning in the response
+    message rather than rolling back the whole request.
     """
-    global qb_customers
+    global qb_customers, qb_items
 
     from . import qb_connection
     try:
@@ -1191,13 +1210,26 @@ async def refresh_customers_from_qb(force: bool = Query(False)):
     if force and merged > 0:
         msg += " (force mode: QB values applied to all customers)"
 
+    items_count = None
+    try:
+        qb_item_rows = qb_connection.fetch_items_from_qb()
+        qb_items = qb_item_rows
+        _save_json(QB_ITEMS_FILE, qb_items)
+        items_count = len(qb_items)
+        print(f"[refresh-from-qb] Saved {items_count} QB items to {QB_ITEMS_FILE}")
+        msg += f"; {items_count} items refreshed"
+    except qb_connection.QBConnectionError as exc:
+        print(f"[refresh-from-qb] Item refresh failed (customers still saved): {exc}")
+        msg += f"; item refresh failed ({exc})"
+
     return {
-        "success":   True,
-        "message":   msg,
-        "merged":    merged,
-        "skipped":   skipped,
-        "protected": protected,
-        "total":     len(qb_customers),
+        "success":     True,
+        "message":     msg,
+        "merged":      merged,
+        "skipped":     skipped,
+        "protected":   protected,
+        "total":       len(qb_customers),
+        "itemsLoaded": items_count if items_count is not None else len(qb_items),
     }
 
 

@@ -47,6 +47,7 @@ else:
 _MUTABLE_FILES = [
     # customers.py
     "qb_customers.json",
+    "qb_items.json",
     "billing_overrides.json",
     "billing_type_overrides.json",
     "billing_date_overrides.json",

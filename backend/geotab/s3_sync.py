@@ -65,6 +65,7 @@ ADMIN_ONLY_FILES = {
 # All users can push these
 ALL_USER_FILES = {
     "qb_customers.json",
+    "qb_items.json",
     "qb_invoice_quantities.json",
     "excluded_invoices.json",
     "invoice_sku_overrides.json",
