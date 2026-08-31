@@ -298,17 +298,21 @@ def fetch_items_from_qb() -> list[dict]:
     NonInventory, OtherCharge types) and return them shaped close to
     sku_catalog.json's entry format: {skuKey, fullPath, defaultPrice, desc}.
 
-    skuKey / fullPath are both set to the item's FullName (QB item code
-    format) since sku_catalog.json's own fullPath field is documented
-    elsewhere as "(QB item code format)" — i.e. the two are meant to be the
-    same string for items that map 1:1. Category is left blank; matching
-    that up with GeoBridge's existing category taxonomy is a follow-up step,
-    not attempted here.
+    skuKey is the item's LEAF name — i.e. FullName with any "Parent:"
+    category prefix stripped (e.g. QB FullName "Geotab Service:Extendable
+    Services - Pro" -> skuKey "Extendable Services - Pro"). This matches
+    sku_catalog.json's convention, where skuKey is always the bare SKU name
+    and fullPath carries the full "Group:Name" (and sometimes "(desc)")
+    context. Getting this right matters: skuKey is the join key used to
+    compare QB's real Item List against GeoBridge's resolved device SKUs
+    in the preflight check (qb_sync.py) — comparing against the un-stripped
+    FullName would never match and every item would falsely report as
+    "missing from QuickBooks".
 
-    NOT YET WIRED to any endpoint or the sku_catalog.json cache — this is
-    the read primitive only, added alongside fetch_customers_from_qb() for
-    the later Item-List preflight check. Building the merge-into-catalog
-    logic is a separate follow-up once the preflight check design is final.
+    fullPath is the raw QB FullName (group:name, no parenthesized desc —
+    that's a separate field on invoice line items, not on the master Item
+    List). Category is left blank; matching that up with GeoBridge's
+    existing category taxonomy is a follow-up step, not attempted here.
     """
     request_xml = (
         _qbxml_header() +
@@ -346,8 +350,11 @@ def fetch_items_from_qb() -> list[dict]:
             desc = (
                 _text(sales, "SalesDesc") or _text(sales_or_purchase, "Desc") or ""
             )
+            # Strip "Parent:" category prefix -> bare SKU name, matching
+            # sku_catalog.json's skuKey convention (see docstring above).
+            leaf_name = full_name.rsplit(":", 1)[-1].strip() if ":" in full_name else full_name
             results.append({
-                "skuKey":       full_name,
+                "skuKey":       leaf_name,
                 "fullPath":     full_name,
                 "defaultPrice": price,
                 "desc":         desc,
