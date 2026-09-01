@@ -4,11 +4,14 @@
  * GitHub Release with the installer attached (so "Check for Updates" in
  * the app can actually find something).
  *
- * MUST be run on the machine that builds the installer (Windows, using the
- * project's real .venv) — never in a Linux CI/sandbox, because the packaged
- * app bundles a platform-native Python virtualenv (extraResources: .venv)
- * containing compiled C-extension wheels (cryptography, Pillow, etc.) that
- * are NOT portable across operating systems.
+ * MUST be run on Windows — never in a Linux CI/sandbox. This script
+ * (re-)builds python-embed/ (extraResources: python-embed, see
+ * scripts/setup_python_embed.js) before packaging: a self-contained,
+ * relocatable Python runtime bundled with the installer so the backend
+ * runs standalone on end-user machines without Python installed. That
+ * setup script downloads a Windows-specific embeddable Python package and
+ * registers pywin32's COM DLLs, neither of which make sense outside
+ * Windows.
  *
  * Usage (from the project root):
  *   npm run release              # bumps the patch version (1.0.3 -> 1.0.4)
@@ -83,17 +86,27 @@ if (!process.env.GH_TOKEN && !process.env.GITHUB_TOKEN) {
   )
 }
 
-// ── 2. .venv present? (packaged installer bundles it as extraResources) ────
-if (!fs.existsSync(path.join(ROOT, '.venv'))) {
+// ── 2. python-embed/ present? (packaged installer bundles it as extraResources) ────
+// This is a self-contained, relocatable Python (python.org "embeddable
+// package"), NOT a regular venv — a venv's python.exe hardcodes the path
+// to the base Python install that created it, so it fails to launch on
+// any machine other than the one that built it. See
+// scripts/setup_python_embed.js's header comment for the full story.
+if (!fs.existsSync(path.join(ROOT, 'python-embed', 'python.exe'))) {
   fail(
-    '.venv not found in the project root.\n' +
-    '  The packaged app bundles this Python virtualenv as extraResources —\n' +
-    '  without it here, electron-builder will produce a broken installer.\n' +
-    '  Create it first, e.g.:\n' +
-    '    python -m venv .venv\n' +
-    '    .venv\\Scripts\\pip install -r backend\\requirements.txt'
+    'python-embed/ not found (or incomplete) in the project root.\n' +
+    '  The packaged app bundles this self-contained Python runtime as\n' +
+    '  extraResources — without it here, electron-builder will produce an\n' +
+    '  installer that fails to launch the backend on end-user machines.\n' +
+    '  Build it first (safe to re-run any time deps change):\n' +
+    '    npm run setup:python-embed'
   )
 }
+
+// Re-sync dependencies into python-embed/ every release, so a forgotten
+// `npm run setup:python-embed` after editing requirements.txt can never
+// ship a stale/incomplete Python environment.
+run('node scripts/setup_python_embed.js')
 
 // ── 3. Working tree must be clean ───────────────────────────────────────────
 const dirty = runCapture('git status --porcelain')

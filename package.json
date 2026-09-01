@@ -10,7 +10,8 @@
     "build:frontend": "cd frontend && npm run build",
     "build": "npm run build:frontend && electron-builder",
     "start": "electron .",
-    "release": "node scripts/release.js"
+    "release": "node scripts/release.js",
+    "setup:python-embed": "node scripts/setup_python_embed.js"
   },
   "keywords": [],
   "author": "GeoBridge",
@@ -40,8 +41,8 @@
     ],
     "extraResources": [
       {
-        "from": ".venv",
-        "to": ".venv",
+        "from": "python-embed",
+        "to": "python-embed",
         "filter": [
           "**/*"
         ]

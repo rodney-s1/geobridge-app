@@ -11,6 +11,11 @@ __pycache__/
 venv/
 env/
 
+# Embeddable Python runtime bundled into the packaged installer as
+# extraResources (see scripts/setup_python_embed.js + package.json). Built
+# locally on the release machine, never committed — same treatment as .venv/.
+python-embed/
+
 # Node / Electron
 node_modules/
 frontend/node_modules/

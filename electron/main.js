@@ -134,7 +134,7 @@ function clearRememberedCredentials() {
 function startPythonBackend() {
   // When packaged by electron-builder, app code lives inside app.asar which
   // is a read-only virtual filesystem.  __dirname resolves inside the asar,
-  // so we CANNOT use it to find extraResources (like .venv or backend/).
+  // so we CANNOT use it to find extraResources (like python-embed/ or backend/).
   //
   // electron-builder places extraResources at:
   //   <install_dir>/resources/<name>          (packaged)
@@ -145,7 +145,9 @@ function startPythonBackend() {
   // Unpackaged (npm start / dev):  process.resourcesPath = <project>/
   // Packaged:                       process.resourcesPath = <install>/resources/
   //
-  // .venv is in extraResources → lands at resources/.venv when packaged.
+  // python-embed/ is in extraResources → lands at resources/python-embed/ when
+  //                              packaged (a self-contained Python runtime,
+  //                              see scripts/setup_python_embed.js).
   // backend/ is in files       → lands at resources/app.asar/backend/ when
   //                              packaged, but asar is readable for JS files.
   //                              Python needs a real filesystem path though,
@@ -154,15 +156,31 @@ function startPythonBackend() {
   const isPacked = app.isPackaged
 
   // Python executable --------------------------------------------------------
+  //
+  // PACKAGED (isPacked): uses python-embed/ — the official python.org
+  // "embeddable package" bundled as extraResources (see package.json and
+  // scripts/setup_python_embed.js). This is a genuinely relocatable,
+  // self-contained Python with no baked-in path to a base install, unlike
+  // a regular venv — which is what used to be bundled here (.venv) and
+  // would fail to launch on any machine other than the one that created it
+  // (pyvenv.cfg hardcodes the original machine's Python install path).
+  // Symptom of that old bug: app opens, backend never comes up on 8001,
+  // UI shows "Cannot connect to backend" — with nothing useful in the
+  // renderer's console because the failure is entirely in the child
+  // process electron-log captures separately (see [Python Backend Error]).
+  //
+  // UNPACKAGED (dev mode / npm start): still uses the project's own .venv,
+  // since that only ever runs on the developer's own machine — the
+  // relocation problem doesn't apply there.
   let pythonCmd
   if (process.platform === 'win32') {
     pythonCmd = isPacked
-      ? path.join(process.resourcesPath, '.venv', 'Scripts', 'python.exe')
+      ? path.join(process.resourcesPath, 'python-embed', 'python.exe')
       : path.join(__dirname, '..', '.venv', 'Scripts', 'python.exe')
   } else {
-    pythonCmd = isPacked
-      ? path.join(process.resourcesPath, '.venv', 'bin', 'python3')
-      : 'python3'
+    // macOS/Linux dev fallback only — packaged builds are Windows-only
+    // (see package.json "build.win"), so isPacked is never true here.
+    pythonCmd = 'python3'
   }
 
   // Backend script -----------------------------------------------------------

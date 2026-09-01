@@ -15,15 +15,39 @@ together (see `dev`/`dev:backend`/`dev:frontend` in `package.json`).
 
 ## Building the Installer (Windows)
 
+First, build the bundled Python runtime (only needed once, or again whenever
+`backend/requirements.txt` changes):
+
+```txt
+npm run setup:python-embed
+```
+
+Then:
+
 ```txt
 npm run build
 ```
 
 Builds `frontend/dist` and packages a Windows NSIS installer into `release/`
-(via `electron-builder`). Requires a `.venv` in the project root with the
-backend's Python dependencies installed — this virtualenv is bundled into the
-installer as `extraResources` so the Python backend runs standalone on the
-end user's machine.
+(via `electron-builder`), bundling `python-embed/` as `extraResources` so the
+Python backend runs standalone on the end user's machine — **without
+requiring Python to be installed there at all.**
+
+`python-embed/` is the official [python.org "embeddable
+package"](https://docs.python.org/3/using/windows.html#the-embeddable-package),
+a genuinely self-contained, relocatable Python runtime with `backend/requirements.txt`
+installed into it. This intentionally replaced an earlier approach that bundled
+a regular `.venv` — a venv's `python.exe` hardcodes the absolute path to the
+*base* Python installation that created it (in its `pyvenv.cfg`), so a `.venv`
+copied onto a different machine fails to launch: the app opens, the backend
+never comes up on port 8001, and the UI shows "Cannot connect to backend" with
+no obvious error on screen. `python-embed/` has no such dependency — it's the
+same kind of distribution python.org publishes specifically for redistributing
+with an application. See `scripts/setup_python_embed.js` for the full story
+and implementation.
+
+`python-embed/` is gitignored and built locally on the release machine only —
+it is never committed.
 
 ## Publishing a Release (so "Check for Updates" works)
 
@@ -57,10 +81,12 @@ This one command (`scripts/release.js`) does the whole workflow safely:
 6. Pushes the version-bump commit + tag back to `origin/main`.
 
 **Requirements before running it:**
-- Must be run on **Windows**, using this project's real `.venv` — the
-  packaged app bundles a platform-native Python virtualenv containing
-  compiled C-extension wheels (`cryptography`, `Pillow`, etc.) that are not
-  portable across operating systems. It cannot be run from a Linux CI/sandbox.
+- Must be run on **Windows**. `npm run release` calls
+  `scripts/setup_python_embed.js` automatically to (re-)sync `python-embed/`
+  with the current `backend/requirements.txt` before building, so it cannot
+  be run from a Linux CI/sandbox — the embeddable Python package it downloads
+  is Windows-specific (`embed-amd64`), and `pywin32`'s COM registration only
+  makes sense on Windows.
 - A `GH_TOKEN` environment variable with `repo` scope (the repo is private):
   ```powershell
   $env:GH_TOKEN = "ghp_xxxxxxxxxxxxxxxxxxxx"
