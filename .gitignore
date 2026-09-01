@@ -29,6 +29,10 @@ backend/geotab/qb_customers.json
 backend/geotab/billing_overrides.json
 backend/geotab/myadmin_cache.json
 
+# QBFC connection test scratch files — raw qbXML dumps, may contain real
+# customer data pulled from a live company file. Never commit these.
+qb_test_*_response.xml
+
 # AWS credentials — never commit
 .aws/
 scripts/aws_credentials_setup.sh
