@@ -116,36 +116,82 @@ if (needsDownload) {
   if (!fs.existsSync(pythonExe)) {
     fail(`Extraction finished but ${pythonExe} was not found — the zip layout may have changed.`)
   }
+} else {
+  log(`python-embed/ already set up (found ${pythonExe}) — skipping download. Use --force to redo it.`)
+}
 
-  // ── 2. Enable site-packages ------------------------------------------------
-  // The embeddable distribution ships with a `python3XX._pth` file that
-  // disables `import site` by default (so pip/site-packages don't work out
-  // of the box). Uncomment that line so pip-installed packages are importable.
-  const pthFiles = fs.readdirSync(TARGET_DIR).filter(f => /^python\d+\._pth$/.test(f))
-  if (pthFiles.length === 0) {
-    fail(`Could not find a python3XX._pth file in ${TARGET_DIR} to enable site-packages.`)
-  }
-  const pthPath = path.join(TARGET_DIR, pthFiles[0])
-  let pthContents = fs.readFileSync(pthPath, 'utf8')
-  if (/^\s*#\s*import site\s*$/m.test(pthContents)) {
-    pthContents = pthContents.replace(/^\s*#\s*import site\s*$/m, 'import site')
-    fs.writeFileSync(pthPath, pthContents, 'utf8')
-    log(`Enabled site-packages in ${pthFiles[0]}`)
-  } else if (/^\s*import site\s*$/m.test(pthContents)) {
-    log(`site-packages already enabled in ${pthFiles[0]}`)
-  } else {
-    fail(`${pthFiles[0]} doesn't contain the expected "#import site" line — layout may have changed:\n${pthContents}`)
-  }
+// ── 2. Enable site-packages (always re-checked, not just on fresh download) ─
+// The embeddable distribution ships with a `python3XX._pth` file that
+// disables `import site` by default AND (unlike a normal install) has no
+// unpacked Lib\ directory on disk for Python's prefix-detection to find a
+// "landmark" file in — the stdlib lives zipped inside python3XX.zip. That
+// means uncommenting "import site" alone is not enough: Python still can't
+// reliably locate Lib\site-packages, which is exactly why pip installs fine
+// ("Successfully installed pip-...") but the VERY NEXT invocation of that
+// same interpreter says "No module named pip" — pip got written to disk,
+// but the interpreter can't find its own site-packages to import it back
+// from. Fix: explicitly add "Lib\site-packages" as its own line in the
+// ._pth file (Python reads ._pth files as an explicit sys.path list), and
+// pre-create that folder so get-pip.py has somewhere to install into.
+//
+// This block is idempotent and runs on every invocation (not gated behind
+// needsDownload) so a partially-set-up python-embed/ left behind by an
+// earlier failed run gets healed automatically on the next `npm run
+// setup:python-embed` — no --force / manual delete needed.
+const pthFiles = fs.readdirSync(TARGET_DIR).filter(f => /^python\d+\._pth$/.test(f))
+if (pthFiles.length === 0) {
+  fail(`Could not find a python3XX._pth file in ${TARGET_DIR} to enable site-packages.`)
+}
+const pthPath = path.join(TARGET_DIR, pthFiles[0])
+let pthContents = fs.readFileSync(pthPath, 'utf8')
 
-  // ── 3. Bootstrap pip --------------------------------------------------------
+if (/^\s*#\s*import site\s*$/m.test(pthContents)) {
+  pthContents = pthContents.replace(/^\s*#\s*import site\s*$/m, 'import site')
+} else if (!/^\s*import site\s*$/m.test(pthContents)) {
+  fail(`${pthFiles[0]} doesn't contain the expected "#import site" line — layout may have changed:\n${pthContents}`)
+}
+
+if (!/^\s*Lib\\site-packages\s*$/m.test(pthContents)) {
+  // Insert right before the "import site" line so it's picked up as a
+  // sys.path entry regardless of where python.exe considers itself rooted.
+  pthContents = pthContents.replace(/^\s*import site\s*$/m, 'Lib\\site-packages\nimport site')
+}
+fs.writeFileSync(pthPath, pthContents, 'utf8')
+log(`Enabled site-packages (Lib\\site-packages + import site) in ${pthFiles[0]}`)
+
+const sitePackagesDir = path.join(TARGET_DIR, 'Lib', 'site-packages')
+fs.mkdirSync(sitePackagesDir, { recursive: true })
+
+// ── 3. Bootstrap pip (skip if already importable) ---------------------------
+let pipAlreadyWorks = false
+try {
+  execSync(`"${pythonExe}" -m pip --version`, { cwd: ROOT, stdio: 'pipe' })
+  pipAlreadyWorks = true
+  log('pip already importable in python-embed/ — skipping bootstrap.')
+} catch (e) {
+  // pip not importable yet (fresh install, or healing a broken previous run) — bootstrap it below.
+}
+
+if (!pipAlreadyWorks) {
   const getPipPath = path.join(ROOT, 'get-pip.py')
   log('Downloading get-pip.py ...')
   downloadFileSync('https://bootstrap.pypa.io/get-pip.py', getPipPath)
   log('Installing pip into the embeddable interpreter...')
-  run(`"${pythonExe}" "${getPipPath}"`)
+  run(`"${pythonExe}" "${getPipPath}" --no-warn-script-location`)
   fs.unlinkSync(getPipPath)
-} else {
-  log(`python-embed/ already set up (found ${pythonExe}) — skipping download. Use --force to redo it.`)
+
+  // Verify pip is actually importable now — catches the "Successfully
+  // installed pip-..." / "No module named pip" failure mode immediately
+  // instead of letting it surface later as a confusing pip-install error.
+  try {
+    execSync(`"${pythonExe}" -m pip --version`, { cwd: ROOT, stdio: 'pipe' })
+  } catch (e) {
+    fail(
+      'pip was installed but is still not importable by python-embed/python.exe.\n' +
+      `  Check that ${pthFiles[0]} contains a "Lib\\\\site-packages" line and that\n` +
+      `  ${sitePackagesDir} actually contains a pip/ folder after installation.`
+    )
+  }
 }
 
 // ── 4. Install backend dependencies ----------------------------------------
