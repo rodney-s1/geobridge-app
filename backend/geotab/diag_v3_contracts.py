@@ -50,10 +50,43 @@ _CANDIDATES = [
 ]
 session_path = next((p for p in _CANDIDATES if p and os.path.exists(p)), None)
 
+# Fallback: the Electron userData folder name depends on whether the app was
+# run packaged (uses "productName" = "GeoBridge") or via `electron .` in dev
+# (uses "name" = "geobridge-app") -- rather than guess, scan %APPDATA% (or
+# the platform equivalent) for any folder whose name contains "geobridge"
+# and check each one for a session.json.
+if not session_path:
+    appdata = (
+        os.environ.get("APPDATA")  # Windows
+        or os.environ.get("XDG_CONFIG_HOME")
+        or os.path.expanduser("~/.config")  # Linux
+        or os.path.expanduser("~/Library/Application Support")  # macOS
+    )
+    if appdata and os.path.isdir(appdata):
+        for entry in os.listdir(appdata):
+            if "geobridge" in entry.lower():
+                candidate = os.path.join(appdata, entry, "session.json")
+                if os.path.exists(candidate):
+                    session_path = candidate
+                    print(f"(auto-discovered userData folder: {entry})")
+                    break
+
 if not session_path:
     print("ERROR: Could not find session.json.")
-    print("Make sure you are logged in to GeoBridge (MyAdmin) at least once,")
-    print("or pass the full path to session.json as an argument, e.g.:")
+    print("Make sure you are logged in to GeoBridge (MyAdmin) at least once.")
+    appdata = os.environ.get("APPDATA")
+    if appdata and os.path.isdir(appdata):
+        matches = [e for e in os.listdir(appdata) if "geobridge" in e.lower()]
+        print(f"Folders under {appdata} containing 'geobridge': {matches or '(none found)'}")
+        if matches:
+            for m in matches:
+                p = os.path.join(appdata, m)
+                try:
+                    print(f"  Contents of {p}: {os.listdir(p)}")
+                except Exception as e:
+                    print(f"  Could not list {p}: {e}")
+    print()
+    print("Or pass the full path to session.json as an argument, e.g.:")
     print(r'  python backend\geotab\diag_v3_contracts.py "C:\Users\YOU\AppData\Roaming\GeoBridge\session.json"')
     sys.exit(1)
 
