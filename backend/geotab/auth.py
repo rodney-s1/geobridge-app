@@ -11,6 +11,13 @@ router = APIRouter()
 # Geotab MyAdmin API URL from .env
 MYADMIN_API_URL = os.getenv("MYADMIN_API_URL", "https://myadminapi.geotab.com/v2/MyAdminApi.ashx")
 
+# V3 endpoint — currently only used for GetDeviceContracts (page-numbered
+# pagination with an up-front `total` count, replacing v2's cursor-chained
+# GetDeviceContractsByPage). See customers.py's _fetch_myadmin_customers()
+# for the migration; kept as a separate URL/helper so other v2 calls are
+# completely unaffected.
+MYADMIN_API_V3_URL = os.getenv("MYADMIN_API_V3_URL", "https://myadminapi.geotab.com/v3/MyAdminApi.ashx")
+
 # ---------------------------------------------------------------------------
 # Persistent HTTP client (Option 5)
 # ---------------------------------------------------------------------------
@@ -169,6 +176,34 @@ async def myadmin_call(method: str, params: dict, timeout: float = 120.0):
     }
     response = await _http_client.post(
         MYADMIN_API_URL,
+        json=payload,
+        headers={"Content-Type": "application/json"},
+        timeout=timeout,
+    )
+    response.raise_for_status()
+    return response.json()
+
+
+async def myadmin_call_v3(method: str, params: dict, pagination: dict, timeout: float = 60.0):
+    """
+    Make a JSON-RPC call to the Geotab MyAdmin V3 API, which uses a top-level
+    `pagination` object (`{"page": N, "perPage": M}`) instead of v2's
+    cursor-based `nextId` field.
+
+    V3 responses include a `pagination` block echoing back page/perPage plus
+    a `total` record count — see GetDeviceContracts usage in customers.py.
+
+    Raises httpx.HTTPStatusError on non-2xx (including 429 rate-limit, which
+    the caller should catch and back off / fall back to v2 on).
+    """
+    payload = {
+        "id": -1,
+        "method": method,
+        "params": params,
+        "pagination": pagination,
+    }
+    response = await _http_client.post(
+        MYADMIN_API_V3_URL,
         json=payload,
         headers={"Content-Type": "application/json"},
         timeout=timeout,

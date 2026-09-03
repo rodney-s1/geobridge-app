@@ -10,7 +10,7 @@ import json
 import os
 import sys
 import time
-from .auth import myadmin_call, require_session, session_store
+from .auth import myadmin_call, myadmin_call_v3, require_session, session_store
 
 # --- Windows-safe print (avoids CP1252 UnicodeEncodeError on arrow chars) -----
 def _print(*args, **kwargs):
@@ -109,7 +109,29 @@ name_to_company_id: Dict[str, str]  = {}   # normalize(name) -> companyId, built
 # --- MyAdmin sync cache -------------------------------------------------------
 CACHE_TTL_HOURS = 3              # Contracts auto-expire after 3 h; background task refreshes silently
 DEVICE_DB_REFRESH_MINUTES = 30   # Background Step-1 (device DBs only) refresh interval
-WINDOW_SIZE = 4                  # Sliding-window: pages fetched concurrently during Step 2
+WINDOW_SIZE = 4                  # Sliding-window: pages fetched concurrently during Step 2 (legacy v2 fallback)
+
+# --- Step 2 V3 migration (GetDeviceContracts) ---------------------------------
+# V3 caps perPage at 100 (confirmed live 2026-09) vs. v2's 1000/page, but pages
+# are addressed by NUMBER instead of a chained cursor, and page 1's response
+# tells us the exact `total` record count up front. That means we can fetch
+# many pages CONCURRENTLY instead of v2's forced one-page-at-a-time cursor
+# walk -- this is the actual speed win, not a bigger page size.
+#
+# CONTRACTS_V3_PAGE_SIZE : Confirmed server-side cap is 100; requesting more
+#                          just gets silently capped, so there's no benefit
+#                          to asking for less, but also no way to ask for more.
+# CONTRACTS_V3_CONCURRENCY : How many pages are in flight at once. Release
+#                          notes (June 2025) mention a 1,250-requests-per-
+#                          15-min limit specifically named for
+#                          GetDeviceContracts(ByPage) -- unclear whether that
+#                          still applies to v3, but we stay conservative here
+#                          rather than risk 429s turning a 2-minute sync into
+#                          a rate-limited multi-hour one. Easy to raise later
+#                          once we've watched a few real syncs' timing/logs.
+CONTRACTS_V3_PAGE_SIZE    = 100
+CONTRACTS_V3_CONCURRENCY  = 8
+CONTRACTS_V3_MAX_RETRIES  = 3     # per-page retry count on transient/429 errors before giving up on v3 entirely
 _sync_cache: Dict = _load_json(SYNC_CACHE_FILE, {})
 
 # --- Sync lock -- prevents concurrent fetches when multiple requests arrive ---
@@ -420,6 +442,286 @@ def enrich_customer(customer: dict) -> dict:
     }
 
 
+async def _fetch_contracts_v3() -> List[dict]:
+    """
+    Fetch ALL device contracts via the new GetDeviceContracts V3 endpoint,
+    using numbered-page pagination fetched CONCURRENTLY (bounded by
+    CONTRACTS_V3_CONCURRENCY) instead of v2's forced one-at-a-time cursor
+    walk. Raises on any unrecoverable error so the caller can fall back to
+    the legacy v2 cursor loop (_fetch_contracts_v2_fallback).
+
+    Live-verified response shape (2026-09) is IDENTICAL to v2's
+    GetDeviceContractsByPage for all fields this app reads (device,
+    userContact.userCompany, isTerminated, etc.) -- only the pagination
+    envelope differs. See diag_v3_contracts.py for the probe that confirmed
+    this.
+    """
+    base_params = {
+        "apiKey":     session_store["user_id"],
+        "sessionId":  session_store["session_id"],
+        "forAccount": MYADMIN_ACCOUNT,
+    }
+
+    STEP2_START_PCT = 20
+    STEP2_END_PCT   = 75
+    STEP2_PCT_RANGE = STEP2_END_PCT - STEP2_START_PCT
+
+    async def fetch_page_raw(page: int) -> dict:
+        """Fetch a single page and return the FULL response dict (including
+        the `pagination` envelope), retrying transient errors (incl. 429) up
+        to CONTRACTS_V3_MAX_RETRIES times with exponential backoff. Raises
+        the last exception if all retries are exhausted -- the caller
+        (fetch_page / the concurrent gather below) treats that as "v3 is
+        unhealthy, abort and fall back to v2"."""
+        last_exc = None
+        for attempt in range(CONTRACTS_V3_MAX_RETRIES):
+            try:
+                result = await myadmin_call_v3(
+                    "GetDeviceContracts",
+                    base_params,
+                    {"page": page, "perPage": CONTRACTS_V3_PAGE_SIZE},
+                    timeout=60.0,
+                )
+                if "error" in result:
+                    raise RuntimeError(f"MyAdmin v3 error on page {page}: {result['error']}")
+                return result
+            except Exception as e:
+                last_exc = e
+                # Back off a bit longer on what looks like a rate-limit (429)
+                # than on a generic transient error.
+                is_429 = "429" in str(e)
+                wait = (2.0 if is_429 else 0.5) * (attempt + 1)
+                print(f"[sync] v3 page {page} attempt {attempt+1}/{CONTRACTS_V3_MAX_RETRIES} "
+                      f"failed ({e}); retrying in {wait:.1f}s..." if attempt + 1 < CONTRACTS_V3_MAX_RETRIES
+                      else f"[sync] v3 page {page} failed after {CONTRACTS_V3_MAX_RETRIES} attempts: {e}")
+                if attempt + 1 < CONTRACTS_V3_MAX_RETRIES:
+                    await asyncio.sleep(wait)
+        raise last_exc  # type: ignore[misc]
+
+    async def fetch_page(page: int) -> list:
+        """Convenience wrapper: just the record list for a page."""
+        result = await fetch_page_raw(page)
+        return result.get("result") or []
+
+    # -- Page 1 first (sequentially) -- gives us both the first batch of
+    # records AND the true total record count, in a single request. --------
+    _set_progress(
+        step="step2",
+        step_label="Step 2/2 -- Fetching device contracts (v3)...",
+        pct=STEP2_START_PCT,
+        records=0,
+        message="Requesting page 1 to determine total contract count...",
+    )
+    print("[sync] Step 2 (v3): fetching page 1 to learn total count...")
+    result1 = await fetch_page_raw(1)
+    page1 = result1.get("result") or []
+    total = int((result1.get("pagination") or {}).get("total") or 0)
+    per_page = CONTRACTS_V3_PAGE_SIZE
+    total_pages = max(1, (total + per_page - 1) // per_page) if total else 1
+    print(f"[sync] Step 2 (v3): total={total:,} contracts across {total_pages:,} pages "
+          f"(perPage={per_page}, concurrency={CONTRACTS_V3_CONCURRENCY})")
+
+    all_contracts: List[dict] = list(page1)
+    completed = 1
+
+    _set_progress(
+        step="step2",
+        step_label="Step 2/2 -- Fetching device contracts (v3)...",
+        page=1,
+        total_pages_est=total_pages,
+        records=len(all_contracts),
+        pct=STEP2_START_PCT,
+        message=f"Page 1/{total_pages:,} -- {len(all_contracts):,} of {total:,} contracts so far...",
+    )
+
+    if total_pages <= 1:
+        return all_contracts
+
+    # -- Remaining pages fetched CONCURRENTLY, bounded by a semaphore --------
+    sem = asyncio.Semaphore(CONTRACTS_V3_CONCURRENCY)
+
+    async def bounded_fetch(page: int):
+        async with sem:
+            batch = await fetch_page(page)
+        return page, batch
+
+    tasks = [asyncio.create_task(bounded_fetch(p)) for p in range(2, total_pages + 1)]
+
+    results_by_page: Dict[int, list] = {1: page1}
+    try:
+        for coro in asyncio.as_completed(tasks):
+            page, batch = await coro
+            results_by_page[page] = batch
+            completed += 1
+            step2_fraction = min(completed / total_pages, 0.99)
+            current_pct = int(STEP2_START_PCT + step2_fraction * STEP2_PCT_RANGE)
+            records_so_far = sum(len(v) for v in results_by_page.values())
+            _set_progress(
+                step="step2",
+                step_label=f"Step 2/2 -- Fetching contracts (v3, {completed}/{total_pages} pages)...",
+                page=completed,
+                total_pages_est=total_pages,
+                records=records_so_far,
+                pct=current_pct,
+                message=f"Page {completed}/{total_pages:,} -- {records_so_far:,} of {total:,} contracts so far...",
+            )
+            # Periodic checkpoint (every ~10 completed pages) in case of crash --
+            # resuming a partial v3 fetch isn't implemented yet (concurrent
+            # fetch completes in a couple minutes even from scratch), but saving
+            # what we have lets a hard crash at least fall back to a partial
+            # cache rather than losing everything silently.
+            if completed % 10 == 0:
+                try:
+                    _save_json(CONTRACT_CHECKPOINT_FILE, {
+                        "v3_partial": True,
+                        "completed_pages": completed,
+                        "total_pages": total_pages,
+                        "contracts": [c for v in results_by_page.values() for c in v],
+                    })
+                except Exception as ckpt_err:
+                    print(f"[sync] v3 checkpoint write failed (non-fatal): {ckpt_err}")
+    except Exception:
+        # A page exhausted its retries and raised -- cancel any still-running
+        # tasks immediately rather than letting them keep hammering MyAdmin
+        # in the background while we fall back to the v2 cursor loop.
+        for t in tasks:
+            if not t.done():
+                t.cancel()
+        raise
+
+    # Flatten in page order for determinism (order doesn't matter functionally,
+    # but makes logs/debugging easier to reason about).
+    all_contracts = [
+        c for page in sorted(results_by_page.keys())
+        for c in results_by_page[page]
+    ]
+    return all_contracts
+
+
+async def _fetch_contracts_v2_fallback(all_device_dbs: List[dict]) -> List[dict]:
+    """
+    Legacy Step 2 fetch via GetDeviceContractsByPage (v2), using its
+    cursor-chained `nextId` pagination -- necessarily sequential, one page
+    at a time. Kept as a safety-net fallback for when the new V3 endpoint
+    (_fetch_contracts_v3) is unavailable, errors out, or gets rate-limited,
+    so a bad night on Geotab's side never breaks a sync outright.
+    """
+    print("[sync] Step 2 (v2 fallback): fetching device contracts via GetDeviceContractsByPage...")
+
+    # ── Option 3: resume from checkpoint ──────────────────────────────────
+    # If a previous sync was interrupted mid-way, a checkpoint file records
+    # the last confirmed cursor and contracts collected so far.  The next
+    # sync resumes from that point instead of restarting from page 1.
+    # The checkpoint is deleted when Step 2 completes successfully.
+    ckpt = _load_json(CONTRACT_CHECKPOINT_FILE, {})
+    if ckpt.get("next_id") and ckpt.get("contracts") and not ckpt.get("v3_partial"):
+        all_contracts = ckpt["contracts"]
+        next_id       = ckpt["next_id"]
+        # page_num is only used for progress-bar estimation, so an
+        # approximate fallback (contracts so far / a nominal 1000-per-page
+        # guess) is fine here even if the server's actual page size differs.
+        page_num      = ckpt.get("page_num", len(all_contracts) // 1000)
+        print(f"[sync] Step 2 (v2 fallback): resuming from checkpoint — "
+              f"{len(all_contracts):,} contracts already fetched, nextId={next_id}")
+    else:
+        all_contracts = []
+        next_id       = 0
+        page_num      = 0
+
+    # Seeds the "biggest page seen" tracker used below to detect the
+    # final (partial) page in a size-agnostic way — see its use in the
+    # loop for why this replaces the old hardcoded 1000 check.
+    _max_page_size_seen = 1
+
+    STEP2_START_PCT = 20
+    STEP2_END_PCT   = 75
+    STEP2_PCT_RANGE = STEP2_END_PCT - STEP2_START_PCT
+    # Dynamic estimate: starts at the larger of (a) current page + 5 or
+    # (b) 50, and is updated inside the loop so it always stays exactly
+    # 5 pages ahead of reality — preventing the old hard-coded 120-page
+    # floor from pinning the bar far below 100% on a ~103-page sync.
+    EST_PAGES       = max(50, page_num + 5)
+
+    _set_progress(
+        step="step2",
+        step_label="Step 2/2 -- Fetching device contracts (v2 fallback)...",
+        pct=STEP2_START_PCT,
+        records=len(all_contracts),
+        message="Starting contract fetch (v2 fallback)..."
+                + (f" Resuming from page ~{page_num}." if page_num else ""),
+    )
+
+    while True:
+        page_num += 1
+        # Update the rolling estimate every page (stays 5 ahead).
+        EST_PAGES      = max(EST_PAGES, page_num + 5)
+        # Use a square-root curve so the bar accelerates toward 100% rather
+        # than saturating: sqrt(page/est) grows more linearly than page/est.
+        # Cap at 0.99 so there's always a visible jump when the post-loop
+        # _set_progress(pct=75) fires on completion.
+        step2_fraction = min((page_num / EST_PAGES) ** 0.5, 0.99)
+        current_pct    = int(STEP2_START_PCT + step2_fraction * STEP2_PCT_RANGE)
+        _set_progress(
+            step="step2",
+            step_label=f"Step 2/2 -- Fetching contracts (v2 fallback, page {page_num})...",
+            page=page_num,
+            total_pages_est=EST_PAGES,
+            records=len(all_contracts),
+            pct=current_pct,
+            message=f"Page {page_num} — {len(all_contracts):,} contracts so far...",
+        )
+        print(f"[sync] Step 2 (v2 fallback) page {page_num} (nextId={next_id})...")
+        result = await myadmin_call(
+            "GetDeviceContractsByPage",
+            {
+                "apiKey":                       session_store["user_id"],
+                "sessionId":                    session_store["session_id"],
+                "forAccount":                   MYADMIN_ACCOUNT,
+                "nextId":                       next_id,
+                "includesDeviceConnectionInfo": True,
+            },
+            timeout=120.0,
+        )
+        batch = result.get("result") or []
+        print(f"[sync] Step 2 (v2 fallback) page {page_num}: {len(batch)} contracts")
+        if not batch:
+            break
+        all_contracts.extend(batch)
+        next_id = batch[-1].get("id", 0)
+
+        # Track the largest page size seen so far as a proxy for the
+        # server's actual per-page cap (previously hardcoded to the
+        # documented 1000-record limit). A batch smaller than that
+        # observed max means this was the last (partial) page — this
+        # adapts automatically if MyAdmin's cap ever changes (e.g. to
+        # 2000) instead of silently assuming 1000 forever. The loop is
+        # still safe even if this heuristic is wrong: an incorrectly
+        # "non-final" full page just costs one extra round trip that
+        # returns empty and exits via the `if not batch` check above.
+        _max_page_size_seen = max(_max_page_size_seen, len(batch))
+        last_page = (len(batch) < _max_page_size_seen)
+
+        # ── Option 3: checkpoint every 10 pages ───────────────────────────
+        # Writes the confirmed cursor + contracts collected so far so a
+        # crash/restart can resume mid-sync.  Every 10 pages limits disk
+        # I/O while keeping worst-case resume loss to ~10,000 contracts.
+        if page_num % 10 == 0 or last_page:
+            try:
+                _save_json(CONTRACT_CHECKPOINT_FILE, {
+                    "next_id":   next_id,
+                    "page_num":  page_num,
+                    "contracts": all_contracts,
+                })
+            except Exception as ckpt_err:
+                print(f"[sync] Checkpoint write failed (non-fatal): {ckpt_err}")
+
+        if last_page:
+            break
+
+    print(f"[sync] Step 2 (v2 fallback) complete: {len(all_contracts)} total contracts")
+    return all_contracts
+
+
 async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
     """
     Pull customer + device data from MyAdmin using TWO steps.
@@ -427,7 +729,9 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
     Step 1 -- GetCurrentDeviceDatabases (FAST, ~10-30s total)
         Returns: device serial, DeviceId, DatabaseName (real Geotab DB name)
 
-    Step 2 -- GetDeviceContractsByPage (SLOW, ~2-5min, but cached 12h)
+    Step 2 -- GetDeviceContracts V3 (concurrent, cached CACHE_TTL_HOURS h),
+        falling back to legacy v2 GetDeviceContractsByPage (sequential
+        cursor walk) if V3 is unavailable/erroring/rate-limited.
         Returns: userCompany.name (customer name), isTerminated, device.id
 
     Progress is emitted to _sync_progress so the SSE endpoint can stream it
@@ -493,7 +797,7 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
         message=f"{len(all_device_dbs):,} device-db records",
     )
 
-    # -- Step 2: GetDeviceContractsByPage -------------------------------------
+    # -- Step 2: GetDeviceContracts (v3, concurrent) w/ v2 cursor fallback ----
     cache_age = time.time() - (_sync_cache.get("fetched_at") or 0)
     cache_ok  = (
         not force_refresh
@@ -513,117 +817,22 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
     else:
         print("[sync] Step 2: Fetching device contracts...")
 
-        # ── Option 3: resume from checkpoint ──────────────────────────────────
-        # If a previous sync was interrupted mid-way, a checkpoint file records
-        # the last confirmed cursor and contracts collected so far.  The next
-        # sync resumes from that point instead of restarting from page 1.
-        # The checkpoint is deleted when Step 2 completes successfully.
-        ckpt = _load_json(CONTRACT_CHECKPOINT_FILE, {})
-        if ckpt.get("next_id") and ckpt.get("contracts"):
-            all_contracts = ckpt["contracts"]
-            next_id       = ckpt["next_id"]
-            # page_num is only used for progress-bar estimation, so an
-            # approximate fallback (contracts so far / a nominal 1000-per-page
-            # guess) is fine here even if the server's actual page size differs.
-            page_num      = ckpt.get("page_num", len(all_contracts) // 1000)
-            print(f"[sync] Step 2: Resuming from checkpoint — "
-                  f"{len(all_contracts):,} contracts already fetched, nextId={next_id}")
-        else:
-            all_contracts = []
-            next_id       = 0
-            page_num      = 0
-
-        # Seeds the "biggest page seen" tracker used below to detect the
-        # final (partial) page in a size-agnostic way — see its use in the
-        # loop for why this replaces the old hardcoded 1000 check.
-        _max_page_size_seen = 1
-
-        STEP2_START_PCT = 20
-        STEP2_END_PCT   = 75
-        STEP2_PCT_RANGE = STEP2_END_PCT - STEP2_START_PCT
-        # Dynamic estimate: starts at the larger of (a) current page + 5 or
-        # (b) 50, and is updated inside the loop so it always stays exactly
-        # 5 pages ahead of reality — preventing the old hard-coded 120-page
-        # floor from pinning the bar far below 100% on a ~103-page sync.
-        EST_PAGES       = max(50, page_num + 5)
-
-        _set_progress(
-            step="step2",
-            step_label="Step 2/2 -- Fetching device contracts...",
-            pct=STEP2_START_PCT,
-            records=len(all_contracts),
-            message="Starting contract fetch..."
-                    + (f" Resuming from page ~{page_num}." if page_num else ""),
-        )
-
-        while True:
-            page_num += 1
-            # Update the rolling estimate every page (stays 5 ahead).
-            EST_PAGES      = max(EST_PAGES, page_num + 5)
-            # Use a square-root curve so the bar accelerates toward 100% rather
-            # than saturating: sqrt(page/est) grows more linearly than page/est.
-            # Cap at 0.99 so there's always a visible jump when the post-loop
-            # _set_progress(pct=75) fires on completion.
-            step2_fraction = min((page_num / EST_PAGES) ** 0.5, 0.99)
-            current_pct    = int(STEP2_START_PCT + step2_fraction * STEP2_PCT_RANGE)
+        try:
+            all_contracts = await _fetch_contracts_v3()
+            print(f"[sync] Step 2 (v3) complete: {len(all_contracts)} total contracts")
+        except Exception as v3_err:
+            # V3 unavailable/erroring/rate-limited -- fall back to the
+            # proven v2 cursor loop rather than failing the whole sync.
+            print(f"[sync] Step 2: v3 fetch failed ({v3_err}); "
+                  f"falling back to v2 GetDeviceContractsByPage...")
             _set_progress(
                 step="step2",
-                step_label=f"Step 2/2 -- Fetching contracts (page {page_num})...",
-                page=page_num,
-                total_pages_est=EST_PAGES,
-                records=len(all_contracts),
-                pct=current_pct,
-                message=f"Page {page_num} — {len(all_contracts):,} contracts so far...",
+                step_label="Step 2/2 -- v3 unavailable, falling back to v2...",
+                pct=20,
+                message=f"v3 error: {v3_err} -- retrying with legacy v2 endpoint...",
             )
-            print(f"[sync] Step 2 page {page_num} (nextId={next_id})...")
-            result = await myadmin_call(
-                "GetDeviceContractsByPage",
-                {
-                    "apiKey":                       session_store["user_id"],
-                    "sessionId":                    session_store["session_id"],
-                    "forAccount":                   MYADMIN_ACCOUNT,
-                    "nextId":                       next_id,
-                    "includesDeviceConnectionInfo": True,
-                },
-                timeout=120.0,
-            )
-            batch = result.get("result") or []
-            print(f"[sync] Step 2 page {page_num}: {len(batch)} contracts")
-            if not batch:
-                break
-            all_contracts.extend(batch)
-            next_id = batch[-1].get("id", 0)
+            all_contracts = await _fetch_contracts_v2_fallback(all_device_dbs)
 
-            # Track the largest page size seen so far as a proxy for the
-            # server's actual per-page cap (previously hardcoded to the
-            # documented 1000-record limit). A batch smaller than that
-            # observed max means this was the last (partial) page — this
-            # adapts automatically if MyAdmin's cap ever changes (e.g. to
-            # 2000) instead of silently assuming 1000 forever. The loop is
-            # still safe even if this heuristic is wrong: an incorrectly
-            # "non-final" full page just costs one extra round trip that
-            # returns empty and exits via the `if not batch` check above.
-            _max_page_size_seen = max(_max_page_size_seen, len(batch))
-            last_page = (len(batch) < _max_page_size_seen)
-
-            # ── Option 3: checkpoint every 10 pages ───────────────────────────
-            # Writes the confirmed cursor + contracts collected so far so a
-            # crash/restart can resume mid-sync.  Every 10 pages limits disk
-            # I/O while keeping worst-case resume loss to ~10,000 contracts.
-            if page_num % 10 == 0 or last_page:
-                try:
-                    _save_json(CONTRACT_CHECKPOINT_FILE, {
-                        "next_id":   next_id,
-                        "page_num":  page_num,
-                        "contracts": all_contracts,
-                    })
-                except Exception as ckpt_err:
-                    print(f"[sync] Checkpoint write failed (non-fatal): {ckpt_err}")
-
-            if last_page:
-                break
-
-        print(f"[sync] Step 2 complete: {len(all_contracts)} total contracts")
         _set_progress(
             step="step2",
             step_label="Step 2/2 -- Contracts fetched ok",
@@ -636,7 +845,7 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
         _sync_cache["device_db_records"] = all_device_dbs
         _save_json(SYNC_CACHE_FILE, _sync_cache)
 
-        # Clear checkpoint — full sync completed successfully.
+        # Clear checkpoint -- full sync completed successfully.
         try:
             if os.path.exists(CONTRACT_CHECKPOINT_FILE):
                 os.remove(CONTRACT_CHECKPOINT_FILE)
