@@ -475,8 +475,12 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
         if not batch:
             break
         all_device_dbs.extend(batch)
-        if len(batch) < 1000:
-            break
+        # Rely solely on "empty batch = done" rather than a hardcoded page-size
+        # check (previously `len(batch) < 1000`). MyAdmin's docs describe 1000
+        # as *a* page-size cap, not necessarily a permanent one — this way the
+        # loop keeps working correctly (just needing one extra empty-result
+        # round trip at the very end) regardless of what size page the server
+        # actually returns, with zero code changes needed if that ever moves.
         next_id = batch[-1].get("Id") or batch[-1].get("id") or 0
 
     print(f"[sync] Step 1 complete: {len(all_device_dbs)} total device-db records")
@@ -518,6 +522,9 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
         if ckpt.get("next_id") and ckpt.get("contracts"):
             all_contracts = ckpt["contracts"]
             next_id       = ckpt["next_id"]
+            # page_num is only used for progress-bar estimation, so an
+            # approximate fallback (contracts so far / a nominal 1000-per-page
+            # guess) is fine here even if the server's actual page size differs.
             page_num      = ckpt.get("page_num", len(all_contracts) // 1000)
             print(f"[sync] Step 2: Resuming from checkpoint — "
                   f"{len(all_contracts):,} contracts already fetched, nextId={next_id}")
@@ -525,6 +532,11 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
             all_contracts = []
             next_id       = 0
             page_num      = 0
+
+        # Seeds the "biggest page seen" tracker used below to detect the
+        # final (partial) page in a size-agnostic way — see its use in the
+        # loop for why this replaces the old hardcoded 1000 check.
+        _max_page_size_seen = 1
 
         STEP2_START_PCT = 20
         STEP2_END_PCT   = 75
@@ -582,7 +594,17 @@ async def _fetch_myadmin_customers(force_refresh: bool = False) -> List[dict]:
             all_contracts.extend(batch)
             next_id = batch[-1].get("id", 0)
 
-            last_page = (len(batch) < 1000)
+            # Track the largest page size seen so far as a proxy for the
+            # server's actual per-page cap (previously hardcoded to the
+            # documented 1000-record limit). A batch smaller than that
+            # observed max means this was the last (partial) page — this
+            # adapts automatically if MyAdmin's cap ever changes (e.g. to
+            # 2000) instead of silently assuming 1000 forever. The loop is
+            # still safe even if this heuristic is wrong: an incorrectly
+            # "non-final" full page just costs one extra round trip that
+            # returns empty and exits via the `if not batch` check above.
+            _max_page_size_seen = max(_max_page_size_seen, len(batch))
+            last_page = (len(batch) < _max_page_size_seen)
 
             # ── Option 3: checkpoint every 10 pages ───────────────────────────
             # Writes the confirmed cursor + contracts collected so far so a
