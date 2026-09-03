@@ -1184,10 +1184,11 @@ async def s3_push_all():
 
 @s3_auth_router.get("/api/s3/admins")
 async def get_admins():
-    """Return the current admin list."""
+    """Return the current admin list plus which usernames are permanently
+    protected (always-admin, never removable from the UI)."""
     if not _S3_AVAILABLE:
         raise HTTPException(503, "boto3 not installed")
-    return {"admins": _s3.get_admins()}
+    return {"admins": _s3.get_admins(), "protected": _s3.get_default_admins()}
 
 
 @s3_auth_router.post("/api/s3/admins")

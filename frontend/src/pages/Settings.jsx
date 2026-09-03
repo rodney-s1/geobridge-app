@@ -1847,9 +1847,10 @@ function S3SyncTab({ sessionData }) {
   const [syncStatus,  setSyncStatus]  = useState(null)
 
   // ── Admin state ───────────────────────────────────────────────────────────
-  const [admins,       setAdmins]       = useState(null)
-  const [isAdmin,      setIsAdmin]      = useState(false)
-  const [adminLoading, setAdminLoading] = useState(true)
+  const [admins,           setAdmins]           = useState(null)
+  const [protectedAdmins,  setProtectedAdmins]  = useState([])
+  const [isAdmin,          setIsAdmin]          = useState(false)
+  const [adminLoading,     setAdminLoading]     = useState(true)
 
   // ── Admin form ────────────────────────────────────────────────────────────
   const [newAdmin,     setNewAdmin]     = useState('')
@@ -1887,7 +1888,11 @@ function S3SyncTab({ sessionData }) {
           fetch(`${API}/api/s3/admins`),
           fetch(`${API}/api/s3/is-admin/${encodeURIComponent(currentUser)}`),
         ])
-        if (admR.ok) setAdmins((await admR.json()).admins || [])
+        if (admR.ok) {
+          const admData = await admR.json()
+          setAdmins(admData.admins || [])
+          setProtectedAdmins(admData.protected || [])
+        }
         if (isR.ok)  setIsAdmin((await isR.json()).isAdmin)
       } catch(e) {
         setAdminMsg({ type: 'err', text: e.message })
@@ -2087,9 +2092,18 @@ function S3SyncTab({ sessionData }) {
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-5">
           <h3 className="text-sm font-semibold text-slate-200 mb-1">Admin Users</h3>
           <p className="text-xs text-slate-500 mb-4">
-            Admins can push admin-only files (billing config, SKU catalog).
-            <code className="bg-slate-700/60 px-1 mx-1 rounded">developers@bluearrowmail.com</code>
-            is always protected.
+            Admins can push admin-only files (billing config, SKU catalog).{' '}
+            {protectedAdmins.length > 0 && (
+              <>
+                {protectedAdmins.map((p, i) => (
+                  <span key={p}>
+                    <code className="bg-slate-700/60 px-1 mx-1 rounded">{p}</code>
+                    {i < protectedAdmins.length - 2 ? ', ' : i === protectedAdmins.length - 2 ? 'and ' : ''}
+                  </span>
+                ))}
+                {protectedAdmins.length === 1 ? 'is' : 'are'} always protected.
+              </>
+            )}
           </p>
           {adminMsg && (
             <div className={`px-3 py-2 rounded-lg text-xs mb-3 ${adminMsg.type === 'ok' ? 'bg-emerald-900/50 text-emerald-300' : 'bg-red-900/50 text-red-300'}`}>
@@ -2109,7 +2123,7 @@ function S3SyncTab({ sessionData }) {
                       {a === currentUser.trim().toLowerCase() && (
                         <span className="text-xs text-blue-400/70">you</span>
                       )}
-                      {a === 'developers@bluearrowmail.com'
+                      {protectedAdmins.includes(a)
                         ? <span className="text-xs text-slate-600">protected</span>
                         : <DeleteBtn small onConfirm={() => handleSaveAdmins((admins || []).filter(x => x !== a))} />
                       }

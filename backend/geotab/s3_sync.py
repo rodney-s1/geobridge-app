@@ -18,6 +18,8 @@ Admin system
 - is_admin(username) checks this list
 - Non-admins can still read all data; write endpoints check is_admin() and
   return 403 if the user is not in the list
+- _DEFAULT_ADMINS are permanently protected: always present in the list and
+  never removable from the Settings UI (see get_default_admins())
 
 File tiers
 ----------
@@ -88,8 +90,10 @@ SHARED_FILES = ADMIN_ONLY_FILES | ALL_USER_FILES
 # Special S3 key for admin list
 _ADMINS_S3_KEY = "data/admins.json"
 
-# Default admin — always present even if admins.json missing from S3
-_DEFAULT_ADMIN = "developers@bluearrowmail.com"
+# Default admins — always present (even if admins.json is missing from S3)
+# and never removable from the Settings UI. Add usernames here to make them
+# permanent admins.
+_DEFAULT_ADMINS = ["developers@bluearrowmail.com", "rodney@bluearrowmail.com"]
 
 # ---------------------------------------------------------------------------
 # In-memory sync state (read by SyncStatus component via /api/s3/status)
@@ -179,6 +183,11 @@ def _bucket(cfg: Optional[Dict] = None) -> str:
 # Admin management
 # ---------------------------------------------------------------------------
 
+def get_default_admins() -> list:
+    """Return the permanently-protected admin usernames (never removable)."""
+    return list(_DEFAULT_ADMINS)
+
+
 def _load_admins_from_s3(cfg: Optional[Dict] = None) -> list:
     """Pull admins.json from S3. Returns list of admin usernames."""
     try:
@@ -186,22 +195,27 @@ def _load_admins_from_s3(cfg: Optional[Dict] = None) -> list:
         obj = s3.get_object(Bucket=_bucket(cfg), Key=_ADMINS_S3_KEY)
         data = json.loads(obj["Body"].read().decode("utf-8"))
         admins = data.get("admins", [])
-        if _DEFAULT_ADMIN not in admins:
-            admins.append(_DEFAULT_ADMIN)
+        for default_admin in _DEFAULT_ADMINS:
+            if default_admin not in admins:
+                admins.append(default_admin)
         return admins
     except Exception as e:
         if "NoSuchKey" in str(e) or "404" in str(e):
             # First run — return default admin list
-            return [_DEFAULT_ADMIN]
+            return list(_DEFAULT_ADMINS)
         logger.warning("s3_sync: could not load admins.json: %s", e)
-        return [_DEFAULT_ADMIN]
+        return list(_DEFAULT_ADMINS)
 
 
 def save_admins_to_s3(admins: list, cfg: Optional[Dict] = None) -> bool:
     """Push admins.json to S3. Only callable by existing admins."""
     try:
-        if _DEFAULT_ADMIN not in admins:
-            admins = [_DEFAULT_ADMIN] + admins
+        # Defaults are always kept, prepended in a stable order, and never dropped.
+        merged = list(_DEFAULT_ADMINS)
+        for a in admins:
+            if a not in merged:
+                merged.append(a)
+        admins = merged
         payload = json.dumps({"admins": admins}, indent=2).encode("utf-8")
         s3 = _client(cfg)
         s3.put_object(
