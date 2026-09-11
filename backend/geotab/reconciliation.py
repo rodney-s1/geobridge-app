@@ -1015,20 +1015,27 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                 mapping_tier = "sub_account_tag"
                 lookup_code  = "Cameras sub-account"
 
-            # -- Tier 0.5b: HN serial prefix + Pro Mode = DM Service Fee -------
-            # Devices with serial numbers starting with "HN" on Pro Mode billing
-            # are DM (Data Management) units. They don't receive the CELU-TP-250
-            # promo code in MyAdmin but belong to the same DM Service Fee family.
-            # HN serials always correspond to the "(Hardwire)" QB SKU variant;
-            # this flag is passed through to Tier 4.5 to select the right variant.
-            is_hn_serial = serial_upper.startswith("HN")
+            # -- Tier 0.5b: HN/C1 serial prefix + Pro Mode = DM Service Fee ----
+            # Devices with serial numbers starting with "HN" or "C1" on Pro
+            # Mode billing are DM (Digital Matter) hardwire units. They don't
+            # receive the CELU-TP-250 promo code in MyAdmin but belong to the
+            # same DM Service Fee family. Both prefixes are already flagged
+            # dmExcluded=true in serial_prefix_mappings.json (excluded from
+            # prorated invoices via DM_SERIAL_PREFIXES in invoices.py) — this
+            # tier is what routes them correctly on the recurring/reconciled
+            # side too, instead of falling through to the generic Pro Mode
+            # default ("Service Fee Geotab (Pro)").
+            # HN/C1 serials always correspond to the "(Hardwire)" QB SKU
+            # variant; this flag is passed through to Tier 4.5 to select the
+            # right variant.
+            is_hn_serial = serial_upper.startswith("HN") or serial_upper.startswith("C1")
             if (sku_key is None
                     and not promo_code
                     and is_hn_serial
                     and billing_plan.upper() == "PRO MODE"):
                 sku_key      = "DM Service Fee"
                 mapping_tier = "serial_prefix"
-                lookup_code  = "HN serial + Pro Mode"
+                lookup_code  = "HN/C1 serial + Pro Mode"
             else:
                 is_hn_serial = False   # only relevant when we actually triggered Tier 0.5b
 
@@ -1476,8 +1483,11 @@ async def get_reconciliation(customer_id: str = "", status_filter: str = ""):
                     na_sku_key      = "SS Service Fee"
                     na_price_source = "serial_prefix"
 
-                # NA-0.5b: HN serial + (no promoCode) → DM Service Fee
-                if na_sku_key is None and not na_promo and na_serial.startswith("HN"):
+                # NA-0.5b: HN/C1 serial + (no promoCode) → DM Service Fee
+                # (mirrors active-device Tier 0.5b — see its comment for why
+                # C1 was added alongside HN as a Digital Matter hardwire prefix)
+                if (na_sku_key is None and not na_promo
+                        and (na_serial.startswith("HN") or na_serial.startswith("C1"))):
                     na_sku_key      = "DM Service Fee"
                     na_price_source = "serial_prefix"
 
