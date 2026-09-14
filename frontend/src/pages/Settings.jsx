@@ -840,6 +840,11 @@ function CustomerOverridesTab({ overrides, catalog, onRefresh }) {
   const [page, setPage] = useState(1)
   const PAGE_SIZE = 50
 
+  // Editing state -- id is the composite `customerName|skuKey` key returned by the backend.
+  const [editId, setEditId] = useState(null)          // id of the row currently being edited
+  const [editOriginalId, setEditOriginalId] = useState(null)  // id before any rename, so we can clean up the old row
+  const [editForm, setEditForm] = useState({})
+
   const filtered = overrides.filter(o =>
     !search ||
     o.customerName.toLowerCase().includes(search.toLowerCase()) ||
@@ -879,6 +884,47 @@ function CustomerOverridesTab({ overrides, catalog, onRefresh }) {
     onRefresh()
   }
 
+  function startEdit(o) {
+    setEditId(o.id)
+    setEditOriginalId(o.id)
+    setEditForm({ customerName: o.customerName, skuKey: o.skuKey, price: String(o.price) })
+  }
+
+  function cancelEdit() {
+    setEditId(null)
+    setEditOriginalId(null)
+    setEditForm({})
+  }
+
+  async function saveEdit() {
+    setSaving(true)
+    try {
+      const customerName = (editForm.customerName || '').trim()
+      const skuKey = editForm.skuKey || ''
+      const price = parseFloat(editForm.price) || 0
+      // The backend's override id is `customerName|skuKey`. If either changed,
+      // this is effectively a rename -- delete the old row first so we don't
+      // leave a stale duplicate with the previous identity behind.
+      const newId = `${customerName}|${skuKey}`
+      if (editOriginalId && editOriginalId !== newId) {
+        await fetch(`${API}/api/settings/customer-overrides/${encodeURIComponent(editOriginalId)}`, { method: 'DELETE' })
+      }
+      const r = await fetch(`${API}/api/settings/customer-overrides`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerName, skuKey, price }),
+      })
+      if (!r.ok) throw new Error(await r.text())
+      setMsg({ type: 'ok', text: 'Override saved.' })
+      cancelEdit()
+      onRefresh()
+    } catch (e) {
+      setMsg({ type: 'err', text: e.message })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       {msg && (
@@ -897,7 +943,7 @@ function CustomerOverridesTab({ overrides, catalog, onRefresh }) {
           className="flex-1 min-w-[200px] bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
         />
         <button
-          onClick={() => setAdding(v => !v)}
+          onClick={() => { setAdding(v => !v); cancelEdit() }}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg font-medium transition-colors"
         >
           + Add Override
@@ -982,6 +1028,51 @@ function CustomerOverridesTab({ overrides, catalog, onRefresh }) {
             ) : paged.map(o => {
               const catalogEntry = catalog.find(s => s.skuKey === o.skuKey)
               const isCustom = catalogEntry && o.price !== catalogEntry.defaultPrice
+
+              if (editId === o.id) {
+                return (
+                  <tr key={o.id} className="border-b border-slate-700/50 bg-slate-750">
+                    <td className="px-4 py-2" colSpan={5}>
+                      <div className="grid grid-cols-3 gap-3 mb-2">
+                        <div className="col-span-1">
+                          <label className="block text-xs text-slate-400 mb-1">Customer Name *</label>
+                          <input value={editForm.customerName || ''}
+                            onChange={e => setEditForm(f => ({ ...f, customerName: e.target.value }))}
+                            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">SKU *</label>
+                          <select value={editForm.skuKey || ''}
+                            onChange={e => {
+                              const key = e.target.value
+                              const found = catalog.find(s => s.skuKey === key)
+                              setEditForm(f => ({ ...f, skuKey: key, price: found ? String(found.defaultPrice) : f.price }))
+                            }}
+                            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500">
+                            <option value="">— select —</option>
+                            {catalog.map(s => <option key={s.skuKey} value={s.skuKey}>{s.skuKey}</option>)}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-slate-400 mb-1">Price *</label>
+                          <input type="number" step="0.01" value={editForm.price || ''}
+                            onChange={e => setEditForm(f => ({ ...f, price: e.target.value }))}
+                            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button disabled={saving || !(editForm.customerName || '').trim() || !editForm.skuKey || editForm.price === ''}
+                          onClick={saveEdit}
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded font-medium">
+                          {saving ? 'Saving…' : 'Save'}
+                        </button>
+                        <button onClick={cancelEdit} className="px-3 py-1 text-slate-400 hover:text-white text-sm">Cancel</button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              }
+
               return (
                 <tr key={o.id} className="border-b border-slate-700/50 hover:bg-slate-750 transition-colors group">
                   <td className="px-4 py-2.5 text-slate-200 text-sm truncate" title={o.customerName}>{o.customerName}</td>
@@ -1000,7 +1091,9 @@ function CustomerOverridesTab({ overrides, catalog, onRefresh }) {
                     {catalogEntry ? fmtPrice(catalogEntry.defaultPrice) : '—'}
                   </td>
                   <td className="px-4 py-2.5 text-right">
-                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-end gap-2">
+                      <button onClick={() => startEdit(o)}
+                        className="text-xs px-2 py-0.5 text-blue-400 hover:text-blue-300">Edit</button>
                       <DeleteBtn small onConfirm={() => deleteOverride(o.id)} />
                     </div>
                   </td>
