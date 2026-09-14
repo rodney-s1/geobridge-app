@@ -13,7 +13,9 @@ Endpoints:
 
   GET  /api/settings/sku-mappings             list rate-plan -> SKU mappings
   POST /api/settings/sku-mappings             upsert a mapping
-  DELETE /api/settings/sku-mappings/{rate_plan_code}  remove a mapping
+  DELETE /api/settings/sku-mappings/{rate_plan_code}?plan_level=  remove a mapping
+                                                       (planLevel disambiguates compound
+                                                       Tier 1.5 rows that share a ratePlanCode)
 
   GET  /api/settings/customer-overrides            list per-customer price overrides
   POST /api/settings/customer-overrides            upsert {customerName, skuKey, price}
@@ -288,7 +290,18 @@ async def upsert_mapping(body: MappingUpsert):
         rate_plan_code = plan_level
         plan_level     = ""
 
-    existing = next((m for m in sku_mappings if m["ratePlanCode"].upper() == rate_plan_code), None)
+    # IMPORTANT: ratePlanCode alone is NOT a unique key. A single promo code
+    # can legitimately have multiple mapping rows that only differ by
+    # planLevel (Tier 1.5 compound entries, e.g. BUNDLE-GO-INS has one row
+    # for "GO CORE" and another for "GO"). Matching on ratePlanCode alone
+    # here would silently overwrite the wrong variant when a user edits one
+    # of them. Match on the (ratePlanCode, planLevel) pair instead.
+    existing = next(
+        (m for m in sku_mappings
+         if m["ratePlanCode"].upper() == rate_plan_code
+         and (m.get("planLevel") or "").upper() == plan_level),
+        None,
+    )
     sku_keys = [k for k in body.skuKeys if isinstance(k, str) and k.strip()]
     data = {
         "ratePlanCode": rate_plan_code,
@@ -310,11 +323,29 @@ async def upsert_mapping(body: MappingUpsert):
 
 
 @router.delete("/settings/sku-mappings/{rate_plan_code:path}")
-async def delete_mapping(rate_plan_code: str):
+async def delete_mapping(rate_plan_code: str, plan_level: str = ""):
+    """
+    Deletes the mapping row matching ratePlanCode (case-insensitive).
+    If plan_level is given, only the row whose planLevel also matches is
+    removed -- required to correctly target one variant of a compound
+    Tier 1.5 pair (e.g. BUNDLE-GO-INS/GO CORE vs BUNDLE-GO-INS/GO) instead
+    of deleting whichever row happens to come first.
+    If plan_level is omitted, all rows with that ratePlanCode are removed
+    (legacy behaviour, safe for the common case where a code has only one
+    row).
+    """
     global sku_mappings
     sku_mappings = _mappings()  # reload from disk first
     before = len(sku_mappings)
-    sku_mappings = [m for m in sku_mappings if m["ratePlanCode"].upper() != rate_plan_code.upper()]
+    plan_level_upper = plan_level.strip().upper()
+    if plan_level_upper:
+        sku_mappings = [
+            m for m in sku_mappings
+            if not (m["ratePlanCode"].upper() == rate_plan_code.upper()
+                    and (m.get("planLevel") or "").upper() == plan_level_upper)
+        ]
+    else:
+        sku_mappings = [m for m in sku_mappings if m["ratePlanCode"].upper() != rate_plan_code.upper()]
     _save(SKU_MAPPINGS_FILE, sku_mappings)
     return {"success": True, "removed": before - len(sku_mappings)}
 

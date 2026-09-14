@@ -358,9 +358,19 @@ function SkuCatalogTab({ catalog, onRefresh }) {
 // ═══════════════════════════════════════════════════════════════════════════════
 //  TAB 2 — Rate Plan Mappings
 // ═══════════════════════════════════════════════════════════════════════════════
+// ratePlanCode alone is NOT unique -- Tier 1.5 compound entries let the same
+// code appear twice with different planLevel values (e.g. BUNDLE-GO-INS has
+// a "GO CORE" row and a separate "GO" row). Build a stable composite key so
+// React list identity, edit-row targeting, and delete all address the exact
+// row the user clicked instead of "whichever row has this ratePlanCode".
+function mappingRowKey(m) {
+  return `${m.ratePlanCode || ''}\u0000${m.planLevel || ''}`
+}
+
 function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkPrefill = null }) {
-  const [editCode,         setEditCode]         = useState(null)
-  const [editOriginalCode, setEditOriginalCode] = useState(null)  // tracks code before rename
+  const [editKey,           setEditKey]           = useState(null)   // composite key of row being edited
+  const [editOriginalCode,  setEditOriginalCode]   = useState(null)  // tracks code before rename
+  const [editOriginalPlanLevel, setEditOriginalPlanLevel] = useState('')  // planLevel before rename, to target the right row on delete
   const [editForm, setEditForm] = useState({})
   const [adding, setAdding] = useState(false)
   const [addPlanLevel, setAddPlanLevel] = useState('')  // optional MyAdmin billing plan name
@@ -392,11 +402,16 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
 
   const skuOptions = catalog.map(s => s.skuKey).sort()
 
-  const filtered = mappings.filter(m =>
-    !search || m.ratePlanCode.toLowerCase().includes(search.toLowerCase()) ||
-    (m.planLevel || '').toLowerCase().includes(search.toLowerCase()) ||
-    (m.skuKeys || [m.skuKey]).some(k => k.toLowerCase().includes(search.toLowerCase()))
-  )
+  const filtered = mappings.filter(m => {
+    if (!search) return true
+    const q = search.toLowerCase()
+    return (
+      m.ratePlanCode.toLowerCase().includes(q) ||
+      (m.planLevel || '').toLowerCase().includes(q) ||
+      (m.notes || '').toLowerCase().includes(q) ||
+      (m.skuKeys || [m.skuKey]).some(k => k.toLowerCase().includes(q))
+    )
+  })
 
   // Add a SKU to the ordered list (add form)
   function addSkuToList(key) {
@@ -439,12 +454,19 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
     )
   }
 
-  async function saveMapping(data, originalCode = null) {
+  async function saveMapping(data, originalCode = null, originalPlanLevel = '') {
     setSaving(true)
     try {
-      // If the rate plan code was renamed, delete the old entry first
-      if (originalCode && originalCode.toUpperCase() !== data.ratePlanCode.toUpperCase()) {
-        await fetch(`${API}/api/settings/sku-mappings/${encodeURIComponent(originalCode)}`, { method: 'DELETE' })
+      // If the rate plan code OR the billing plan name changed, this is
+      // effectively a rename -- delete the old (ratePlanCode, planLevel)
+      // row first so we don't leave a stale duplicate behind. Target the
+      // delete with planLevel so we remove exactly the row being edited,
+      // not another variant that happens to share the same ratePlanCode.
+      const codeChanged  = originalCode && originalCode.toUpperCase() !== (data.ratePlanCode || '').toUpperCase()
+      const planChanged  = originalCode && (originalPlanLevel || '').toUpperCase() !== (data.planLevel || '').toUpperCase()
+      if (codeChanged || planChanged) {
+        const params = originalPlanLevel ? `?plan_level=${encodeURIComponent(originalPlanLevel)}` : ''
+        await fetch(`${API}/api/settings/sku-mappings/${encodeURIComponent(originalCode)}${params}`, { method: 'DELETE' })
       }
       const r = await fetch(`${API}/api/settings/sku-mappings`, {
         method: 'POST',
@@ -453,8 +475,9 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
       })
       if (!r.ok) throw new Error(await r.text())
       setMsg({ type: 'ok', text: 'Mapping saved.' })
-      setEditCode(null)
+      setEditKey(null)
       setEditOriginalCode(null)
+      setEditOriginalPlanLevel('')
       setAdding(false)
       setAddPlanLevel(''); setAddCode(''); setAddSkuKeys([]); setAddSkuPick(''); setAddNotes('')
       onRefresh()
@@ -465,8 +488,9 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
     }
   }
 
-  async function deleteMapping(code) {
-    await fetch(`${API}/api/settings/sku-mappings/${encodeURIComponent(code)}`, { method: 'DELETE' })
+  async function deleteMapping(code, planLevel = '') {
+    const params = planLevel ? `?plan_level=${encodeURIComponent(planLevel)}` : ''
+    await fetch(`${API}/api/settings/sku-mappings/${encodeURIComponent(code)}${params}`, { method: 'DELETE' })
     onRefresh()
   }
 
@@ -574,7 +598,7 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
           className="flex-1 min-w-[200px] bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-blue-500"
         />
         <button
-          onClick={() => { setAdding(true); setEditCode(null) }}
+          onClick={() => { setAdding(true); setEditKey(null) }}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg font-medium transition-colors"
         >
           + Add Mapping
@@ -670,8 +694,8 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
                 </td>
               </tr>
             ) : filtered.map(m => (
-              <React.Fragment key={m.ratePlanCode}>
-                {editCode === m.ratePlanCode ? (
+              <React.Fragment key={mappingRowKey(m)}>
+                {editKey === mappingRowKey(m) ? (
                   <tr className="border-b border-slate-700/50 bg-slate-750">
                     <td className="px-4 py-2" colSpan={5}>
                       <div className="grid grid-cols-2 gap-3 mb-2">
@@ -724,11 +748,15 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
                       </div>
                       <div className="flex gap-2">
                         <button disabled={saving || (!(editForm.planLevel || '').trim() && !(editForm.ratePlanCode || '').trim())}
-                          onClick={() => saveMapping({ ...editForm, planLevel: editForm.planLevel || '', skuKeys: editForm.skuKeys || [editForm.skuKey], defaultPrice: parseFloat(editForm.defaultPrice) || 0 }, editOriginalCode)}
+                          onClick={() => saveMapping(
+                            { ...editForm, planLevel: editForm.planLevel || '', skuKeys: editForm.skuKeys || [editForm.skuKey], defaultPrice: parseFloat(editForm.defaultPrice) || 0 },
+                            editOriginalCode,
+                            editOriginalPlanLevel,
+                          )}
                           className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded font-medium">
                           {saving ? 'Saving…' : 'Save'}
                         </button>
-                        <button onClick={() => { setEditCode(null); setEditOriginalCode(null) }} className="px-3 py-1 text-slate-400 hover:text-white text-sm">Cancel</button>
+                        <button onClick={() => { setEditKey(null); setEditOriginalCode(null); setEditOriginalPlanLevel('') }} className="px-3 py-1 text-slate-400 hover:text-white text-sm">Cancel</button>
                       </div>
                     </td>
                   </tr>
@@ -782,9 +810,9 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
                     <td className="px-4 py-2.5 text-slate-400 text-xs hidden lg:table-cell truncate" title={m.notes}>{m.notes || '—'}</td>
                     <td className="px-4 py-2.5 text-right">
                       <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => { setEditCode(m.ratePlanCode); setEditOriginalCode(m.ratePlanCode); setEditForm({ ...m }) }}
+                        <button onClick={() => { setEditKey(mappingRowKey(m)); setEditOriginalCode(m.ratePlanCode); setEditOriginalPlanLevel(m.planLevel || ''); setEditForm({ ...m }) }}
                           className="text-xs px-2 py-0.5 text-blue-400 hover:text-blue-300">Edit</button>
-                        <DeleteBtn small onConfirm={() => deleteMapping(m.ratePlanCode)} />
+                        <DeleteBtn small onConfirm={() => deleteMapping(m.ratePlanCode, m.planLevel || '')} />
                       </div>
                     </td>
                   </tr>
