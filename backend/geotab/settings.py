@@ -616,26 +616,171 @@ def _is_truncated_qb_item(item_str: str) -> bool:
     return len(item_str) == _QB_ITEM_TRUNCATION_LEN and item_str.endswith('...') and not item_str.endswith('...)')
 
 
-def _resolve_truncated_sku_name(item_str: str, known_sku_names: set) -> Optional[str]:
+def _is_phantom_sku_key(sku_key: str) -> bool:
+    """
+    True if a CATALOG skuKey itself looks like it was created by this
+    truncation bug before the fix existed -- i.e. it ends in "..." with no
+    closing paren. Unlike _is_truncated_qb_item() (which checks the raw
+    99-char "Group:Item" CSV string), this checks the bare skuKey already
+    stored in sku_catalog.json (no group prefix, so it's shorter than 99).
+    Used by _purge_phantom_skus() to find and clean up pre-existing phantom
+    entries left over from before this fix shipped, on machines that
+    already had the bug corrupt their live catalog.
+    """
+    return sku_key.endswith('...') and not sku_key.endswith('...)')
+
+
+def _purge_phantom_skus(catalog: list, overrides: list, qty_records: list,
+                         auth_skus: list) -> dict:
+    """
+    Self-healing cleanup: find any catalog SKUs that look like leftover
+    phantom truncation artifacts from BEFORE this fix shipped (see
+    _is_phantom_sku_key), and merge their overrides/quantities/auth entries
+    onto the correct existing clean SKU, then remove the phantom catalog
+    entry. Runs automatically at the start of every CSV import so a machine
+    that already has corrupted data from prior imports self-heals without
+    the user needing a manual one-time fix.
+
+    Mutates catalog/overrides/qty_records/auth_skus IN PLACE. Returns a
+    summary dict for the import response. Ambiguous phantom keys (no single
+    clean catalog SKU is an unambiguous prefix match) are left untouched
+    and reported separately so nothing is silently guessed wrong.
+    """
+    clean_names = {s['skuKey'] for s in catalog if not _is_phantom_sku_key(s['skuKey'])}
+    phantom_entries = [s for s in catalog if _is_phantom_sku_key(s['skuKey'])]
+
+    merged: dict = {}   # phantom_key -> clean_key
+    unresolved: list = []
+
+    clean_cat_by_key = {s['skuKey']: s.get('category') for s in catalog if not _is_phantom_sku_key(s['skuKey'])}
+
+    for s in phantom_entries:
+        phantom_key = s['skuKey']
+        candidates = [k for k in clean_names if phantom_key.startswith(k)]
+        # A phantom_key is (by construction) a prefix-superset of every
+        # matching candidate, so a shorter candidate that matches is always
+        # itself a substring of any longer matching candidate too (e.g.
+        # "Predictive Coach" is a prefix of "Predictive Coach Service Fee").
+        # Length alone can't disambiguate that -- but the QB *group* (never
+        # truncated, stored as this phantom entry's own 'category') can:
+        # narrow to candidates whose category matches the phantom's group
+        # first. Only fall back to the unfiltered set if that check finds
+        # none (missing category data) -- and even then, only auto-merge
+        # when exactly one candidate remains either way.
+        phantom_cat = s.get('category')
+        cat_filtered = [k for k in candidates if clean_cat_by_key.get(k) == phantom_cat]
+        pool = cat_filtered if cat_filtered else candidates
+        # Within the (group-narrowed) pool, prefer the longest/most-specific
+        # match -- same-category nesting (e.g. "Geotab Service" -> "Geotab
+        # Service (GO Bundle-SBWI)") is normal catalog granularity; only an
+        # exact-length tie within the pool is a genuine unresolved ambiguity.
+        pool.sort(key=len, reverse=True)
+        if not pool or (len(pool) > 1 and len(pool[0]) == len(pool[1])):
+            unresolved.append(phantom_key)
+            continue
+        merged[phantom_key] = pool[0]
+
+    if not merged:
+        return {'phantomSkusMerged': [], 'phantomSkusUnresolved': unresolved}
+
+    for r in overrides:
+        if r.get('skuKey') in merged:
+            r['skuKey'] = merged[r['skuKey']]
+            r['id'] = f"{r['customerName']}|{r['skuKey']}"
+    for r in qty_records:
+        if r.get('skuKey') in merged:
+            r['skuKey'] = merged[r['skuKey']]
+            r['id'] = f"{r['customerName']}|{r['skuKey']}"
+    for r in auth_skus:
+        if r.get('skuKey') in merged:
+            r['skuKey'] = merged[r['skuKey']]
+
+    catalog[:] = [s for s in catalog if s['skuKey'] not in merged]
+
+    return {
+        'phantomSkusMerged':     sorted(f"{p} -> {c}" for p, c in merged.items()),
+        'phantomSkusUnresolved': unresolved,
+    }
+
+
+def _resolve_truncated_sku_name(item_str: str, known_sku_names: set,
+                                 known_sku_categories: Optional[dict] = None) -> Optional[str]:
     """
     Recover the real sku_name for a truncated QB Item string by finding the
-    longest already-known catalog skuKey that the truncated string's
-    "group:sku_name" prefix starts with. Returns None if no unambiguous
-    match is found (caller should then skip the row rather than guess).
+    already-known CLEAN catalog skuKey that the truncated string's
+    "group:sku_name" prefix starts with. Returns None if no single
+    unambiguous candidate is found (caller should then skip the row rather
+    than guess).
+
+    known_sku_categories: optional {skuKey: category} map (the catalog's
+    'category' field, which is always the QB group the SKU was last seen
+    under). Used to disambiguate multiple prefix candidates by preferring
+    the one(s) whose category matches this item's own (never-truncated)
+    group prefix -- see IMPORTANT #2 below. If omitted, disambiguation
+    falls back to length alone (may leave real ambiguities unresolved).
+
+    IMPORTANT #1: candidates that are themselves truncated (i.e. a phantom
+    SKU from a PRIOR occurrence of this same bug, already sitting in the
+    catalog before this fix was deployed) are excluded from matching.
+    Without this guard, a truncated item string is itself a valid "prefix
+    match" against its own already-existing phantom entry -- and since a
+    phantom key is always longer than the real one (it has extra
+    description text baked in), a "prefer the longest match" heuristic
+    would keep re-selecting the phantom SKU forever instead of ever
+    recovering the real one. This was found happening in production: a
+    phantom "Geotab Service (GO Bundle-SBWI) (Service Fee Geotab (GO
+    BUNDLE)..." entry already existed in the user's live catalog (created
+    before this fix shipped), so this function kept "recovering" back onto
+    that same phantom key every import.
+
+    IMPORTANT #2: multiple candidates of DIFFERENT lengths can be
+    genuinely ambiguous, and must NOT always be resolved by picking the
+    longest. Every candidate here is (by construction) a prefix of the
+    same truncated string, so if a short candidate matches, any longer
+    candidate that is itself an extension of it will *also* match -- e.g.
+    "Predictive Coach" (16 chars) is a prefix of "Predictive Coach Service
+    Fee" (28 chars), and both are prefixes of the truncated CSV string. A
+    same-length-only tie check misses this; blindly preferring the longest
+    was confirmed wrong in production testing against that exact
+    "Predictive Coach" catalog ambiguity, which the user explicitly asked
+    to leave unresolved. HOWEVER, this same nesting pattern is also the
+    NORMAL, safe case for catalog naming granularity (e.g. "Geotab
+    Service" vs "Geotab Service (GO Bundle-SBWI)" are both legitimately
+    valid SKUs, same category, and length correctly picks the more
+    specific one) -- always requiring a single candidate would wrongly
+    flag those as unresolved too. The QB group prefix (text before the
+    first ':', never truncated) breaks the tie correctly in both cases:
+    narrow candidates to those whose catalog category matches this item's
+    own group first; only fall back to the full candidate list if that
+    yields none (e.g. missing category data). Resolve only when exactly
+    one candidate remains after that narrowing.
     """
     if ':' in item_str:
-        rest = item_str[item_str.index(':') + 1:].strip()
+        group = item_str[:item_str.index(':')].strip()
+        rest  = item_str[item_str.index(':') + 1:].strip()
     else:
-        rest = item_str
-    candidates = [k for k in known_sku_names if rest.startswith(k)]
+        group = ''
+        rest  = item_str
+    candidates = [
+        k for k in known_sku_names
+        if rest.startswith(k) and not k.endswith('...')
+    ]
     if not candidates:
         return None
-    # Prefer the longest match (most specific) in case of ambiguity like
-    # "Predictive Coach" vs "Predictive Coach Service Fee".
-    candidates.sort(key=len, reverse=True)
-    if len(candidates) > 1 and len(candidates[0]) == len(candidates[1]):
-        return None  # genuinely ambiguous -- let caller skip/flag it
-    return candidates[0]
+    if known_sku_categories:
+        cat_filtered = [k for k in candidates if known_sku_categories.get(k) == group]
+        pool = cat_filtered if cat_filtered else candidates
+    else:
+        pool = candidates
+    # Within the (group-narrowed) pool, prefer the longest/most-specific
+    # match -- safe now because same-category nesting (e.g. "Geotab
+    # Service" -> "Geotab Service (GO Bundle-SBWI)") is normal catalog
+    # granularity, not cross-category ambiguity like Predictive Coach
+    # (which the group filter above already separated out).
+    pool.sort(key=len, reverse=True)
+    if len(pool) > 1 and len(pool[0]) == len(pool[1]):
+        return None  # still a genuine same-length tie -- flag, don't guess
+    return pool[0]
 
 
 # Mapping of (group, sku_name) -> disambiguated skuKey for QB items where the
@@ -649,7 +794,8 @@ _QB_GROUP_SKU_REMAP: dict = {
 }
 
 
-def _parse_qb_csv(content: str, known_sku_names: Optional[set] = None) -> dict:
+def _parse_qb_csv(content: str, known_sku_names: Optional[set] = None,
+                   known_sku_categories: Optional[dict] = None) -> dict:
     """
     Parse QB invoice CSV (doubled-comma format).
     Col 5=Type, Col 11=Memo, Col 13=Name, Col 15=Item (full QB path), Col 17=Qty, Col 19=Sales Price
@@ -728,7 +874,7 @@ def _parse_qb_csv(content: str, known_sku_names: Optional[set] = None) -> dict:
         # instead; if we can't be sure, skip the row rather than guess wrong.
         recovered_from_truncation = False
         if _is_truncated_qb_item(item_raw):
-            resolved = _resolve_truncated_sku_name(item_raw, known_sku_names)
+            resolved = _resolve_truncated_sku_name(item_raw, known_sku_names, known_sku_categories)
             if resolved is None:
                 truncated_skipped.append(item_raw)
                 continue
@@ -811,9 +957,30 @@ async def import_qb_skus(file: UploadFile = File(...)):
     sku_catalog = _catalog()    # reload from disk before import
     cust_ovr    = _overrides()  # reload from disk before import
 
+    # Self-heal: a machine that was already corrupted by the truncation bug
+    # (see _is_phantom_sku_key) BEFORE this fix shipped has phantom SKUs
+    # sitting in its live catalog/overrides/auth-skus from prior imports.
+    # Left alone, _resolve_truncated_sku_name() would keep "recovering"
+    # truncated rows back onto those pre-existing phantom keys forever
+    # (they're always a longer/more-specific prefix match than the real
+    # SKU). Purge and merge them onto the correct clean SKU FIRST, so the
+    # known_sku_names passed into this import are clean.
+    # (qb_invoice_quantities.json is intentionally excluded here -- it gets
+    # fully rebuilt from this import's own data a few lines below, using
+    # the now-clean known_sku_names, so any old phantom rows in it are
+    # discarded automatically rather than needing an explicit purge.)
+    auth_skus = _qb_auth_skus()
+    purge_result = _purge_phantom_skus(sku_catalog, cust_ovr, [], auth_skus)
+    if purge_result['phantomSkusMerged']:
+        _save(SKU_CATALOG_FILE, sku_catalog)
+        _save(CUSTOMER_OVERRIDES_FILE, cust_ovr)
+        _save(QB_AUTH_SKUS_FILE, auth_skus)
+
     known_sku_names = {s['skuKey'] for s in sku_catalog}
+    known_sku_categories = {s['skuKey']: s.get('category') for s in sku_catalog}
     content = (await file.read()).decode("utf-8-sig", errors="replace")
-    parsed  = _parse_qb_csv(content, known_sku_names=known_sku_names)
+    parsed  = _parse_qb_csv(content, known_sku_names=known_sku_names,
+                             known_sku_categories=known_sku_categories)
 
     skus_added   = 0
     skus_updated = 0
@@ -912,7 +1079,17 @@ async def import_qb_skus(file: UploadFile = File(...)):
         # the Hanover Cost Share / Rosco / Can Do Crew investigation. If
         # this list is non-empty, add the real SKU to the catalog manually
         # (or rename an existing one) so the next import resolves it.
-        "truncatedSkipped": truncated_skipped,
+        "truncatedSkipped":       truncated_skipped,
+        # Pre-existing phantom SKUs (from before this fix shipped) that were
+        # found already sitting in the catalog and automatically merged onto
+        # their correct clean SKU by this import's self-heal pass. Non-empty
+        # only on a machine's first import after upgrading past this fix.
+        "phantomSkusMerged":      purge_result['phantomSkusMerged'],
+        # Pre-existing phantom SKUs that could NOT be unambiguously resolved
+        # to a single clean catalog SKU -- these are left as-is; a manual
+        # decision is needed (same situation as "Predictive Coach Service
+        # Fee" during the original investigation).
+        "phantomSkusUnresolved":  purge_result['phantomSkusUnresolved'],
     }
 
 
