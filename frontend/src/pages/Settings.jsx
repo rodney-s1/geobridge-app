@@ -586,22 +586,22 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
         <div id="mapping-add-form" className="bg-slate-800 border border-blue-500/40 rounded-xl p-4 space-y-3">
           <div className="text-sm font-semibold text-blue-300 mb-1">New Rate Plan → SKU Mapping</div>
           <div className="text-xs text-slate-500 mb-2">
-            Optionally set a <span className="text-amber-300">billing plan name</span> from MyAdmin exactly as it appears
-            (e.g. <code className="font-mono bg-slate-700/60 px-1 rounded">GO CORE</code>, <code className="font-mono bg-slate-700/60 px-1 rounded">PROPLUS MODE</code>) when the same
-            <span className="text-amber-300"> rate plan / promo code</span> (e.g. <code className="font-mono bg-slate-700/60 px-1 rounded">SWELL-NOINS3</code>) needs a different QB SKU depending on which billing plan it's under.
-            Leave Billing Plan Name blank if the code alone is enough to determine the SKU.
+            Every device always has a <span className="text-amber-300">billing plan name</span> from MyAdmin (e.g. <code className="font-mono bg-slate-700/60 px-1 rounded">PRO MODE</code>,
+            <code className="font-mono bg-slate-700/60 px-1 rounded">GO CORE</code>) — enter it exactly as it appears. Add a <span className="text-amber-300">rate plan / promo code</span> (e.g. <code className="font-mono bg-slate-700/60 px-1 rounded">SWELL-NOINS3</code>)
+            only if this device also carries one <em>and</em> it needs a different QB SKU than the billing plan alone would give it.
+            Leave Rate Plan Code blank for a plain billing-plan mapping, or leave Billing Plan Name blank if a promo code should match on its own regardless of plan.
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="block text-xs text-slate-400 mb-1">Billing Plan Name <span className="text-slate-600 font-normal">— optional, only needed to disambiguate</span></label>
+              <label className="block text-xs text-slate-400 mb-1">Billing Plan Name <span className="text-slate-600 font-normal">— e.g. PRO MODE, GO CORE</span></label>
               <input value={addPlanLevel} onChange={e => setAddPlanLevel(e.target.value.toUpperCase())}
-                placeholder="e.g. GO CORE (leave blank if not needed)"
+                placeholder="e.g. PRO MODE"
                 className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 font-mono focus:outline-none focus:border-blue-500" />
             </div>
             <div className="col-span-2">
-              <label className="block text-xs text-slate-400 mb-1">Rate Plan Code *</label>
+              <label className="block text-xs text-slate-400 mb-1">Rate Plan Code <span className="text-slate-600 font-normal">— optional, only if this plan also has a promo code</span></label>
               <input value={addCode} onChange={e => setAddCode(e.target.value.toUpperCase())}
-                placeholder="e.g. PROPLUS MODE or SWELL-NOINS3"
+                placeholder="e.g. SWELL-NOINS3 (leave blank if none)"
                 className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 font-mono focus:outline-none focus:border-blue-500" />
             </div>
             <div className="col-span-2">
@@ -628,7 +628,7 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
             </div>
           </div>
           <div className="flex gap-2">
-            <button disabled={saving || !addCode.trim() || addSkuKeys.length === 0}
+            <button disabled={saving || (!addPlanLevel.trim() && !addCode.trim()) || addSkuKeys.length === 0}
               onClick={() => saveMapping({ ratePlanCode: addCode, planLevel: addPlanLevel, skuKeys: addSkuKeys, defaultPrice: 0, notes: addNotes })}
               className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded-lg font-medium">
               {saving ? 'Saving…' : 'Save'}
@@ -637,6 +637,9 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
               Cancel
             </button>
           </div>
+          {!addPlanLevel.trim() && !addCode.trim() && (
+            <p className="text-xs text-amber-500/80 -mt-1">Enter a Billing Plan Name and/or a Rate Plan Code — at least one is required.</p>
+          )}
         </div>
       )}
 
@@ -673,16 +676,17 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
                     <td className="px-4 py-2" colSpan={5}>
                       <div className="grid grid-cols-2 gap-3 mb-2">
                         <div className="col-span-2">
-                          <label className="block text-xs text-slate-400 mb-1">Billing Plan Name <span className="text-slate-600 font-normal">— optional, only needed to disambiguate</span></label>
+                          <label className="block text-xs text-slate-400 mb-1">Billing Plan Name <span className="text-slate-600 font-normal">— e.g. PRO MODE, GO CORE</span></label>
                           <input value={editForm.planLevel || ''}
                             onChange={e => setEditForm(f => ({ ...f, planLevel: e.target.value.toUpperCase() }))}
-                            placeholder="e.g. GO CORE (leave blank if not needed)"
+                            placeholder="e.g. PRO MODE"
                             className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm font-mono text-slate-100 focus:outline-none focus:border-blue-500" />
                         </div>
                         <div className="col-span-2">
-                          <label className="block text-xs text-slate-400 mb-1">Rate Plan Code</label>
+                          <label className="block text-xs text-slate-400 mb-1">Rate Plan Code <span className="text-slate-600 font-normal">— optional, only if this plan also has a promo code</span></label>
                           <input value={editForm.ratePlanCode || ''}
                             onChange={e => setEditForm(f => ({ ...f, ratePlanCode: e.target.value.toUpperCase() }))}
+                            placeholder="e.g. SWELL-NOINS3 (leave blank if none)"
                             className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm font-mono text-slate-100 focus:outline-none focus:border-blue-500" />
                         </div>
                         <div className="col-span-2">
@@ -719,7 +723,7 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <button disabled={saving}
+                        <button disabled={saving || (!(editForm.planLevel || '').trim() && !(editForm.ratePlanCode || '').trim())}
                           onClick={() => saveMapping({ ...editForm, planLevel: editForm.planLevel || '', skuKeys: editForm.skuKeys || [editForm.skuKey], defaultPrice: parseFloat(editForm.defaultPrice) || 0 }, editOriginalCode)}
                           className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded font-medium">
                           {saving ? 'Saving…' : 'Save'}

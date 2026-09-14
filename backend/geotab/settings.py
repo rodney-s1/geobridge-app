@@ -267,15 +267,36 @@ async def list_sku_mappings():
 async def upsert_mapping(body: MappingUpsert):
     global sku_mappings
     sku_mappings = _mappings()  # reload from disk first
-    existing = next((m for m in sku_mappings if m["ratePlanCode"].upper() == body.ratePlanCode.upper()), None)
+
+    plan_level     = body.planLevel.strip().upper()
+    rate_plan_code = body.ratePlanCode.strip().upper()
+
+    # Every device always has a MyAdmin billing plan (activeDevicePlan.name);
+    # a rate plan / promo code on top of it is optional (most devices have
+    # none). At least one of the two fields must be given, or reconciliation
+    # has nothing to match on.
+    if not plan_level and not rate_plan_code:
+        raise HTTPException(status_code=400, detail="Billing Plan Name or Rate Plan Code is required.")
+
+    if not rate_plan_code:
+        # Billing-plan-only mapping (e.g. "PRO MODE" -> Service Fee Geotab (Pro)).
+        # The reconciliation engine's billing-plan tiers (Tier 2/4) match on
+        # ratePlanCode directly -- planLevel is only consulted by Tier 1.5,
+        # which requires a promo code to also be present. So a plan-only
+        # mapping must store the plan name in ratePlanCode itself, exactly
+        # like the existing MODE-family entries, with planLevel left blank.
+        rate_plan_code = plan_level
+        plan_level     = ""
+
+    existing = next((m for m in sku_mappings if m["ratePlanCode"].upper() == rate_plan_code), None)
     sku_keys = [k for k in body.skuKeys if isinstance(k, str) and k.strip()]
     data = {
-        "ratePlanCode": body.ratePlanCode.upper(),
+        "ratePlanCode": rate_plan_code,
         "skuKey":       sku_keys[0] if sku_keys else "",   # backward-compat
         "skuKeys":      sku_keys,
         "defaultPrice": body.defaultPrice,
         "notes":        body.notes,
-        "planLevel":    body.planLevel.strip().upper(),
+        "planLevel":    plan_level,
     }
     if existing:
         # Preserve cost if it exists and wasn't sent (not yet exposed in the UI)
