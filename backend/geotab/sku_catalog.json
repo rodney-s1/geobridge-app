@@ -601,13 +601,6 @@
     "cost": 6.0
   },
   {
-    "skuKey": "Bundle Service (GO Focus-SBWI) (GO Focus Bundle Service Fee - Safety Bundle with ...",
-    "fullPath": "Geotab Service:Bundle Service (GO Focus-SBWI) (GO Focus Bundle Service Fee - Safety Bundle with ...",
-    "defaultPrice": 20.0,
-    "category": "Geotab Service",
-    "desc": ""
-  },
-  {
     "skuKey": "Bundle Service Fee (GFP-SB)",
     "fullPath": "Geotab Service:Bundle Service Fee (GFP-SB) (GO Focus Plus Bundle Service Fee - Safety Bundle)",
     "defaultPrice": 15.0,
@@ -1760,13 +1753,6 @@
     "cost": 18.0
   },
   {
-    "skuKey": "Geotab Service (GO Bundle-SBWI) (Service Fee Geotab (GO BUNDLE) - Satefy Bundle P...",
-    "fullPath": "Geotab Service:Geotab Service (GO Bundle-SBWI) (Service Fee Geotab (GO BUNDLE) - Satefy Bundle P...",
-    "defaultPrice": 26.0,
-    "category": "Geotab Service",
-    "desc": ""
-  },
-  {
     "skuKey": "Geotab Service (GO Focus Plus)",
     "fullPath": "Geotab Service:Geotab Service (GO Focus Plus) (GO Focus Plus Service Fee)",
     "defaultPrice": 23.0,
@@ -2588,7 +2574,7 @@
     "fullPath": "Geotab Equipment:HRN-CM24Y1",
     "defaultPrice": 20.0,
     "category": "Geotab Equipment",
-    "desc": "Harness for custom GO device installations � includes Molex connectors for two OBD and one J1939 points.",
+    "desc": "Harness for custom GO device installations \ufffd includes Molex connectors for two OBD and one J1939 points.",
     "cost": 12.1
   },
   {
@@ -2596,7 +2582,7 @@
     "fullPath": "Geotab Equipment:HRN-CM24Y1 SW",
     "defaultPrice": 14.52,
     "category": "Geotab Equipment",
-    "desc": "Harness for custom GO device installations � includes Molex connectors for two OBD and one J1939 points.",
+    "desc": "Harness for custom GO device installations \ufffd includes Molex connectors for two OBD and one J1939 points.",
     "cost": 12.1
   },
   {
@@ -3531,7 +3517,7 @@
     "fullPath": "Geotab Equipment:IOX-Keybox",
     "defaultPrice": 325.0,
     "category": "Geotab Equipment",
-    "desc": "The IOX-KEYBOX enables shared vehicle access and works with Geotab�s Keyless Platform. The device supports multiple markets including car sharing, car rental, shared vehicle pools, shared vehicle access for delivery and field service vehicles, and so o...",
+    "desc": "The IOX-KEYBOX enables shared vehicle access and works with Geotab\ufffds Keyless Platform. The device supports multiple markets including car sharing, car rental, shared vehicle pools, shared vehicle access for delivery and field service vehicles, and so o...",
     "cost": 226.0
   },
   {
@@ -3587,7 +3573,7 @@
     "fullPath": "Geotab Equipment:IOX-RS232D",
     "defaultPrice": 65.0,
     "category": "Geotab Equipment",
-    "desc": "Input/output expander for RS232 support � 3 pin Delphi connector",
+    "desc": "Input/output expander for RS232 support \ufffd 3 pin Delphi connector",
     "cost": 42.35
   },
   {
@@ -3749,7 +3735,7 @@
     "fullPath": "Digital Matter Equipment:Manta Fusion",
     "defaultPrice": 155.0,
     "category": "Digital Matter Equipment",
-    "desc": "Manta Fusion - High-performance, high-precision Indoor/Outdoor GPS asset tracking device and Bluetooth� Gateway. Features cloud-based location solving for 10+ years of battery life",
+    "desc": "Manta Fusion - High-performance, high-precision Indoor/Outdoor GPS asset tracking device and Bluetooth\ufffd Gateway. Features cloud-based location solving for 10+ years of battery life",
     "cost": 77.53
   },
   {
@@ -3796,7 +3782,7 @@
     "fullPath": "Phillips Connect Equipment:MKH-776220GT",
     "defaultPrice": 255.0,
     "category": "Phillips Connect Equipment",
-    "desc": "SolarNet� Tethered",
+    "desc": "SolarNet\ufffd Tethered",
     "cost": 209.0
   },
   {
@@ -3804,7 +3790,7 @@
     "fullPath": "Phillips Connect Equipment:MKH-776290GT15B",
     "defaultPrice": 235.0,
     "category": "Phillips Connect Equipment",
-    "desc": "StealthNet� with 15' Nosebox Harness",
+    "desc": "StealthNet\ufffd with 15' Nosebox Harness",
     "cost": 183.5
   },
   {
@@ -3812,7 +3798,7 @@
     "fullPath": "Phillips Connect Equipment:MKH-776290GT4P",
     "defaultPrice": 235.0,
     "category": "Phillips Connect Equipment",
-    "desc": "StealthNet� on 4-Pin ABS Harness",
+    "desc": "StealthNet\ufffd on 4-Pin ABS Harness",
     "cost": 183.5
   },
   {
@@ -3820,7 +3806,7 @@
     "fullPath": "Phillips Connect Equipment:MKH-776290GT5P",
     "defaultPrice": 235.0,
     "category": "Phillips Connect Equipment",
-    "desc": "StealthNet� on 5-Pin ABS Harness",
+    "desc": "StealthNet\ufffd on 5-Pin ABS Harness",
     "cost": 183.5
   },
   {
@@ -3828,7 +3814,7 @@
     "fullPath": "Phillips Connect Equipment:MKH-776290GTCN",
     "defaultPrice": 235.0,
     "category": "Phillips Connect Equipment",
-    "desc": "StealthNet� with 12v CN-Linko Adaptor",
+    "desc": "StealthNet\ufffd with 12v CN-Linko Adaptor",
     "cost": 183.5
   },
   {
@@ -3836,7 +3822,7 @@
     "fullPath": "Phillips Connect Equipment:MKH-776530GT",
     "defaultPrice": 235.0,
     "category": "Phillips Connect Equipment",
-    "desc": "SolarNet�",
+    "desc": "SolarNet\ufffd",
     "cost": 193.0
   },
   {
@@ -3918,13 +3904,6 @@
     "category": "Geotab Service",
     "desc": "Citizen Insights Monthly Fee (Population up to 50k) Ohio Contract",
     "cost": 375.0
-  },
-  {
-    "skuKey": "MKT-FEE-CITIZENS1 (Citizen Insights Monthly Fee (Population up to 50k) Ohio Contr...",
-    "fullPath": "Geotab Service:MKT-FEE-CITIZENS1 (Citizen Insights Monthly Fee (Population up to 50k) Ohio Contr...",
-    "defaultPrice": 487.5,
-    "category": "Geotab Service",
-    "desc": ""
   },
   {
     "skuKey": "MKT-FEE-CITIZENS3",
@@ -4458,11 +4437,11 @@
     "cost": 6.42
   },
   {
-    "skuKey": "RAM EZ-Roll�r Powered Dock",
-    "fullPath": "eSquared Equipment:RAM EZ-Roll�r Powered Dock",
+    "skuKey": "RAM EZ-Roll\ufffdr Powered Dock",
+    "fullPath": "eSquared Equipment:RAM EZ-Roll\ufffdr Powered Dock",
     "defaultPrice": 74.99,
     "category": "eSquared Equipment",
-    "desc": "RAM EZ-Roll�r Powered Dock",
+    "desc": "RAM EZ-Roll\ufffdr Powered Dock",
     "cost": 43.16
   },
   {
@@ -4666,23 +4645,23 @@
     "fullPath": "Rosco Equipment:Rosco STSC272",
     "defaultPrice": 252.0,
     "category": "Rosco Equipment",
-    "desc": "WIDE ANGLE DOME HD CAMERA, 145�, 10 INFRARED LEDS, AUDIO",
+    "desc": "WIDE ANGLE DOME HD CAMERA, 145\ufffd, 10 INFRARED LEDS, AUDIO",
     "cost": 176.4
   },
   {
-    "skuKey": "Samsung Galaxy Tab A7 Lite 8.7�",
-    "fullPath": "eSquared Equipment:Samsung Galaxy Tab A7 Lite 8.7�",
+    "skuKey": "Samsung Galaxy Tab A7 Lite 8.7\ufffd",
+    "fullPath": "eSquared Equipment:Samsung Galaxy Tab A7 Lite 8.7\ufffd",
     "defaultPrice": 199.99,
     "category": "eSquared Equipment",
     "desc": "Samsung Galaxy Tablet",
     "cost": 180.83
   },
   {
-    "skuKey": "Samsung Galaxy Tab Active3 8�",
-    "fullPath": "eSquared Equipment:Samsung Galaxy Tab Active3 8�",
+    "skuKey": "Samsung Galaxy Tab Active3 8\ufffd",
+    "fullPath": "eSquared Equipment:Samsung Galaxy Tab Active3 8\ufffd",
     "defaultPrice": 589.99,
     "category": "eSquared Equipment",
-    "desc": "Samsung Galaxy Tab Active3 8�Samsung",
+    "desc": "Samsung Galaxy Tab Active3 8\ufffdSamsung",
     "cost": 414.58
   },
   {
@@ -4853,26 +4832,12 @@
     "cost": 5.0
   },
   {
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
-    "fullPath": "Geotab Service:Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
-    "defaultPrice": 8.0,
-    "category": "Geotab Service",
-    "desc": ""
-  },
-  {
     "skuKey": "Service Fee (HANOVER-CS) Han",
     "fullPath": "Geotab Service:Service Fee (HANOVER-CS) Han",
     "defaultPrice": 8.0,
     "category": "Geotab Service",
     "desc": "Service Fee Geotab (GO) - Hanover Cost Share for Hanover",
     "cost": 5.0
-  },
-  {
-    "skuKey": "Service Fee (HANOVER-CS) Han (Service Fee Geotab (GO) - Hanover Cost Share for Ha...",
-    "fullPath": "Geotab Service:Service Fee (HANOVER-CS) Han (Service Fee Geotab (GO) - Hanover Cost Share for Ha...",
-    "defaultPrice": 8.0,
-    "category": "Geotab Service",
-    "desc": ""
   },
   {
     "skuKey": "Service Fee (Motorpool SW)",
@@ -5222,26 +5187,12 @@
     "cost": 14.0
   },
   {
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
-    "fullPath": "Rosco Service:Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
-    "defaultPrice": 24.95,
-    "category": "Rosco Service",
-    "desc": ""
-  },
-  {
     "skuKey": "Service Fee Rosco Pro",
     "fullPath": "Rosco Service:Service Fee Rosco Pro",
     "defaultPrice": 35.0,
     "category": "Rosco Service",
     "desc": "Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Storage + Live Streaming",
     "cost": 25.0
-  },
-  {
-    "skuKey": "Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
-    "fullPath": "Rosco Service:Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
-    "defaultPrice": 23.0,
-    "category": "Rosco Service",
-    "desc": ""
   },
   {
     "skuKey": "Service Fee Route4Me",
@@ -5819,7 +5770,7 @@
     "fullPath": "Rosco Equipment:STSC101A",
     "defaultPrice": 191.66,
     "category": "Rosco Equipment",
-    "desc": "REAR MOUNT HD CAMERA 150�, w/ 4 HIGH OUTPUT INFRARED LEDs, w/ AUDIO, BLACK, 4-PIN (KITS 5065, 5265, 7165)",
+    "desc": "REAR MOUNT HD CAMERA 150\ufffd, w/ 4 HIGH OUTPUT INFRARED LEDs, w/ AUDIO, BLACK, 4-PIN (KITS 5065, 5265, 7165)",
     "cost": 134.16
   },
   {
@@ -5858,7 +5809,7 @@
     "fullPath": "Rosco Equipment:STSC141",
     "defaultPrice": 132.0,
     "category": "Rosco Equipment",
-    "desc": "REAR HIGH MOUNT, LOOK DOWN CAMERA 110� (1/4\" SONY CCD) w/ INFRARED LEDs, w/ AUDIO, SILVER, 4 PIN",
+    "desc": "REAR HIGH MOUNT, LOOK DOWN CAMERA 110\ufffd (1/4\" SONY CCD) w/ INFRARED LEDs, w/ AUDIO, SILVER, 4 PIN",
     "cost": 88.0
   },
   {
@@ -5914,7 +5865,7 @@
     "fullPath": "Rosco Equipment:STSC201",
     "defaultPrice": 243.0,
     "category": "Rosco Equipment",
-    "desc": "Rear mounted 1080P HD camera w/ 160� FOV with 4 high output IR LEDs w/ audio.",
+    "desc": "Rear mounted 1080P HD camera w/ 160\ufffd FOV with 4 high output IR LEDs w/ audio.",
     "cost": 170.1
   },
   {
@@ -5922,7 +5873,7 @@
     "fullPath": "Rosco Equipment:STSC267 CAM",
     "defaultPrice": 243.0,
     "category": "Rosco Equipment",
-    "desc": "SIDE VIEW HD CAMERA, 145� LH FACING REAR, RH FACING FRONT, 12 INFRARED LEDS, SILVER",
+    "desc": "SIDE VIEW HD CAMERA, 145\ufffd LH FACING REAR, RH FACING FRONT, 12 INFRARED LEDS, SILVER",
     "cost": 170.1
   },
   {
@@ -5930,7 +5881,7 @@
     "fullPath": "Rosco Equipment:STSC268 CAM",
     "defaultPrice": 243.0,
     "category": "Rosco Equipment",
-    "desc": "SIDE VIEW HD CAMERA, 145� RH FACING REAR, LH FACING FRONT, 12 INFRARED LEDS, SILVER",
+    "desc": "SIDE VIEW HD CAMERA, 145\ufffd RH FACING REAR, LH FACING FRONT, 12 INFRARED LEDS, SILVER",
     "cost": 170.1
   },
   {
@@ -6033,7 +5984,7 @@
     "fullPath": "Rosco Equipment:STSK 4730B",
     "defaultPrice": 354.42,
     "category": "Rosco Equipment",
-    "desc": "MOR-Vision� 7\" LCD Combo Rearview Mirror/Monitor Backup Camera Kit - Black",
+    "desc": "MOR-Vision\ufffd 7\" LCD Combo Rearview Mirror/Monitor Backup Camera Kit - Black",
     "cost": 248.09
   },
   {
@@ -6041,7 +5992,7 @@
     "fullPath": "Rosco Equipment:STSK360",
     "defaultPrice": 1614.6,
     "category": "Rosco Equipment",
-    "desc": "Rosco�s Safe-T-Scope360- Everything included in Kit. Harness and power supplies",
+    "desc": "Rosco\ufffds Safe-T-Scope360- Everything included in Kit. Harness and power supplies",
     "cost": 1076.4
   },
   {
@@ -6057,7 +6008,7 @@
     "fullPath": "Rosco Equipment:STSK4730W",
     "defaultPrice": 354.42,
     "category": "Rosco Equipment",
-    "desc": "MOR-Vision� 7\" LCD Combo Rearview Mirror/Monitor Backup Camera Kit - White",
+    "desc": "MOR-Vision\ufffd 7\" LCD Combo Rearview Mirror/Monitor Backup Camera Kit - White",
     "cost": 248.09
   },
   {
@@ -6065,7 +6016,7 @@
     "fullPath": "Rosco Equipment:STSK5465",
     "defaultPrice": 330.0,
     "category": "Rosco Equipment",
-    "desc": "Rosco Backup Camera System with 5� Color Backup Monitor",
+    "desc": "Rosco Backup Camera System with 5\ufffd Color Backup Monitor",
     "cost": 230.99
   },
   {
@@ -6105,7 +6056,7 @@
     "fullPath": "Rosco Equipment:STSM270",
     "defaultPrice": 297.0,
     "category": "Rosco Equipment",
-    "desc": "7� Quad Screen Monitor with 4 Camera Inputs - Power Harness and Mount",
+    "desc": "7\ufffd Quad Screen Monitor with 4 Camera Inputs - Power Harness and Mount",
     "cost": 207.9
   },
   {
@@ -6225,7 +6176,7 @@
     "fullPath": "Smartwitness Equipment:SVA033-C",
     "defaultPrice": 0.0,
     "category": "Smartwitness Equipment",
-    "desc": "Smartwitness 120� wide-angle Camera (Side / Rear)"
+    "desc": "Smartwitness 120\ufffd wide-angle Camera (Side / Rear)"
   },
   {
     "skuKey": "SVA034-A",

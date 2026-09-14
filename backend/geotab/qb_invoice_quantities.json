@@ -144,9 +144,9 @@
     "qbQty": 10
   },
   {
-    "id": "ACES Controls LLC|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "ACES Controls LLC|Service Fee (HANOVER-CS) Cust",
     "customerName": "ACES Controls LLC",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 43
   },
   {
@@ -180,9 +180,9 @@
     "qbQty": 2
   },
   {
-    "id": "Advance|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "Advance|Service Fee (HANOVER-CS) Cust",
     "customerName": "Advance",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 27
   },
   {
@@ -204,9 +204,9 @@
     "qbQty": 58
   },
   {
-    "id": "Advanced Industrial Group LLC|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "Advanced Industrial Group LLC|Service Fee (HANOVER-CS) Cust",
     "customerName": "Advanced Industrial Group LLC",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 82
   },
   {
@@ -222,9 +222,9 @@
     "qbQty": 75
   },
   {
-    "id": "Advantage Mechanical Refrigeration|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "Advantage Mechanical Refrigeration|Service Fee (HANOVER-CS) Cust",
     "customerName": "Advantage Mechanical Refrigeration",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 37
   },
   {
@@ -534,9 +534,9 @@
     "qbQty": 39
   },
   {
-    "id": "Arrow Security|Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "id": "Arrow Security|Service Fee Rosco DV6 Pro",
     "customerName": "Arrow Security",
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "skuKey": "Service Fee Rosco DV6 Pro",
     "qbQty": 7
   },
   {
@@ -768,9 +768,9 @@
     "qbQty": 535
   },
   {
-    "id": "Bakken Industries|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "Bakken Industries|Service Fee (HANOVER-CS) Cust",
     "customerName": "Bakken Industries",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 23
   },
   {
@@ -990,15 +990,15 @@
     "qbQty": 14
   },
   {
-    "id": "BMG Conveyor Services of Florida Inc|Geotab Service (GO Bundle-SBWI) (Service Fee Geotab (GO BUNDLE) - Satefy Bundle P...",
+    "id": "BMG Conveyor Services of Florida Inc|Geotab Service (GO Bundle-SBWI)",
     "customerName": "BMG Conveyor Services of Florida Inc",
-    "skuKey": "Geotab Service (GO Bundle-SBWI) (Service Fee Geotab (GO BUNDLE) - Satefy Bundle P...",
+    "skuKey": "Geotab Service (GO Bundle-SBWI)",
     "qbQty": 9
   },
   {
-    "id": "BMG Conveyor Services of Florida Inc|Bundle Service (GO Focus-SBWI) (GO Focus Bundle Service Fee - Safety Bundle with ...",
+    "id": "BMG Conveyor Services of Florida Inc|Bundle Service (GO Focus-SBWI)",
     "customerName": "BMG Conveyor Services of Florida Inc",
-    "skuKey": "Bundle Service (GO Focus-SBWI) (GO Focus Bundle Service Fee - Safety Bundle with ...",
+    "skuKey": "Bundle Service (GO Focus-SBWI)",
     "qbQty": 23
   },
   {
@@ -1302,9 +1302,9 @@
     "qbQty": 3
   },
   {
-    "id": "CASTLE CONSTRUCTION|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "CASTLE CONSTRUCTION|Service Fee (HANOVER-CS) Cust",
     "customerName": "CASTLE CONSTRUCTION",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 17
   },
   {
@@ -1434,9 +1434,9 @@
     "qbQty": 118
   },
   {
-    "id": "Charleston County, SC|Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "id": "Charleston County, SC|Service Fee Rosco DV6 Pro",
     "customerName": "Charleston County, SC",
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "skuKey": "Service Fee Rosco DV6 Pro",
     "qbQty": 1
   },
   {
@@ -1608,9 +1608,9 @@
     "qbQty": 85
   },
   {
-    "id": "City of Greenville SC|Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "id": "City of Greenville SC|Service Fee Rosco DV6 Pro",
     "customerName": "City of Greenville SC",
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "skuKey": "Service Fee Rosco DV6 Pro",
     "qbQty": 19
   },
   {
@@ -1686,9 +1686,9 @@
     "qbQty": 24
   },
   {
-    "id": "City of Lenoir NC|Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "id": "City of Lenoir NC|Service Fee Rosco DV6 Pro",
     "customerName": "City of Lenoir NC",
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "skuKey": "Service Fee Rosco DV6 Pro",
     "qbQty": 24
   },
   {
@@ -1836,9 +1836,9 @@
     "qbQty": 44
   },
   {
-    "id": "CMJ Technologies|Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
+    "id": "CMJ Technologies|Service Fee Rosco Pro",
     "customerName": "CMJ Technologies",
-    "skuKey": "Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
+    "skuKey": "Service Fee Rosco Pro",
     "qbQty": 44
   },
   {
@@ -2058,15 +2058,15 @@
     "qbQty": 19
   },
   {
-    "id": "Danville Life Saving Crew|Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
+    "id": "Danville Life Saving Crew|Service Fee Rosco Pro",
     "customerName": "Danville Life Saving Crew",
-    "skuKey": "Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
+    "skuKey": "Service Fee Rosco Pro",
     "qbQty": 15
   },
   {
-    "id": "Danville Life Saving Crew|Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "id": "Danville Life Saving Crew|Service Fee Rosco DV6 Pro",
     "customerName": "Danville Life Saving Crew",
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "skuKey": "Service Fee Rosco DV6 Pro",
     "qbQty": 5
   },
   {
@@ -2094,9 +2094,9 @@
     "qbQty": 23
   },
   {
-    "id": "Dare County EMS|Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "id": "Dare County EMS|Service Fee Rosco DV6 Pro",
     "customerName": "Dare County EMS",
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "skuKey": "Service Fee Rosco DV6 Pro",
     "qbQty": 7
   },
   {
@@ -2142,9 +2142,9 @@
     "qbQty": 4
   },
   {
-    "id": "Decypher Technologies|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "Decypher Technologies|Service Fee (HANOVER-CS) Cust",
     "customerName": "Decypher Technologies",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 13
   },
   {
@@ -2322,9 +2322,9 @@
     "qbQty": 17
   },
   {
-    "id": "Duke Life Flight|Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "id": "Duke Life Flight|Service Fee Rosco DV6 Pro",
     "customerName": "Duke Life Flight",
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "skuKey": "Service Fee Rosco DV6 Pro",
     "qbQty": 17
   },
   {
@@ -2340,9 +2340,9 @@
     "qbQty": 3
   },
   {
-    "id": "Duke Patient Transport|Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "id": "Duke Patient Transport|Service Fee Rosco DV6 Pro",
     "customerName": "Duke Patient Transport",
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "skuKey": "Service Fee Rosco DV6 Pro",
     "qbQty": 3
   },
   {
@@ -2400,9 +2400,9 @@
     "qbQty": 2
   },
   {
-    "id": "East Arkansas Area Agency|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "East Arkansas Area Agency|Service Fee (HANOVER-CS) Cust",
     "customerName": "East Arkansas Area Agency",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 44
   },
   {
@@ -2688,9 +2688,9 @@
     "qbQty": 1
   },
   {
-    "id": "F.M. Generator Inc.|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "F.M. Generator Inc.|Service Fee (HANOVER-CS) Cust",
     "customerName": "F.M. Generator Inc.",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 55
   },
   {
@@ -2706,9 +2706,9 @@
     "qbQty": 9
   },
   {
-    "id": "Fabricators Supply|Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "id": "Fabricators Supply|Service Fee Rosco DV6 Pro",
     "customerName": "Fabricators Supply",
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "skuKey": "Service Fee Rosco DV6 Pro",
     "qbQty": 7
   },
   {
@@ -2772,9 +2772,9 @@
     "qbQty": 6
   },
   {
-    "id": "First Companies Inc.|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "First Companies Inc.|Service Fee (HANOVER-CS) Cust",
     "customerName": "First Companies Inc.",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 19
   },
   {
@@ -2802,15 +2802,15 @@
     "qbQty": 83
   },
   {
-    "id": "First Health Of The Carolinas|Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
+    "id": "First Health Of The Carolinas|Service Fee Rosco Pro",
     "customerName": "First Health Of The Carolinas",
-    "skuKey": "Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
+    "skuKey": "Service Fee Rosco Pro",
     "qbQty": 27
   },
   {
-    "id": "First Health Of The Carolinas|Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "id": "First Health Of The Carolinas|Service Fee Rosco DV6 Pro",
     "customerName": "First Health Of The Carolinas",
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "skuKey": "Service Fee Rosco DV6 Pro",
     "qbQty": 72
   },
   {
@@ -3036,9 +3036,9 @@
     "qbQty": 65
   },
   {
-    "id": "Fox Valley Metrology, LTD|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "Fox Valley Metrology, LTD|Service Fee (HANOVER-CS) Cust",
     "customerName": "Fox Valley Metrology, LTD",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 65
   },
   {
@@ -3132,9 +3132,9 @@
     "qbQty": 9
   },
   {
-    "id": "Gemma Services|Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "id": "Gemma Services|Service Fee Rosco DV6 Pro",
     "customerName": "Gemma Services",
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "skuKey": "Service Fee Rosco DV6 Pro",
     "qbQty": 16
   },
   {
@@ -3270,9 +3270,9 @@
     "qbQty": 1
   },
   {
-    "id": "GOURMET INTERNATIONAL|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "GOURMET INTERNATIONAL|Service Fee (HANOVER-CS) Cust",
     "customerName": "GOURMET INTERNATIONAL",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 8
   },
   {
@@ -3342,9 +3342,9 @@
     "qbQty": 4
   },
   {
-    "id": "Guilford County Emergency Services|Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "id": "Guilford County Emergency Services|Service Fee Rosco DV6 Pro",
     "customerName": "Guilford County Emergency Services",
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "skuKey": "Service Fee Rosco DV6 Pro",
     "qbQty": 23
   },
   {
@@ -3432,9 +3432,9 @@
     "qbQty": 1
   },
   {
-    "id": "Hanover Insurance Group|Service Fee (HANOVER-CS) Han (Service Fee Geotab (GO) - Hanover Cost Share for Ha...",
+    "id": "Hanover Insurance Group|Service Fee (HANOVER-CS) Han",
     "customerName": "Hanover Insurance Group",
-    "skuKey": "Service Fee (HANOVER-CS) Han (Service Fee Geotab (GO) - Hanover Cost Share for Ha...",
+    "skuKey": "Service Fee (HANOVER-CS) Han",
     "qbQty": 1154
   },
   {
@@ -3486,9 +3486,9 @@
     "qbQty": 1
   },
   {
-    "id": "Havtech Service LLC|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "Havtech Service LLC|Service Fee (HANOVER-CS) Cust",
     "customerName": "Havtech Service LLC",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 92
   },
   {
@@ -3498,9 +3498,9 @@
     "qbQty": 184
   },
   {
-    "id": "Havtech Supply LLC|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "Havtech Supply LLC|Service Fee (HANOVER-CS) Cust",
     "customerName": "Havtech Supply LLC",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 3
   },
   {
@@ -3558,9 +3558,9 @@
     "qbQty": 1
   },
   {
-    "id": "HOH Water Technology|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "HOH Water Technology|Service Fee (HANOVER-CS) Cust",
     "customerName": "HOH Water Technology",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 6
   },
   {
@@ -3624,9 +3624,9 @@
     "qbQty": 51
   },
   {
-    "id": "Holmes County Ohio|MKT-FEE-CITIZENS1 (Citizen Insights Monthly Fee (Population up to 50k) Ohio Contr...",
+    "id": "Holmes County Ohio|MKT-FEE-CITIZENS1",
     "customerName": "Holmes County Ohio",
-    "skuKey": "MKT-FEE-CITIZENS1 (Citizen Insights Monthly Fee (Population up to 50k) Ohio Contr...",
+    "skuKey": "MKT-FEE-CITIZENS1",
     "qbQty": 1
   },
   {
@@ -3642,9 +3642,9 @@
     "qbQty": 4
   },
   {
-    "id": "HOMELEGANCE INC|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "HOMELEGANCE INC|Service Fee (HANOVER-CS) Cust",
     "customerName": "HOMELEGANCE INC",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 4
   },
   {
@@ -4164,9 +4164,9 @@
     "qbQty": 5
   },
   {
-    "id": "Kuhn Employment Opportunities|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "Kuhn Employment Opportunities|Service Fee (HANOVER-CS) Cust",
     "customerName": "Kuhn Employment Opportunities",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 18
   },
   {
@@ -4506,9 +4506,9 @@
     "qbQty": 13
   },
   {
-    "id": "Magnum Electric|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "Magnum Electric|Service Fee (HANOVER-CS) Cust",
     "customerName": "Magnum Electric",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 231
   },
   {
@@ -4614,9 +4614,9 @@
     "qbQty": 3
   },
   {
-    "id": "Mecco LLC|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "Mecco LLC|Service Fee (HANOVER-CS) Cust",
     "customerName": "Mecco LLC",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 34
   },
   {
@@ -4650,9 +4650,9 @@
     "qbQty": 1
   },
   {
-    "id": "Melton Electric|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "Melton Electric|Service Fee (HANOVER-CS) Cust",
     "customerName": "Melton Electric",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 68
   },
   {
@@ -4812,9 +4812,9 @@
     "qbQty": 1
   },
   {
-    "id": "MODOT|Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "id": "MODOT|Service Fee Rosco DV6 Pro",
     "customerName": "MODOT",
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "skuKey": "Service Fee Rosco DV6 Pro",
     "qbQty": 2
   },
   {
@@ -4896,9 +4896,9 @@
     "qbQty": 4
   },
   {
-    "id": "MVM Contracting Inc.|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "MVM Contracting Inc.|Service Fee (HANOVER-CS) Cust",
     "customerName": "MVM Contracting Inc.",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 52
   },
   {
@@ -5112,9 +5112,9 @@
     "qbQty": 14
   },
   {
-    "id": "Occoquan-Woodbridge-Lorton Volunteer Fire|Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "id": "Occoquan-Woodbridge-Lorton Volunteer Fire|Service Fee Rosco DV6 Pro",
     "customerName": "Occoquan-Woodbridge-Lorton Volunteer Fire",
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "skuKey": "Service Fee Rosco DV6 Pro",
     "qbQty": 1
   },
   {
@@ -5202,9 +5202,9 @@
     "qbQty": 1
   },
   {
-    "id": "P & K Sand & Gravel|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "P & K Sand & Gravel|Service Fee (HANOVER-CS) Cust",
     "customerName": "P & K Sand & Gravel",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 18
   },
   {
@@ -5268,9 +5268,9 @@
     "qbQty": 35
   },
   {
-    "id": "PANIAGUA ENTERPRISES INC|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "PANIAGUA ENTERPRISES INC|Service Fee (HANOVER-CS) Cust",
     "customerName": "PANIAGUA ENTERPRISES INC",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 35
   },
   {
@@ -5676,9 +5676,9 @@
     "qbQty": 13
   },
   {
-    "id": "Portco Inc|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "Portco Inc|Service Fee (HANOVER-CS) Cust",
     "customerName": "Portco Inc",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 30
   },
   {
@@ -5712,9 +5712,9 @@
     "qbQty": 1
   },
   {
-    "id": "PRECISION GENERAL CONTRACTING|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "PRECISION GENERAL CONTRACTING|Service Fee (HANOVER-CS) Cust",
     "customerName": "PRECISION GENERAL CONTRACTING",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 21
   },
   {
@@ -5862,9 +5862,9 @@
     "qbQty": 48
   },
   {
-    "id": "Randolph County EMS|Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "id": "Randolph County EMS|Service Fee Rosco DV6 Pro",
     "customerName": "Randolph County EMS",
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "skuKey": "Service Fee Rosco DV6 Pro",
     "qbQty": 46
   },
   {
@@ -6024,9 +6024,9 @@
     "qbQty": 3
   },
   {
-    "id": "Robert Commercial Construction|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "Robert Commercial Construction|Service Fee (HANOVER-CS) Cust",
     "customerName": "Robert Commercial Construction",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 8
   },
   {
@@ -6084,9 +6084,9 @@
     "qbQty": 2
   },
   {
-    "id": "Rodney L Aurand LLC|Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "id": "Rodney L Aurand LLC|Service Fee Rosco DV6 Pro",
     "customerName": "Rodney L Aurand LLC",
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "skuKey": "Service Fee Rosco DV6 Pro",
     "qbQty": 2
   },
   {
@@ -6474,9 +6474,9 @@
     "qbQty": 3
   },
   {
-    "id": "Stockbridge Area Emergency Services Autho|Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
+    "id": "Stockbridge Area Emergency Services Autho|Service Fee Rosco Pro",
     "customerName": "Stockbridge Area Emergency Services Autho",
-    "skuKey": "Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
+    "skuKey": "Service Fee Rosco Pro",
     "qbQty": 3
   },
   {
@@ -6630,9 +6630,9 @@
     "qbQty": 34
   },
   {
-    "id": "Superior Fiber and Data Services|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "Superior Fiber and Data Services|Service Fee (HANOVER-CS) Cust",
     "customerName": "Superior Fiber and Data Services",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 19
   },
   {
@@ -6822,9 +6822,9 @@
     "qbQty": 13
   },
   {
-    "id": "The Building People|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "The Building People|Service Fee (HANOVER-CS) Cust",
     "customerName": "The Building People",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 36
   },
   {
@@ -6840,9 +6840,9 @@
     "qbQty": 10
   },
   {
-    "id": "The Hope Foundation|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "The Hope Foundation|Service Fee (HANOVER-CS) Cust",
     "customerName": "The Hope Foundation",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 10
   },
   {
@@ -6918,9 +6918,9 @@
     "qbQty": 6
   },
   {
-    "id": "THRIVING UNITED INC|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "THRIVING UNITED INC|Service Fee (HANOVER-CS) Cust",
     "customerName": "THRIVING UNITED INC",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 2
   },
   {
@@ -7056,9 +7056,9 @@
     "qbQty": 40
   },
   {
-    "id": "Town Of Apex Public Works|Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "id": "Town Of Apex Public Works|Service Fee Rosco DV6 Pro",
     "customerName": "Town Of Apex Public Works",
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "skuKey": "Service Fee Rosco DV6 Pro",
     "qbQty": 4
   },
   {
@@ -7146,9 +7146,9 @@
     "qbQty": 33
   },
   {
-    "id": "Town of Fuquay Varina - PW|Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "id": "Town of Fuquay Varina - PW|Service Fee Rosco DV6 Pro",
     "customerName": "Town of Fuquay Varina - PW",
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "skuKey": "Service Fee Rosco DV6 Pro",
     "qbQty": 13
   },
   {
@@ -7344,9 +7344,9 @@
     "qbQty": 24
   },
   {
-    "id": "TROPHY CONSTRUCTION SERVICES|Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "id": "TROPHY CONSTRUCTION SERVICES|Service Fee (HANOVER-CS) Cust",
     "customerName": "TROPHY CONSTRUCTION SERVICES",
-    "skuKey": "Service Fee (HANOVER-CS) Cust (Service Fee Geotab (GO) - Hanover Cost Share for C...",
+    "skuKey": "Service Fee (HANOVER-CS) Cust",
     "qbQty": 9
   },
   {
@@ -7734,9 +7734,9 @@
     "qbQty": 1
   },
   {
-    "id": "Washington County Emergency Management|Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "id": "Washington County Emergency Management|Service Fee Rosco DV6 Pro",
     "customerName": "Washington County Emergency Management",
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "skuKey": "Service Fee Rosco DV6 Pro",
     "qbQty": 1
   },
   {
@@ -7752,15 +7752,15 @@
     "qbQty": 6
   },
   {
-    "id": "Washington/Tyrell EMS|Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
+    "id": "Washington/Tyrell EMS|Service Fee Rosco Pro",
     "customerName": "Washington/Tyrell EMS",
-    "skuKey": "Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
+    "skuKey": "Service Fee Rosco Pro",
     "qbQty": 4
   },
   {
-    "id": "Washington/Tyrell EMS|Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "id": "Washington/Tyrell EMS|Service Fee Rosco DV6 Pro",
     "customerName": "Washington/Tyrell EMS",
-    "skuKey": "Service Fee Rosco DV6 Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + ...",
+    "skuKey": "Service Fee Rosco DV6 Pro",
     "qbQty": 2
   },
   {
@@ -7770,9 +7770,9 @@
     "qbQty": 4
   },
   {
-    "id": "Washington/Tyrell Transport|Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
+    "id": "Washington/Tyrell Transport|Service Fee Rosco Pro",
     "customerName": "Washington/Tyrell Transport",
-    "skuKey": "Service Fee Rosco Pro (Service Fee Rosco Pro - Data Limit 1GB Track & Trace + Stor...",
+    "skuKey": "Service Fee Rosco Pro",
     "qbQty": 4
   },
   {

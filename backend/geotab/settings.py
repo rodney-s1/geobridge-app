@@ -599,6 +599,45 @@ def _parse_item(item_str: str) -> Tuple[str, str, str]:
     return group, sku_name, desc
 
 
+# QuickBooks' invoice CSV export truncates the Item column at 99 characters,
+# appending "..." with no closing paren when the full "Group:SkuName (desc)"
+# string is longer than that. _parse_item()'s paren-scan requires a closing
+# ")" to find the sku_name/desc boundary, so a truncated string has none --
+# the ENTIRE 99-char garbage string (group + real sku name + partial desc)
+# used to be stored verbatim as a brand-new phantom skuKey, distinct from the
+# real one, silently duplicating catalog entries, customer overrides, and QB
+# quantity counts under a key nothing in MyAdmin ever resolves to (see the
+# "Can Do Crew" / Hanover Cost Share investigation this was found in).
+_QB_ITEM_TRUNCATION_LEN = 99
+
+
+def _is_truncated_qb_item(item_str: str) -> bool:
+    """True if this Item string looks like QuickBooks' 99-char CSV truncation."""
+    return len(item_str) == _QB_ITEM_TRUNCATION_LEN and item_str.endswith('...') and not item_str.endswith('...)')
+
+
+def _resolve_truncated_sku_name(item_str: str, known_sku_names: set) -> Optional[str]:
+    """
+    Recover the real sku_name for a truncated QB Item string by finding the
+    longest already-known catalog skuKey that the truncated string's
+    "group:sku_name" prefix starts with. Returns None if no unambiguous
+    match is found (caller should then skip the row rather than guess).
+    """
+    if ':' in item_str:
+        rest = item_str[item_str.index(':') + 1:].strip()
+    else:
+        rest = item_str
+    candidates = [k for k in known_sku_names if rest.startswith(k)]
+    if not candidates:
+        return None
+    # Prefer the longest match (most specific) in case of ambiguity like
+    # "Predictive Coach" vs "Predictive Coach Service Fee".
+    candidates.sort(key=len, reverse=True)
+    if len(candidates) > 1 and len(candidates[0]) == len(candidates[1]):
+        return None  # genuinely ambiguous -- let caller skip/flag it
+    return candidates[0]
+
+
 # Mapping of (group, sku_name) -> disambiguated skuKey for QB items where the
 # same SKU name appears under two different QB groups with different meanings.
 # Without this, e.g. "Surfsight Service:SS Service Fee" (standalone portal cameras,
@@ -610,7 +649,7 @@ _QB_GROUP_SKU_REMAP: dict = {
 }
 
 
-def _parse_qb_csv(content: str) -> dict:
+def _parse_qb_csv(content: str, known_sku_names: Optional[set] = None) -> dict:
     """
     Parse QB invoice CSV (doubled-comma format).
     Col 5=Type, Col 11=Memo, Col 13=Name, Col 15=Item (full QB path), Col 17=Qty, Col 19=Sales Price
@@ -623,18 +662,30 @@ def _parse_qb_csv(content: str) -> dict:
     price overrides are still updated from these rows so catalog coverage is
     not affected.
 
+    known_sku_names: skuKeys already in the catalog, used to recover the real
+    SKU name when QuickBooks' CSV export has truncated the Item column (see
+    _resolve_truncated_sku_name). Pass the current catalog's skuKeys here;
+    if omitted, truncated rows are always skipped (never guessed).
+
     Returns {
-      skus:       {sku_name: {...}},
-      customers:  {parent_name: {sku_name: price}},
-      quantities: {parent_name: {sku_name: total_qty}}   <-- NEW: summed Qty per customer+SKU
+      skus:              {sku_name: {...}},
+      customers:         {parent_name: {sku_name: price}},
+      quantities:        {parent_name: {sku_name: total_qty}},
+      truncatedSkipped:  [raw Item strings that were truncated by QB's CSV
+                          export and could not be unambiguously resolved to
+                          an existing catalog SKU -- these rows were SKIPPED
+                          entirely (no catalog/override/qty write) rather
+                          than risk creating a phantom duplicate SKU.]
     }
     """
     reader = csv.reader(io.StringIO(content))
     rows   = list(reader)
 
-    skus_out:       dict = {}
-    customers_out:  dict = {}
-    quantities_out: dict = {}   # parent_name -> {sku_name -> summed qty}
+    skus_out:          dict = {}
+    customers_out:     dict = {}
+    quantities_out:    dict = {}   # parent_name -> {sku_name -> summed qty}
+    truncated_skipped: list = []
+    known_sku_names = known_sku_names or set()
 
     for row in rows:
         if len(row) <= 19:
@@ -669,7 +720,24 @@ def _parse_qb_csv(content: str) -> dict:
         except ValueError:
             qty = 1
 
-        group, sku_name, desc = _parse_item(item_raw)
+        # QuickBooks' CSV export truncates the Item column at 99 chars with no
+        # closing paren -- _parse_item()'s paren-scan can't find the sku_name/
+        # desc boundary in that case, so it would otherwise store the whole
+        # garbage string as a brand-new phantom SKU (see _QB_ITEM_TRUNCATION_LEN
+        # docstring above). Try to recover the real, already-known SKU name
+        # instead; if we can't be sure, skip the row rather than guess wrong.
+        recovered_from_truncation = False
+        if _is_truncated_qb_item(item_raw):
+            resolved = _resolve_truncated_sku_name(item_raw, known_sku_names)
+            if resolved is None:
+                truncated_skipped.append(item_raw)
+                continue
+            group    = item_raw.split(':', 1)[0].strip() if ':' in item_raw else ''
+            sku_name = resolved
+            desc     = ''
+            recovered_from_truncation = True
+        else:
+            group, sku_name, desc = _parse_item(item_raw)
 
         # Disambiguate SKU names that appear under multiple QB groups.
         sku_name = _QB_GROUP_SKU_REMAP.get((group, sku_name), sku_name)
@@ -683,12 +751,18 @@ def _parse_qb_csv(content: str) -> dict:
         if sku_name not in skus_out:
             skus_out[sku_name] = {
                 'skuKey':        sku_name,
-                'fullPath':      item_raw,
+                # Truncation-recovered rows matched an EXISTING catalog SKU by
+                # definition (known_sku_names came from the catalog) -- don't
+                # let this row's garbage truncated Item string clobber that
+                # SKU's real fullPath/category/desc on upsert. keepExisting
+                # tells import_qb_skus() to skip those fields for this entry.
+                'fullPath':      item_raw if not recovered_from_truncation else None,
                 'defaultPrice':  price,
                 'category':      group,
                 'desc':          desc,
                 'prices':        set(),
                 'customerCount': 0,
+                'keepExisting':  recovered_from_truncation,
             }
         skus_out[sku_name]['prices'].add(price)
         skus_out[sku_name]['customerCount'] += 1
@@ -722,7 +796,12 @@ def _parse_qb_csv(content: str) -> dict:
     for v in skus_out.values():
         v['prices'] = sorted(v['prices'])
 
-    return {'skus': skus_out, 'customers': customers_out, 'quantities': quantities_out}
+    return {
+        'skus':             skus_out,
+        'customers':        customers_out,
+        'quantities':       quantities_out,
+        'truncatedSkipped': truncated_skipped,
+    }
 
 
 @router.post("/settings/import-qb-skus")
@@ -732,8 +811,9 @@ async def import_qb_skus(file: UploadFile = File(...)):
     sku_catalog = _catalog()    # reload from disk before import
     cust_ovr    = _overrides()  # reload from disk before import
 
+    known_sku_names = {s['skuKey'] for s in sku_catalog}
     content = (await file.read()).decode("utf-8-sig", errors="replace")
-    parsed  = _parse_qb_csv(content)
+    parsed  = _parse_qb_csv(content, known_sku_names=known_sku_names)
 
     skus_added   = 0
     skus_updated = 0
@@ -743,6 +823,16 @@ async def import_qb_skus(file: UploadFile = File(...)):
     # -- Upsert SKU catalog ----------------------------------------------------
     for sku_key, data in parsed['skus'].items():
         existing = next((s for s in sku_catalog if s['skuKey'] == sku_key), None)
+        if data.get('keepExisting'):
+            # This row's Item string was recovered from a QB CSV truncation
+            # (see _resolve_truncated_sku_name) -- it matched an EXISTING
+            # catalog SKU by definition, so only refresh the price. Never
+            # overwrite fullPath/category/desc with the garbage truncated
+            # string, and never create a new catalog row from it.
+            if existing:
+                existing['defaultPrice'] = data['defaultPrice']
+                skus_updated += 1
+            continue
         entry = {
             'skuKey':       data['skuKey'],
             'fullPath':     data['fullPath'],
@@ -800,16 +890,29 @@ async def import_qb_skus(file: UploadFile = File(...)):
 
     total_qb_devices = sum(r['qbQty'] for r in qty_records)
 
+    # De-dupe (many invoice lines can share the same truncated Item string)
+    # so the warning list is one entry per distinct unresolved SKU, not one
+    # per invoice line.
+    truncated_skipped = sorted(set(parsed.get('truncatedSkipped') or []))
+
     return {
-        "success":         True,
-        "skusAdded":       skus_added,
-        "skusUpdated":     skus_updated,
-        "ovrAdded":        ovr_added,
-        "ovrUpdated":      ovr_updated,
-        "totalSkus":       len(sku_catalog),
-        "totalCustomers":  len(parsed['customers']),
-        "totalQbDevices":  total_qb_devices,
-        "mappingsSynced":  mappings_synced,
+        "success":          True,
+        "skusAdded":        skus_added,
+        "skusUpdated":      skus_updated,
+        "ovrAdded":         ovr_added,
+        "ovrUpdated":       ovr_updated,
+        "totalSkus":        len(sku_catalog),
+        "totalCustomers":   len(parsed['customers']),
+        "totalQbDevices":   total_qb_devices,
+        "mappingsSynced":   mappings_synced,
+        # Item strings QB's CSV export truncated to 99 chars that we could
+        # NOT unambiguously match to an existing catalog SKU -- these rows
+        # were skipped entirely (no catalog/override/qty write) rather than
+        # risk creating a phantom duplicate SKU like the ones cleaned up in
+        # the Hanover Cost Share / Rosco / Can Do Crew investigation. If
+        # this list is non-empty, add the real SKU to the catalog manually
+        # (or rename an existing one) so the next import resolves it.
+        "truncatedSkipped": truncated_skipped,
     }
 
 

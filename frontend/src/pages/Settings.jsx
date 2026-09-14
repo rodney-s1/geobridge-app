@@ -1214,6 +1214,29 @@ function ImportCard({ title, description, columns, columnNote, endpoint, resultF
           </div>
         </div>
       )}
+
+      {/* QuickBooks truncates the Item column at 99 chars on long SKU names.
+          These rows couldn't be safely matched to an existing catalog SKU, so
+          they were skipped entirely (no catalog/override/qty write) instead
+          of risking a phantom duplicate SKU. Surface them so the real SKU can
+          be added/renamed in the catalog before the next import. */}
+      {result?.truncatedSkipped?.length > 0 && (
+        <div className="bg-amber-900/20 border border-amber-700/40 rounded-lg px-4 py-3 space-y-2">
+          <div className="text-sm font-medium text-amber-300">
+            ⚠ {result.truncatedSkipped.length} row{result.truncatedSkipped.length !== 1 ? 's' : ''} skipped — QuickBooks truncated the Item name
+          </div>
+          <p className="text-xs text-amber-500/90">
+            These rows were NOT imported (no catalog entry, price, or quantity was written) because QuickBooks'
+            export cut the Item text short and we couldn't match what's left to an existing SKU in the catalog.
+            Add or rename the matching SKU in the catalog so future imports resolve it automatically.
+          </p>
+          <ul className="text-xs font-mono text-amber-200/80 space-y-1 max-h-40 overflow-y-auto">
+            {result.truncatedSkipped.map(s => (
+              <li key={s} className="truncate" title={s}>{s}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }
