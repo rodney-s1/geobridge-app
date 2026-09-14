@@ -363,6 +363,7 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
   const [editOriginalCode, setEditOriginalCode] = useState(null)  // tracks code before rename
   const [editForm, setEditForm] = useState({})
   const [adding, setAdding] = useState(false)
+  const [addPlanLevel, setAddPlanLevel] = useState('')  // optional MyAdmin billing plan name
   const [addCode, setAddCode] = useState('')
   const [addSkuKeys, setAddSkuKeys] = useState([])   // ordered list of QB SKUs for add form
   const [addSkuPick, setAddSkuPick] = useState('')   // currently selected in dropdown
@@ -393,6 +394,7 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
 
   const filtered = mappings.filter(m =>
     !search || m.ratePlanCode.toLowerCase().includes(search.toLowerCase()) ||
+    (m.planLevel || '').toLowerCase().includes(search.toLowerCase()) ||
     (m.skuKeys || [m.skuKey]).some(k => k.toLowerCase().includes(search.toLowerCase()))
   )
 
@@ -454,7 +456,7 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
       setEditCode(null)
       setEditOriginalCode(null)
       setAdding(false)
-      setAddCode(''); setAddSkuKeys([]); setAddSkuPick(''); setAddNotes('')
+      setAddPlanLevel(''); setAddCode(''); setAddSkuKeys([]); setAddSkuPick(''); setAddNotes('')
       onRefresh()
     } catch (e) {
       setMsg({ type: 'err', text: e.message })
@@ -584,13 +586,20 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
         <div id="mapping-add-form" className="bg-slate-800 border border-blue-500/40 rounded-xl p-4 space-y-3">
           <div className="text-sm font-semibold text-blue-300 mb-1">New Rate Plan → SKU Mapping</div>
           <div className="text-xs text-slate-500 mb-2">
-            Enter either a <span className="text-amber-300">promo code</span> (e.g. <code className="font-mono bg-slate-700/60 px-1 rounded">SWELL-NOINS3</code>) or a
-            <span className="text-amber-300"> billing plan name</span> from MyAdmin exactly as it appears
-            (e.g. <code className="font-mono bg-slate-700/60 px-1 rounded">PROPLUS MODE</code>, <code className="font-mono bg-slate-700/60 px-1 rounded">BASE MODE: LIVE</code>). Most customers use a billing plan name.
+            Optionally set a <span className="text-amber-300">billing plan name</span> from MyAdmin exactly as it appears
+            (e.g. <code className="font-mono bg-slate-700/60 px-1 rounded">GO CORE</code>, <code className="font-mono bg-slate-700/60 px-1 rounded">PROPLUS MODE</code>) when the same
+            <span className="text-amber-300"> rate plan / promo code</span> (e.g. <code className="font-mono bg-slate-700/60 px-1 rounded">SWELL-NOINS3</code>) needs a different QB SKU depending on which billing plan it's under.
+            Leave Billing Plan Name blank if the code alone is enough to determine the SKU.
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2">
-              <label className="block text-xs text-slate-400 mb-1">Rate Plan Code or Billing Plan Name *</label>
+              <label className="block text-xs text-slate-400 mb-1">Billing Plan Name <span className="text-slate-600 font-normal">— optional, only needed to disambiguate</span></label>
+              <input value={addPlanLevel} onChange={e => setAddPlanLevel(e.target.value.toUpperCase())}
+                placeholder="e.g. GO CORE (leave blank if not needed)"
+                className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 font-mono focus:outline-none focus:border-blue-500" />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs text-slate-400 mb-1">Rate Plan Code *</label>
               <input value={addCode} onChange={e => setAddCode(e.target.value.toUpperCase())}
                 placeholder="e.g. PROPLUS MODE or SWELL-NOINS3"
                 className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 font-mono focus:outline-none focus:border-blue-500" />
@@ -620,11 +629,11 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
           </div>
           <div className="flex gap-2">
             <button disabled={saving || !addCode.trim() || addSkuKeys.length === 0}
-              onClick={() => saveMapping({ ratePlanCode: addCode, skuKeys: addSkuKeys, defaultPrice: 0, notes: addNotes })}
+              onClick={() => saveMapping({ ratePlanCode: addCode, planLevel: addPlanLevel, skuKeys: addSkuKeys, defaultPrice: 0, notes: addNotes })}
               className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded-lg font-medium">
               {saving ? 'Saving…' : 'Save'}
             </button>
-            <button onClick={() => { setAdding(false); setAddCode('') }} className="px-4 py-1.5 text-slate-400 hover:text-white text-sm">
+            <button onClick={() => { setAdding(false); setAddPlanLevel(''); setAddCode('') }} className="px-4 py-1.5 text-slate-400 hover:text-white text-sm">
               Cancel
             </button>
           </div>
@@ -643,7 +652,7 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
           </colgroup>
           <thead>
             <tr className="text-xs text-slate-500 border-b border-slate-700 bg-slate-750">
-              <th className="text-left px-4 py-3 font-medium">Rate Plan Code</th>
+              <th className="text-left px-4 py-3 font-medium">Billing Plan / Rate Plan Code</th>
               <th className="text-left px-4 py-3 font-medium">QB SKU</th>
               <th className="text-right px-4 py-3 font-medium">Price</th>
               <th className="text-left px-4 py-3 font-medium hidden lg:table-cell">Notes</th>
@@ -663,6 +672,13 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
                   <tr className="border-b border-slate-700/50 bg-slate-750">
                     <td className="px-4 py-2" colSpan={5}>
                       <div className="grid grid-cols-2 gap-3 mb-2">
+                        <div className="col-span-2">
+                          <label className="block text-xs text-slate-400 mb-1">Billing Plan Name <span className="text-slate-600 font-normal">— optional, only needed to disambiguate</span></label>
+                          <input value={editForm.planLevel || ''}
+                            onChange={e => setEditForm(f => ({ ...f, planLevel: e.target.value.toUpperCase() }))}
+                            placeholder="e.g. GO CORE (leave blank if not needed)"
+                            className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm font-mono text-slate-100 focus:outline-none focus:border-blue-500" />
+                        </div>
                         <div className="col-span-2">
                           <label className="block text-xs text-slate-400 mb-1">Rate Plan Code</label>
                           <input value={editForm.ratePlanCode || ''}
@@ -704,7 +720,7 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
                       </div>
                       <div className="flex gap-2">
                         <button disabled={saving}
-                          onClick={() => saveMapping({ ...editForm, skuKeys: editForm.skuKeys || [editForm.skuKey], defaultPrice: parseFloat(editForm.defaultPrice) || 0 }, editOriginalCode)}
+                          onClick={() => saveMapping({ ...editForm, planLevel: editForm.planLevel || '', skuKeys: editForm.skuKeys || [editForm.skuKey], defaultPrice: parseFloat(editForm.defaultPrice) || 0 }, editOriginalCode)}
                           className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded font-medium">
                           {saving ? 'Saving…' : 'Save'}
                         </button>
@@ -715,9 +731,16 @@ function RatePlanMappingsTab({ mappings, catalog, unmapped, onRefresh, deepLinkP
                 ) : (
                   <tr className="border-b border-slate-700/50 hover:bg-slate-750 transition-colors group">
                     <td className="px-4 py-2.5 overflow-hidden">
-                      <span className="font-mono text-xs bg-slate-700 text-amber-300 px-1.5 py-0.5 rounded block truncate" title={m.ratePlanCode}>
-                        {m.ratePlanCode}
-                      </span>
+                      <div className="flex flex-col gap-0.5">
+                        {m.planLevel && (
+                          <span className="font-mono text-[10px] bg-purple-900/40 text-purple-300 px-1.5 py-0.5 rounded block truncate" title={`Billing Plan Name: ${m.planLevel}`}>
+                            {m.planLevel}
+                          </span>
+                        )}
+                        <span className="font-mono text-xs bg-slate-700 text-amber-300 px-1.5 py-0.5 rounded block truncate" title={m.ratePlanCode}>
+                          {m.ratePlanCode}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-4 py-2.5 overflow-hidden">
                       {(() => {

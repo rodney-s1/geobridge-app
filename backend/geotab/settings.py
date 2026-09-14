@@ -251,6 +251,10 @@ class MappingUpsert(BaseModel):
     skuKeys: list       # ordered list of QB SKU names; first = primary invoice SKU
     defaultPrice: float = 0.0
     notes: str = ""
+    planLevel: str = ""  # optional MyAdmin billing plan name (e.g. "GO CORE") used to
+                          # disambiguate a rate plan / promo code that resolves to a
+                          # different QB SKU depending on which billing plan it's under
+                          # (reconciliation.py Tier 1.5). Blank = code alone is unambiguous.
 
 
 @router.get("/settings/sku-mappings")
@@ -271,12 +275,12 @@ async def upsert_mapping(body: MappingUpsert):
         "skuKeys":      sku_keys,
         "defaultPrice": body.defaultPrice,
         "notes":        body.notes,
+        "planLevel":    body.planLevel.strip().upper(),
     }
     if existing:
-        # Preserve planLevel and cost if they exist and weren't sent
-        for field in ("planLevel", "cost"):
-            if field in existing and field not in data:
-                data[field] = existing[field]
+        # Preserve cost if it exists and wasn't sent (not yet exposed in the UI)
+        if "cost" in existing and "cost" not in data:
+            data["cost"] = existing["cost"]
         existing.update(data)
     else:
         sku_mappings.append(data)
