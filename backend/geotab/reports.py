@@ -133,6 +133,45 @@ def _resolve_monthly_rate(customer_name: str, sku_key: str,
     return catalog_index.get(sku_key) or 0.0
 
 
+def _build_cost_override_index() -> Dict[Tuple[str, str], float]:
+    """
+    (normalizedCustomerName, skuKey) -> cost, for the subset of per-customer
+    price overrides that also have a cost override set (costSet=True --
+    see settings.py's upsert_override). Lets a specific customer get a
+    lower negotiated cost for a SKU while everyone else stays on the SKU's
+    catalog cost.
+    """
+    overrides = _load(os.path.join(_DATA_DIR, "sku_customer_overrides.json"), [])
+    return {
+        (_normalize(o["customerName"]), o["skuKey"]): float(o.get("cost") or 0.0)
+        for o in overrides
+        if o.get("costSet")
+    }
+
+
+def _resolve_cost(customer_name: str, sku_key: str,
+                   cost_ovr_index: Dict[Tuple[str, str], float],
+                   cost_index: Dict[str, Optional[float]]) -> Optional[float]:
+    """
+    Resolve the effective cost for a (customer, SKU) invoice line:
+      1. A per-customer cost override for this exact SKU, if one exists
+         (or for the parent of a dash-department sub-account -- same
+         precedence rule as _resolve_monthly_rate).
+      2. Otherwise, the SKU's catalog cost (None if never confirmed there
+         either -- the "Cost Data Incomplete" case).
+    """
+    norm = _normalize(customer_name)
+    dash = norm.find(" - ")
+    if dash != -1:
+        parent_key = (norm[:dash].strip(), sku_key)
+        if parent_key in cost_ovr_index:
+            return cost_ovr_index[parent_key]
+    key = (norm, sku_key)
+    if key in cost_ovr_index:
+        return cost_ovr_index[key]
+    return cost_index.get(sku_key)
+
+
 # ---------------------------------------------------------------------------
 # SKU resolution (simplified — promo-code → sku_key → monthly rate)
 # ---------------------------------------------------------------------------
@@ -815,7 +854,8 @@ def _compute_profit_report() -> dict:
         )
 
     ovr_index, catalog_index = _build_price_index()
-    cost_index = _build_cost_index()
+    cost_index      = _build_cost_index()
+    cost_ovr_index  = _build_cost_override_index()
     catalog_cat = {s["skuKey"]: s.get("category") or "" for s in catalog}
 
     # Aggregate incomplete-cost SKUs across the whole report (for the top-level
@@ -831,7 +871,7 @@ def _compute_profit_report() -> dict:
             continue
 
         price = _resolve_monthly_rate(cname, sku_key, ovr_index, catalog_index)
-        cost  = cost_index.get(sku_key)          # None => missing cost data
+        cost  = _resolve_cost(cname, sku_key, cost_ovr_index, cost_index)  # None => missing cost data
         cost_missing = cost is None
         cost_val = cost or 0.0
 

@@ -435,6 +435,16 @@ class OverrideUpsert(BaseModel):
     customerName: str
     skuKey: str
     price: float
+    # Optional per-customer cost override -- e.g. a vendor gives us a lower
+    # cost for this SKU for this specific customer while everyone else still
+    # pays the catalog default cost and MSRP price. None/omitted means "no
+    # cost override for this customer -- fall back to the SKU's catalog
+    # cost", which is different from an explicit 0.0 (a confirmed free cost
+    # for them specifically). costSet is derived server-side in
+    # upsert_override() from whether `cost` was actually provided, so the
+    # frontend just sends cost=null to clear an override back to "use
+    # catalog cost" and any number (including 0) to set one.
+    cost: Optional[float] = None
 
 
 def _ovr_id(customer_name: str, sku_key: str) -> str:
@@ -449,11 +459,19 @@ async def list_overrides():
 
 @router.post("/settings/customer-overrides")
 async def upsert_override(body: OverrideUpsert):
+    """
+    Upsert a per-customer price override. If `cost` is provided (any number,
+    including 0), this also sets a per-customer cost override -- e.g. a
+    vendor gives a lower cost for this SKU to this specific customer while
+    everyone else stays on the catalog default cost. Sending cost=null
+    clears any existing cost override for this row, reverting that customer
+    back to the SKU's catalog cost in the Profit report.
+    """
     global cust_ovr
     cust_ovr = _overrides()    # reload from disk first
     oid = _ovr_id(body.customerName, body.skuKey)
     existing = next((o for o in cust_ovr if o["id"] == oid), None)
-    data = {**body.dict(), "id": oid}
+    data = {**body.dict(), "id": oid, "costSet": body.cost is not None}
     if existing:
         existing.update(data)
     else:

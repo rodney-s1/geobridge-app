@@ -856,6 +856,8 @@ function CustomerOverridesTab({ overrides, catalog, onRefresh }) {
   const [addCust, setAddCust] = useState('')
   const [addSku, setAddSku] = useState('')
   const [addPrice, setAddPrice] = useState('')
+  const [addCost, setAddCost] = useState('')
+  const [addCostEnabled, setAddCostEnabled] = useState(false)
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
   const [page, setPage] = useState(1)
@@ -887,11 +889,16 @@ function CustomerOverridesTab({ overrides, catalog, onRefresh }) {
       const r = await fetch(`${API}/api/settings/customer-overrides`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerName: addCust, skuKey: addSku, price: parseFloat(addPrice) || 0 }),
+        body: JSON.stringify({
+          customerName: addCust,
+          skuKey: addSku,
+          price: parseFloat(addPrice) || 0,
+          cost: addCostEnabled ? (parseFloat(addCost) || 0) : null,
+        }),
       })
       if (!r.ok) throw new Error(await r.text())
       setMsg({ type: 'ok', text: 'Override saved.' })
-      setAdding(false); setAddCust(''); setAddSku(''); setAddPrice('')
+      setAdding(false); setAddCust(''); setAddSku(''); setAddPrice(''); setAddCost(''); setAddCostEnabled(false)
       onRefresh()
     } catch (e) {
       setMsg({ type: 'err', text: e.message })
@@ -908,7 +915,13 @@ function CustomerOverridesTab({ overrides, catalog, onRefresh }) {
   function startEdit(o) {
     setEditId(o.id)
     setEditOriginalId(o.id)
-    setEditForm({ customerName: o.customerName, skuKey: o.skuKey, price: String(o.price) })
+    setEditForm({
+      customerName: o.customerName,
+      skuKey: o.skuKey,
+      price: String(o.price),
+      costEnabled: !!o.costSet,
+      cost: o.costSet ? String(o.cost ?? 0) : '',
+    })
   }
 
   function cancelEdit() {
@@ -930,10 +943,11 @@ function CustomerOverridesTab({ overrides, catalog, onRefresh }) {
       if (editOriginalId && editOriginalId !== newId) {
         await fetch(`${API}/api/settings/customer-overrides/${encodeURIComponent(editOriginalId)}`, { method: 'DELETE' })
       }
+      const cost = editForm.costEnabled ? (parseFloat(editForm.cost) || 0) : null
       const r = await fetch(`${API}/api/settings/customer-overrides`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customerName, skuKey, price }),
+        body: JSON.stringify({ customerName, skuKey, price, cost }),
       })
       if (!r.ok) throw new Error(await r.text())
       setMsg({ type: 'ok', text: 'Override saved.' })
@@ -996,6 +1010,28 @@ function CustomerOverridesTab({ overrides, catalog, onRefresh }) {
                 className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
             </div>
           </div>
+          <div className="flex items-start gap-2 pt-1 border-t border-slate-700/60">
+            <input type="checkbox" id="addcost-toggle" checked={addCostEnabled}
+              onChange={e => {
+                const on = e.target.checked
+                setAddCostEnabled(on)
+                if (on && !addCost) {
+                  const found = catalog.find(s => s.skuKey === addSku)
+                  setAddCost(found ? String(found.cost || 0) : '0')
+                }
+              }}
+              className="mt-2.5 accent-amber-500" />
+            <div className="flex-1">
+              <label htmlFor="addcost-toggle" className="block text-xs text-slate-400 mb-1">
+                💲 Custom cost for this customer — leave unchecked to keep using the SKU's default cost for everyone else
+              </label>
+              {addCostEnabled && (
+                <input type="number" step="0.01" value={addCost} onChange={e => setAddCost(e.target.value)}
+                  placeholder="Negotiated cost for this customer"
+                  className="w-full max-w-[200px] bg-slate-700 border border-amber-600/50 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-amber-500" />
+              )}
+            </div>
+          </div>
           <div className="flex gap-2">
             <button disabled={saving || !addCust.trim() || !addSku || !addPrice}
               onClick={saveOverride}
@@ -1026,10 +1062,12 @@ function CustomerOverridesTab({ overrides, catalog, onRefresh }) {
         </div>
         <table className="w-full table-fixed text-sm">
           <colgroup>
-            <col style={{ width: '32%' }} />
-            <col style={{ width: '34%' }} />
-            <col style={{ width: '12%' }} />
-            <col style={{ width: '12%' }} className="hidden sm:table-column" />
+            <col style={{ width: '26%' }} />
+            <col style={{ width: '28%' }} />
+            <col style={{ width: '11%' }} />
+            <col style={{ width: '10%' }} className="hidden sm:table-column" />
+            <col style={{ width: '13%' }} />
+            <col style={{ width: '12%' }} className="hidden md:table-column" />
             <col style={{ width: '10%' }} />
           </colgroup>
           <thead>
@@ -1038,13 +1076,15 @@ function CustomerOverridesTab({ overrides, catalog, onRefresh }) {
               <th className="text-left px-4 py-2 font-medium">SKU</th>
               <th className="text-right px-4 py-2 font-medium">Price</th>
               <th className="text-right px-4 py-2 font-medium hidden sm:table-cell">Default</th>
+              <th className="text-right px-4 py-2 font-medium">Cost</th>
+              <th className="text-right px-4 py-2 font-medium hidden md:table-cell">Default Cost</th>
               <th className="px-4 py-2"></th>
             </tr>
           </thead>
           <tbody>
             {paged.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-slate-500">No overrides found.</td>
+                <td colSpan={7} className="px-4 py-8 text-center text-slate-500">No overrides found.</td>
               </tr>
             ) : paged.map(o => {
               const catalogEntry = catalog.find(s => s.skuKey === o.skuKey)
@@ -1053,7 +1093,7 @@ function CustomerOverridesTab({ overrides, catalog, onRefresh }) {
               if (editId === o.id) {
                 return (
                   <tr key={o.id} className="border-b border-slate-700/50 bg-slate-750">
-                    <td className="px-4 py-2" colSpan={5}>
+                    <td className="px-4 py-2" colSpan={7}>
                       <div className="grid grid-cols-3 gap-3 mb-2">
                         <div className="col-span-1">
                           <label className="block text-xs text-slate-400 mb-1">Customer Name *</label>
@@ -1079,6 +1119,31 @@ function CustomerOverridesTab({ overrides, catalog, onRefresh }) {
                           <input type="number" step="0.01" value={editForm.price || ''}
                             onChange={e => setEditForm(f => ({ ...f, price: e.target.value }))}
                             className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-2 pt-1 pb-2 border-t border-slate-700/60">
+                        <input type="checkbox" id={`editcost-toggle-${o.id}`} checked={!!editForm.costEnabled}
+                          onChange={e => {
+                            const on = e.target.checked
+                            setEditForm(f => {
+                              if (on && !f.cost) {
+                                const found = catalog.find(s => s.skuKey === f.skuKey)
+                                return { ...f, costEnabled: on, cost: found ? String(found.cost || 0) : '0' }
+                              }
+                              return { ...f, costEnabled: on }
+                            })
+                          }}
+                          className="mt-2.5 accent-amber-500" />
+                        <div className="flex-1">
+                          <label htmlFor={`editcost-toggle-${o.id}`} className="block text-xs text-slate-400 mb-1">
+                            💲 Custom cost for this customer — leave unchecked to keep using the SKU's default cost for everyone else
+                          </label>
+                          {editForm.costEnabled && (
+                            <input type="number" step="0.01" value={editForm.cost || ''}
+                              onChange={e => setEditForm(f => ({ ...f, cost: e.target.value }))}
+                              placeholder="Negotiated cost for this customer"
+                              className="w-full max-w-[200px] bg-slate-700 border border-amber-600/50 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-amber-500" />
+                          )}
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -1110,6 +1175,19 @@ function CustomerOverridesTab({ overrides, catalog, onRefresh }) {
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono text-slate-500 text-xs hidden sm:table-cell">
                     {catalogEntry ? fmtPrice(catalogEntry.defaultPrice) : '—'}
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-mono">
+                    {o.costSet ? (
+                      <>
+                        <span className="text-amber-300 font-semibold">{fmtPrice(o.cost)}</span>
+                        <span className="ml-1 text-xs text-amber-500">custom</span>
+                      </>
+                    ) : (
+                      <span className="text-slate-500 text-xs">Default</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5 text-right font-mono text-slate-500 text-xs hidden md:table-cell">
+                    {catalogEntry ? fmtPrice(catalogEntry.cost) : '—'}
                   </td>
                   <td className="px-4 py-2.5 text-right">
                     <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-end gap-2">
