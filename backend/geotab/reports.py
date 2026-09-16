@@ -8,6 +8,7 @@ Endpoints
 ---------
 GET /api/reports/summary          — full data bundle for all 7 report tabs
 GET /api/reports/terminated        — terminated devices with month-over-month trend
+GET /api/reports/profit           — per-customer profit from actual QB invoice lines
 """
 from __future__ import annotations
 
@@ -483,4 +484,162 @@ async def get_reports_summary():
             "lastMonth":     term_last_month,
             "totalTracked":  total_terminated,
         },
+    }
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# GET /api/reports/profit
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _build_cost_index() -> Dict[str, Optional[float]]:
+    """
+    skuKey -> cost (from the Item Price List import), or None if this SKU
+    has never had cost data imported for it. None (not 0.0) is used as the
+    "missing" sentinel so a genuinely free/zero-cost SKU isn't confused with
+    one that simply hasn't been priced yet in the Item Price List.
+    """
+    catalog = _load(os.path.join(_DATA_DIR, "sku_catalog.json"), [])
+    index: Dict[str, Optional[float]] = {}
+    for s in catalog:
+        cost = s.get("cost")
+        index[s["skuKey"]] = float(cost) if cost else None
+    return index
+
+
+@router.get("/reports/profit")
+async def get_profit_report():
+    """
+    Per-customer profit computed from ACTUAL QuickBooks invoice quantities
+    (qb_invoice_quantities.json) — i.e. what was really billed last import,
+    not the MyAdmin device count or Reconciliation's expected total. This is
+    intentionally independent of Reconciliation status: a customer with a
+    device-count mismatch still gets a profit number based on what QB says
+    they were actually charged.
+
+    For each (customer, SKU) invoice line:
+      revenue = qbQty * price   (customer override price, else catalog defaultPrice)
+      cost    = qbQty * cost    (from the Item Price List import)
+      profit  = revenue - cost
+
+    If a SKU has never had cost data imported (Item Price List), its line's
+    cost is treated as $0 for the total (so profit is NOT understated), but
+    the line -- and the customer, and the SKU -- are flagged as having
+    incomplete cost data so the user knows which SKUs still need a cost
+    entered via Settings -> Import Price List (or manually).
+
+    QB-authoritative SKUs (e.g. BlueArrow Fuel Service, billed from an
+    external platform with no MyAdmin device count) ARE included here --
+    unlike Reconciliation, which excludes them from its device-count delta,
+    profit is a pure revenue-vs-cost calculation per invoice line and every
+    billed SKU should count toward it.
+    """
+    catalog   = _load(os.path.join(_DATA_DIR, "sku_catalog.json"), [])
+    qb_qtys   = _load(os.path.join(_DATA_DIR, "qb_invoice_quantities.json"), [])
+
+    if not qb_qtys:
+        raise HTTPException(
+            status_code=503,
+            detail="No QB invoice data found. Import a QB CSV from Settings first."
+        )
+
+    ovr_index, catalog_index = _build_price_index()
+    cost_index = _build_cost_index()
+    catalog_cat = {s["skuKey"]: s.get("category") or "" for s in catalog}
+
+    # Aggregate incomplete-cost SKUs across the whole report (for the top-level
+    # "SKUs missing cost data" list the user asked for).
+    skus_missing_cost: Dict[str, dict] = {}   # skuKey -> {skuKey, category, customerCount, qtyTotal}
+
+    customers: Dict[str, dict] = {}
+    for row in qb_qtys:
+        cname   = row.get("customerName") or ""
+        sku_key = row.get("skuKey") or ""
+        qty     = int(row.get("qbQty") or 0)
+        if not cname or not sku_key or qty <= 0:
+            continue
+
+        price = _resolve_monthly_rate(cname, sku_key, ovr_index, catalog_index)
+        cost  = cost_index.get(sku_key)          # None => missing cost data
+        cost_missing = cost is None
+        cost_val = cost or 0.0
+
+        revenue = round(qty * price, 2)
+        cost_total = round(qty * cost_val, 2)
+        profit = round(revenue - cost_total, 2)
+
+        cust = customers.setdefault(cname, {
+            "customerName":     cname,
+            "revenue":          0.0,
+            "cost":             0.0,
+            "profit":           0.0,
+            "deviceQty":        0,
+            "costIncomplete":   False,
+            "incompleteSkus":   [],
+            "lines":            [],
+        })
+        cust["revenue"]  += revenue
+        cust["cost"]     += cost_total
+        cust["profit"]   += profit
+        cust["deviceQty"] += qty
+        if cost_missing:
+            cust["costIncomplete"] = True
+            if sku_key not in cust["incompleteSkus"]:
+                cust["incompleteSkus"].append(sku_key)
+
+        cust["lines"].append({
+            "skuKey":         sku_key,
+            "qty":            qty,
+            "price":          round(price, 2),
+            "cost":           round(cost_val, 2) if not cost_missing else None,
+            "revenue":        revenue,
+            "profit":         profit,
+            "costIncomplete": cost_missing,
+        })
+
+        if cost_missing:
+            entry = skus_missing_cost.setdefault(sku_key, {
+                "skuKey":       sku_key,
+                "category":     catalog_cat.get(sku_key, ""),
+                "customerCount": 0,
+                "qtyTotal":     0,
+            })
+            entry["customerCount"] += 1
+            entry["qtyTotal"]      += qty
+
+    customer_list = []
+    for c in customers.values():
+        c["revenue"] = round(c["revenue"], 2)
+        c["cost"]    = round(c["cost"], 2)
+        c["profit"]  = round(c["profit"], 2)
+        c["marginPct"] = round((c["profit"] / c["revenue"]) * 100, 1) if c["revenue"] else 0.0
+        c["lines"].sort(key=lambda l: l["revenue"], reverse=True)
+        c["incompleteSkus"].sort()
+        customer_list.append(c)
+
+    customer_list.sort(key=lambda x: x["profit"])   # lowest profit / worst margin first
+
+    total_revenue = round(sum(c["revenue"] for c in customer_list), 2)
+    total_cost    = round(sum(c["cost"] for c in customer_list), 2)
+    total_profit  = round(total_revenue - total_cost, 2)
+    total_margin  = round((total_profit / total_revenue) * 100, 1) if total_revenue else 0.0
+    customers_with_incomplete = sum(1 for c in customer_list if c["costIncomplete"])
+
+    missing_list = sorted(
+        skus_missing_cost.values(),
+        key=lambda x: x["qtyTotal"], reverse=True
+    )
+
+    return {
+        "generatedAt": datetime.utcnow().isoformat() + "Z",
+        "summary": {
+            "totalRevenue":  total_revenue,
+            "totalCost":     total_cost,
+            "totalProfit":   total_profit,
+            "marginPct":     total_margin,
+            "customerCount": len(customer_list),
+            "customersWithIncompleteCost": customers_with_incomplete,
+            "skusMissingCostCount": len(missing_list),
+        },
+        "customers": customer_list,
+        "skusMissingCost": missing_list,
     }

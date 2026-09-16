@@ -725,6 +725,218 @@ function TabTerminated({ data }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// TAB 8 — Profit
+// ═══════════════════════════════════════════════════════════════════════════
+function TabProfit() {
+  const [data, setData]       = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState(null)
+  const [search, setSearch]   = useState('')
+  const [sortKey, setSortKey] = useState('profit')
+  const [sortDir, setSortDir] = useState('asc')
+  const [showMissing, setShowMissing] = useState(false)
+
+  const load = useCallback(() => {
+    setLoading(true)
+    setError(null)
+    fetch(`${API}/api/reports/profit`)
+      .then(r => {
+        if (!r.ok) return r.json().then(e => Promise.reject(e.detail || r.statusText))
+        return r.json()
+      })
+      .then(setData)
+      .catch(e => setError(String(e)))
+      .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  if (loading) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="text-center">
+        <div className="inline-block w-8 h-8 border-2 border-blue-500 border-t-transparent
+                        rounded-full animate-spin mb-3" />
+        <p className="text-gray-400 text-sm">Calculating profit…</p>
+      </div>
+    </div>
+  )
+
+  if (error) return (
+    <div className="flex items-center justify-center h-64">
+      <div className="text-center max-w-md">
+        <div className="text-4xl mb-3">⚠️</div>
+        <p className="text-red-400 font-semibold mb-2">Unable to load profit report</p>
+        <p className="text-gray-500 text-sm mb-4">{error}</p>
+        <button onClick={load}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-lg">
+          Retry
+        </button>
+      </div>
+    </div>
+  )
+
+  const sum       = data?.summary || {}
+  const customers = data?.customers || []
+  const missing   = data?.skusMissingCost || []
+
+  const filtered = search
+    ? customers.filter(c => c.customerName.toLowerCase().includes(search.toLowerCase()))
+    : customers
+
+  const sorted = [...filtered].sort((a, b) => {
+    const av = sortKey === 'customerName' ? a.customerName.toLowerCase() : (a[sortKey] ?? 0)
+    const bv = sortKey === 'customerName' ? b.customerName.toLowerCase() : (b[sortKey] ?? 0)
+    if (av < bv) return sortDir === 'asc' ? -1 : 1
+    if (av > bv) return sortDir === 'asc' ? 1 : -1
+    return 0
+  })
+
+  const toggleSort = (key) => {
+    if (sortKey === key) {
+      setSortDir(d => d === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortKey(key)
+      setSortDir(key === 'customerName' ? 'asc' : 'asc')
+    }
+  }
+
+  const SortHead = ({ label, k, align = 'right' }) => (
+    <th className={`px-4 py-3 cursor-pointer select-none ${align === 'right' ? 'text-right' : ''}`}
+        onClick={() => toggleSort(k)}>
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {sortKey === k && <span className="text-blue-400">{sortDir === 'asc' ? '▲' : '▼'}</span>}
+      </span>
+    </th>
+  )
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <StatCard label="Total Revenue" value={fmt$(sum.totalRevenue)} color="#3b82f6" />
+        <StatCard label="Total Cost"    value={fmt$(sum.totalCost)}    color="#ef4444" />
+        <StatCard label="Total Profit"  value={fmt$(sum.totalProfit)}  color="#10b981"
+          sub={`${sum.marginPct ?? 0}% margin`} />
+        <StatCard label="Customers" value={fmtN(sum.customerCount)} color="#8b5cf6"
+          sub={`Based on last QB import`} />
+      </div>
+
+      {sum.customersWithIncompleteCost > 0 && (
+        <button
+          onClick={() => setShowMissing(s => !s)}
+          className="w-full text-left rounded-xl p-4 bg-amber-500/10 border border-amber-500/30
+                     hover:bg-amber-500/15 transition-colors">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-amber-300">
+              <span className="font-semibold">⚠ Cost Data Incomplete</span> — {sum.customersWithIncompleteCost} customer(s)
+              have at least one SKU with no cost entered ({sum.skusMissingCostCount} SKU{sum.skusMissingCostCount !== 1 ? 's' : ''} affected).
+              Their profit is treated as revenue only (cost = $0) for those lines, so it may be overstated.
+            </p>
+            <span className="text-amber-400 text-xs flex-shrink-0 ml-3">
+              {showMissing ? 'Hide' : 'Show'} affected SKUs {showMissing ? '▲' : '▼'}
+            </span>
+          </div>
+          {showMissing && (
+            <div className="mt-3 overflow-x-auto rounded-lg border border-amber-500/20">
+              <table className="w-full text-xs">
+                <thead className="bg-amber-500/10">
+                  <tr className="text-left text-amber-300/80 uppercase tracking-wide">
+                    <th className="px-3 py-2">SKU</th>
+                    <th className="px-3 py-2">Category</th>
+                    <th className="px-3 py-2 text-right">Customers</th>
+                    <th className="px-3 py-2 text-right">Total Qty Billed</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {missing.map((s, i) => (
+                    <tr key={i} className="border-t border-amber-500/10">
+                      <td className="px-3 py-2 font-mono text-gray-200 max-w-xs truncate" title={s.skuKey}>{s.skuKey}</td>
+                      <td className="px-3 py-2 text-gray-400">{s.category || '—'}</td>
+                      <td className="px-3 py-2 text-right text-gray-400">{s.customerCount}</td>
+                      <td className="px-3 py-2 text-right text-gray-300 font-mono">{fmtN(s.qtyTotal)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="px-3 py-2 text-xs text-amber-300/70 bg-amber-500/5">
+                Add cost via Settings → Import Price List, sorted here by highest billed quantity first
+                so you can prioritize the SKUs affecting the most revenue.
+              </p>
+            </div>
+          )}
+        </button>
+      )}
+
+      <div>
+        <SectionHead title="Profit by Customer"
+          sub="Revenue and cost from the last imported QB invoice × Item Price List cost data" />
+        <input
+          className="w-full mb-3 px-3 py-2 rounded-lg bg-gray-800 border border-gray-700
+                     text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
+          placeholder="Search customer…"
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+        />
+        <div className="overflow-x-auto rounded-xl border border-gray-700 max-h-[32rem] overflow-y-auto">
+          <table className="w-full text-sm">
+            <thead className="sticky top-0 bg-gray-800">
+              <tr className="text-left text-gray-400 text-xs uppercase tracking-wide">
+                <SortHead label="Customer" k="customerName" align="left" />
+                <SortHead label="Qty Billed" k="deviceQty" />
+                <SortHead label="Revenue" k="revenue" />
+                <SortHead label="Cost" k="cost" />
+                <SortHead label="Profit" k="profit" />
+                <SortHead label="Margin" k="marginPct" />
+                <th className="px-4 py-3">Cost Data</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.length === 0 && (
+                <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500">No customers found</td></tr>
+              )}
+              {sorted.map((c, i) => (
+                <tr key={i} className="border-t border-gray-800 hover:bg-gray-800/40">
+                  <td className="px-4 py-2.5 font-medium text-gray-200 max-w-xs truncate" title={c.customerName}>
+                    {c.customerName}
+                  </td>
+                  <td className="px-4 py-2.5 text-right text-gray-400 font-mono">{fmtN(c.deviceQty)}</td>
+                  <td className="px-4 py-2.5 text-right font-mono text-blue-300">{fmt$(c.revenue)}</td>
+                  <td className="px-4 py-2.5 text-right font-mono text-red-300">{fmt$(c.cost)}</td>
+                  <td className={`px-4 py-2.5 text-right font-mono font-semibold ${
+                    c.profit >= 0 ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    {fmt$(c.profit)}
+                  </td>
+                  <td className={`px-4 py-2.5 text-right font-mono ${
+                    c.marginPct >= 0 ? 'text-gray-300' : 'text-red-400'
+                  }`}>
+                    {c.marginPct}%
+                  </td>
+                  <td className="px-4 py-2.5">
+                    {c.costIncomplete ? (
+                      <span className="px-2 py-0.5 rounded-full text-xs bg-amber-500/20
+                                       text-amber-300 border border-amber-500/30"
+                            title={c.incompleteSkus.join(', ')}>
+                        Incomplete
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full text-xs bg-green-500/15
+                                       text-green-400 border border-green-500/25">
+                        Complete
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // MAIN REPORTS PAGE
 // ═══════════════════════════════════════════════════════════════════════════
 const TABS = [
@@ -735,6 +947,7 @@ const TABS = [
   { id: 'activations', label: 'Activations',   icon: '📈' },
   { id: 'annual',      label: 'Annual Billing', icon: '📅' },
   { id: 'terminated',  label: 'Terminated',    icon: '🔴' },
+  { id: 'profit',      label: 'Profit',        icon: '💵' },
 ]
 
 export default function Reports() {
@@ -833,6 +1046,7 @@ export default function Reports() {
         {activeTab === 'activations' && <TabActivations  data={data} />}
         {activeTab === 'annual'      && <TabAnnual       data={data} />}
         {activeTab === 'terminated'  && <TabTerminated   data={data} />}
+        {activeTab === 'profit'      && <TabProfit />}
       </div>
     </div>
   )
