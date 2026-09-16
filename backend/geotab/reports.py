@@ -9,10 +9,12 @@ Endpoints
 GET /api/reports/summary          — full data bundle for all 7 report tabs
 GET /api/reports/terminated        — terminated devices with month-over-month trend
 GET /api/reports/profit           — per-customer profit from actual QB invoice lines
+GET /api/reports/profit/export    — same data as an .xlsx workbook download
 """
 from __future__ import annotations
 
 import html as _html
+import io
 import os
 import re
 from collections import defaultdict
@@ -20,6 +22,7 @@ from datetime import date, datetime
 from typing import Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 
 from .auth import require_session
 
@@ -493,21 +496,287 @@ async def get_reports_summary():
 
 def _build_cost_index() -> Dict[str, Optional[float]]:
     """
-    skuKey -> cost (from the Item Price List import), or None if this SKU
-    has never had cost data imported for it. None (not 0.0) is used as the
-    "missing" sentinel so a genuinely free/zero-cost SKU isn't confused with
-    one that simply hasn't been priced yet in the Item Price List.
+    skuKey -> cost, or None if this SKU has never had cost data confirmed
+    for it. None (not 0.0) is used as the "missing" sentinel so a genuinely
+    free/zero-cost SKU isn't confused with one that simply hasn't been
+    priced yet.
+
+    A cost counts as "confirmed" (returned, even if 0.0) when either:
+      - costSet is True -- the user explicitly saved a cost (including
+        $0.00) via Settings -> SKU Catalog's manual Add/Edit form, or
+      - cost is a real nonzero number -- imported from a QB Item Price
+        List row that had an actual cost value.
+    A bare falsy `cost` with no costSet flag (the common case for catalog
+    rows that have simply never had cost data touched at all) is "missing".
     """
     catalog = _load(os.path.join(_DATA_DIR, "sku_catalog.json"), [])
     index: Dict[str, Optional[float]] = {}
     for s in catalog:
         cost = s.get("cost")
-        index[s["skuKey"]] = float(cost) if cost else None
+        if s.get("costSet") or cost:
+            index[s["skuKey"]] = float(cost or 0.0)
+        else:
+            index[s["skuKey"]] = None
     return index
 
 
-@router.get("/reports/profit")
-async def get_profit_report():
+def _build_profit_workbook(report: dict) -> bytes:
+    """
+    Render the profit report dict (see _compute_profit_report) as a styled
+    .xlsx workbook with three sheets: Summary, Profit by Customer, and
+    Line Detail. Returns the raw workbook bytes (write to a BytesIO/response,
+    never to disk -- Cloudflare-style stateless generation).
+    """
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from openpyxl.formatting.rule import CellIsRule
+
+    # ── Shared style palette ────────────────────────────────────────────────
+    NAVY       = "1F2937"   # header band
+    NAVY_DARK  = "111827"   # title band
+    AMBER      = "F59E0B"
+    AMBER_FILL = "FEF3C7"
+    GREEN      = "059669"
+    RED        = "DC2626"
+    WHITE_FONT = Font(color="FFFFFF", bold=True, size=11)
+    TITLE_FONT = Font(color="FFFFFF", bold=True, size=16)
+    SUBTLE     = Font(color="6B7280", italic=True, size=9)
+    BOLD       = Font(bold=True)
+    HEADER_FILL = PatternFill("solid", fgColor=NAVY)
+    TITLE_FILL  = PatternFill("solid", fgColor=NAVY_DARK)
+    STRIPE_FILL = PatternFill("solid", fgColor="F3F4F6")
+    AMBER_ROW_FILL = PatternFill("solid", fgColor=AMBER_FILL)
+    THIN = Side(style="thin", color="D1D5DB")
+    BORDER = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
+    MONEY_FMT = '$#,##0.00'
+    PCT_FMT   = '0.0"%"'
+
+    wb = Workbook()
+
+    def _style_header_row(ws, row_idx, ncols):
+        for c in range(1, ncols + 1):
+            cell = ws.cell(row=row_idx, column=c)
+            cell.font = WHITE_FONT
+            cell.fill = HEADER_FILL
+            cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+            cell.border = BORDER
+        ws.row_dimensions[row_idx].height = 28
+
+    def _title_band(ws, text, ncols, subtitle=None):
+        ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=ncols)
+        cell = ws.cell(row=1, column=1, value=text)
+        cell.font = TITLE_FONT
+        cell.fill = TITLE_FILL
+        cell.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+        ws.row_dimensions[1].height = 32
+        for c in range(1, ncols + 1):
+            ws.cell(row=1, column=c).fill = TITLE_FILL
+        next_row = 2
+        if subtitle:
+            ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=ncols)
+            sub_cell = ws.cell(row=2, column=1, value=subtitle)
+            sub_cell.font = SUBTLE
+            sub_cell.alignment = Alignment(horizontal="left", vertical="center", indent=1)
+            ws.row_dimensions[2].height = 18
+            next_row = 3
+        return next_row
+
+    sum_data      = report.get("summary", {})
+    customer_list = report.get("customers", [])
+    missing_list  = report.get("skusMissingCost", [])
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # Sheet 1 — Summary
+    # ═══════════════════════════════════════════════════════════════════════
+    ws1 = wb.active
+    ws1.title = "Summary"
+    ws1.sheet_view.showGridLines = False
+    generated = report.get("generatedAt", "")
+    _title_band(ws1, "GeoBridge — Profit Report", 4,
+                subtitle=f"Generated {generated}  •  Revenue and cost from the last imported QB invoice × Item Price List cost data")
+
+    # Stat cards, rendered as a simple 2-column label/value block
+    stats = [
+        ("Total Revenue",  sum_data.get("totalRevenue", 0),  MONEY_FMT, None),
+        ("Total Cost",     sum_data.get("totalCost", 0),     MONEY_FMT, None),
+        ("Total Profit",   sum_data.get("totalProfit", 0),   MONEY_FMT, None),
+        ("Margin %",       sum_data.get("marginPct", 0),     PCT_FMT,   None),
+        ("Customers",      sum_data.get("customerCount", 0), '#,##0',   None),
+        ("Customers with Incomplete Cost Data", sum_data.get("customersWithIncompleteCost", 0), '#,##0', None),
+        ("SKUs Missing Cost Data", sum_data.get("skusMissingCostCount", 0), '#,##0', None),
+    ]
+    r = 4
+    for label, value, fmt, _ in stats:
+        lbl_cell = ws1.cell(row=r, column=1, value=label)
+        lbl_cell.font = BOLD
+        val_cell = ws1.cell(row=r, column=2, value=value)
+        val_cell.number_format = fmt
+        val_cell.font = Font(bold=True, size=12,
+                              color=GREEN if label == "Total Profit" and value >= 0 else
+                                    (RED if label == "Total Profit" else "111827"))
+        r += 1
+
+    r += 1
+    if missing_list:
+        note = ws1.cell(row=r, column=1,
+                         value="⚠ Cost Data Incomplete — SKUs below have never had a cost confirmed. "
+                               "Their lines are treated as $0 cost above, so profit may be overstated.")
+        note.font = Font(color=AMBER, bold=True, italic=True)
+        ws1.merge_cells(start_row=r, start_column=1, end_row=r, end_column=4)
+        r += 2
+
+        hdr_row = r
+        headers = ["SKU", "Category", "Customers Affected", "Total Qty Billed"]
+        for c, h in enumerate(headers, start=1):
+            ws1.cell(row=hdr_row, column=c, value=h)
+        _style_header_row(ws1, hdr_row, len(headers))
+        r += 1
+        for i, s in enumerate(missing_list):
+            row_fill = AMBER_ROW_FILL if i % 2 == 0 else None
+            vals = [s.get("skuKey", ""), s.get("category", "") or "—",
+                    s.get("customerCount", 0), s.get("qtyTotal", 0)]
+            for c, v in enumerate(vals, start=1):
+                cell = ws1.cell(row=r, column=c, value=v)
+                cell.border = BORDER
+                if row_fill:
+                    cell.fill = row_fill
+                if c >= 3:
+                    cell.alignment = Alignment(horizontal="right")
+            r += 1
+
+    ws1.column_dimensions["A"].width = 42
+    ws1.column_dimensions["B"].width = 22
+    ws1.column_dimensions["C"].width = 20
+    ws1.column_dimensions["D"].width = 18
+    ws1.freeze_panes = "A4"
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # Sheet 2 — Profit by Customer
+    # ═══════════════════════════════════════════════════════════════════════
+    ws2 = wb.create_sheet("Profit by Customer")
+    ws2.sheet_view.showGridLines = False
+    headers2 = ["Customer", "Qty Billed", "Revenue", "Cost", "Profit", "Margin %", "Cost Data"]
+    ncols2 = len(headers2)
+    start_row = _title_band(ws2, "Profit by Customer", ncols2,
+                             subtitle="Sorted lowest profit first — prioritize reviewing these accounts")
+    hdr_row2 = start_row
+    for c, h in enumerate(headers2, start=1):
+        ws2.cell(row=hdr_row2, column=c, value=h)
+    _style_header_row(ws2, hdr_row2, ncols2)
+
+    r = hdr_row2 + 1
+    for i, cust in enumerate(customer_list):
+        row_fill = STRIPE_FILL if i % 2 == 0 else None
+        vals = [
+            cust.get("customerName", ""),
+            cust.get("deviceQty", 0),
+            cust.get("revenue", 0.0),
+            cust.get("cost", 0.0),
+            cust.get("profit", 0.0),
+            cust.get("marginPct", 0.0),
+            "Incomplete" if cust.get("costIncomplete") else "Complete",
+        ]
+        for c, v in enumerate(vals, start=1):
+            cell = ws2.cell(row=r, column=c, value=v)
+            cell.border = BORDER
+            if row_fill:
+                cell.fill = row_fill
+            if c in (3, 4, 5):
+                cell.number_format = MONEY_FMT
+                cell.alignment = Alignment(horizontal="right")
+            elif c == 6:
+                cell.number_format = PCT_FMT
+                cell.alignment = Alignment(horizontal="right")
+            elif c == 2:
+                cell.number_format = '#,##0'
+                cell.alignment = Alignment(horizontal="right")
+            if c == 5:  # Profit column
+                cell.font = Font(bold=True, color=GREEN if v >= 0 else RED)
+            if c == 7 and v == "Incomplete":
+                cell.font = Font(color=AMBER, bold=True)
+                cell.fill = AMBER_ROW_FILL if not row_fill else PatternFill(
+                    "solid", fgColor=AMBER_FILL)
+        r += 1
+
+    last_data_row2 = r - 1
+    if last_data_row2 >= hdr_row2 + 1:
+        # Conditional formatting on Profit column: red text for negatives.
+        profit_col = get_column_letter(5)
+        rng = f"{profit_col}{hdr_row2+1}:{profit_col}{last_data_row2}"
+        ws2.conditional_formatting.add(
+            rng,
+            CellIsRule(operator="lessThan", formula=["0"],
+                       font=Font(color=RED, bold=True))
+        )
+
+    widths2 = [34, 12, 16, 16, 16, 12, 14]
+    for i, w in enumerate(widths2, start=1):
+        ws2.column_dimensions[get_column_letter(i)].width = w
+    ws2.freeze_panes = f"A{hdr_row2+1}"
+    ws2.auto_filter.ref = f"A{hdr_row2}:{get_column_letter(ncols2)}{max(last_data_row2, hdr_row2)}"
+
+    # ═══════════════════════════════════════════════════════════════════════
+    # Sheet 3 — Line Detail (one row per customer x SKU invoice line)
+    # ═══════════════════════════════════════════════════════════════════════
+    ws3 = wb.create_sheet("Line Detail")
+    ws3.sheet_view.showGridLines = False
+    headers3 = ["Customer", "SKU", "Qty", "Unit Price", "Unit Cost", "Revenue", "Profit", "Cost Data"]
+    ncols3 = len(headers3)
+    start_row3 = _title_band(ws3, "Line Detail", ncols3,
+                              subtitle="One row per customer × SKU invoice line from the last QB import")
+    hdr_row3 = start_row3
+    for c, h in enumerate(headers3, start=1):
+        ws3.cell(row=hdr_row3, column=c, value=h)
+    _style_header_row(ws3, hdr_row3, ncols3)
+
+    r = hdr_row3 + 1
+    stripe_i = 0
+    for cust in customer_list:
+        for line in cust.get("lines", []):
+            row_fill = STRIPE_FILL if stripe_i % 2 == 0 else None
+            stripe_i += 1
+            cost_incomplete = line.get("costIncomplete")
+            vals = [
+                cust.get("customerName", ""),
+                line.get("skuKey", ""),
+                line.get("qty", 0),
+                line.get("price", 0.0),
+                line.get("cost") if line.get("cost") is not None else 0.0,
+                line.get("revenue", 0.0),
+                line.get("profit", 0.0),
+                "Incomplete" if cost_incomplete else "Complete",
+            ]
+            for c, v in enumerate(vals, start=1):
+                cell = ws3.cell(row=r, column=c, value=v)
+                cell.border = BORDER
+                if row_fill:
+                    cell.fill = row_fill
+                if c in (4, 5, 6, 7):
+                    cell.number_format = MONEY_FMT
+                    cell.alignment = Alignment(horizontal="right")
+                elif c == 3:
+                    cell.number_format = '#,##0'
+                    cell.alignment = Alignment(horizontal="right")
+                if c == 7:
+                    cell.font = Font(color=GREEN if v >= 0 else RED)
+                if c == 8 and v == "Incomplete":
+                    cell.font = Font(color=AMBER, bold=True)
+            r += 1
+
+    last_data_row3 = r - 1
+    widths3 = [30, 32, 8, 12, 12, 14, 14, 13]
+    for i, w in enumerate(widths3, start=1):
+        ws3.column_dimensions[get_column_letter(i)].width = w
+    ws3.freeze_panes = f"A{hdr_row3+1}"
+    ws3.auto_filter.ref = f"A{hdr_row3}:{get_column_letter(ncols3)}{max(last_data_row3, hdr_row3)}"
+
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def _compute_profit_report() -> dict:
     """
     Per-customer profit computed from ACTUAL QuickBooks invoice quantities
     (qb_invoice_quantities.json) — i.e. what was really billed last import,
@@ -532,6 +801,9 @@ async def get_profit_report():
     unlike Reconciliation, which excludes them from its device-count delta,
     profit is a pure revenue-vs-cost calculation per invoice line and every
     billed SKU should count toward it.
+
+    Shared by both GET /api/reports/profit (JSON, for the UI) and
+    GET /api/reports/profit/export (Excel workbook) so the two never drift.
     """
     catalog   = _load(os.path.join(_DATA_DIR, "sku_catalog.json"), [])
     qb_qtys   = _load(os.path.join(_DATA_DIR, "qb_invoice_quantities.json"), [])
@@ -643,3 +915,37 @@ async def get_profit_report():
         "customers": customer_list,
         "skusMissingCost": missing_list,
     }
+
+
+@router.get("/reports/profit")
+async def get_profit_report():
+    if not _load(os.path.join(_DATA_DIR, "qb_invoice_quantities.json"), []):
+        raise HTTPException(
+            status_code=503,
+            detail="No QB invoice data found. Import a QB CSV from Settings first."
+        )
+    return _compute_profit_report()
+
+
+@router.get("/reports/profit/export")
+async def export_profit_report():
+    """
+    Same data as GET /api/reports/profit, rendered as a styled .xlsx workbook:
+      - "Summary"           overview cards + the "Cost Data Incomplete" SKU list
+      - "Profit by Customer" one row per customer, sorted worst-profit-first
+      - "Line Detail"        one row per (customer, SKU) invoice line
+    """
+    if not _load(os.path.join(_DATA_DIR, "qb_invoice_quantities.json"), []):
+        raise HTTPException(
+            status_code=503,
+            detail="No QB invoice data found. Import a QB CSV from Settings first."
+        )
+    report = _compute_profit_report()
+    workbook_bytes = _build_profit_workbook(report)
+
+    filename = f"GeoBridge_Profit_Report_{datetime.now().strftime('%Y-%m-%d')}.xlsx"
+    return StreamingResponse(
+        io.BytesIO(workbook_bytes),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )

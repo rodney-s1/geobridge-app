@@ -347,7 +347,7 @@ function SkuCatalogTab({ catalog, onRefresh }) {
                           {sku.costLocked && (
                             <span title="Manually locked — protected from QB Item Price List imports" className="mr-1">🔒</span>
                           )}
-                          {(sku.cost > 0) ? fmtPrice(sku.cost) : <span className="text-slate-600">—</span>}
+                          {(sku.cost > 0 || sku.costSet) ? fmtPrice(sku.cost || 0) : <span className="text-slate-600">—</span>}
                         </td>
                         <td className="px-4 py-2.5 text-right font-mono text-slate-200 whitespace-nowrap">
                           {fmtPrice(sku.defaultPrice)}

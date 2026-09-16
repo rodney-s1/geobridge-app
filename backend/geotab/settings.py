@@ -229,9 +229,19 @@ async def list_sku_catalog():
 
 @router.post("/settings/sku-catalog")
 async def upsert_sku(body: SkuUpsert):
+    """
+    Manual Add/Edit from Settings -> SKU Catalog. This is the ONLY endpoint
+    that writes a human-entered cost, so any save here marks the cost as
+    "confirmed" (costSet=True) -- including an explicit $0.00. Without this,
+    a genuinely free SKU (cost = 0) would be indistinguishable from a SKU
+    that has simply never been priced, and the Profit report's cost index
+    (see reports.py _build_cost_index) would keep flagging it as
+    "Cost Data Incomplete" even after the user deliberately entered $0.
+    """
     global sku_catalog
     sku_catalog = _catalog()   # reload from disk first
     payload = body.dict()
+    payload['costSet'] = True
     existing = next((s for s in sku_catalog if s["skuKey"] == body.skuKey), None)
     if existing:
         existing.update(payload)
@@ -1295,6 +1305,12 @@ async def import_price_list(file: UploadFile = File(...)):
                 'desc':         item['desc'],
                 'cost':         item['cost'],
                 'costLocked':   False,
+                # Not marking costSet here -- a $0 cost from a price-list
+                # row commonly just means QB has never had a cost entered
+                # for it either (see _parse_price_list_csv), so treat it
+                # the same as "not yet priced" unless the value is nonzero
+                # (the reports.py cost index already treats nonzero cost
+                # as confirmed regardless of costSet).
             }
             sku_catalog.append(new_entry)
             catalog_index[item['skuKey']] = new_entry

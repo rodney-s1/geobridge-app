@@ -735,6 +735,8 @@ function TabProfit() {
   const [sortKey, setSortKey] = useState('profit')
   const [sortDir, setSortDir] = useState('asc')
   const [showMissing, setShowMissing] = useState(false)
+  const [exporting, setExporting] = useState(false)
+  const [exportError, setExportError] = useState(null)
 
   const load = useCallback(() => {
     setLoading(true)
@@ -750,6 +752,34 @@ function TabProfit() {
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  async function exportExcel() {
+    setExporting(true)
+    setExportError(null)
+    try {
+      const r = await fetch(`${API}/api/reports/profit/export`)
+      if (!r.ok) {
+        const e = await r.json().catch(() => ({}))
+        throw new Error(e.detail || r.statusText)
+      }
+      const blob = await r.blob()
+      const disposition = r.headers.get('Content-Disposition') || ''
+      const match = disposition.match(/filename="?([^"]+)"?/)
+      const filename = match ? match[1] : `GeoBridge_Profit_Report_${new Date().toISOString().slice(0,10)}.xlsx`
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+    } catch (e) {
+      setExportError(String(e.message || e))
+    } finally {
+      setExporting(false)
+    }
+  }
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
@@ -868,8 +898,28 @@ function TabProfit() {
       )}
 
       <div>
-        <SectionHead title="Profit by Customer"
-          sub="Revenue and cost from the last imported QB invoice × Item Price List cost data" />
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <SectionHead title="Profit by Customer"
+            sub="Revenue and cost from the last imported QB invoice × Item Price List cost data" />
+          <button
+            onClick={exportExcel}
+            disabled={exporting}
+            className="flex items-center gap-2 px-3 py-2 bg-emerald-700 hover:bg-emerald-600
+                       disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm
+                       rounded-lg font-medium transition-colors flex-shrink-0">
+            {exporting ? (
+              <>
+                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                Exporting…
+              </>
+            ) : (
+              <>📊 Export to Excel</>
+            )}
+          </button>
+        </div>
+        {exportError && (
+          <p className="text-xs text-red-400 mb-2">Export failed: {exportError}</p>
+        )}
         <input
           className="w-full mb-3 px-3 py-2 rounded-lg bg-gray-800 border border-gray-700
                      text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500"
