@@ -212,6 +212,12 @@ class SkuUpsert(BaseModel):
     category: str = ""
     desc: str = ""
     cost: float = 0.0
+    # True when the "Our Cost" value was entered by hand in GeoBridge
+    # (Settings -> SKU Catalog), rather than imported from a QB Item Price
+    # List. Locked costs are never overwritten by a subsequent price-list
+    # import -- see import_price_list() below. Sent by the frontend Add/Edit
+    # SKU form whenever the user saves a nonzero cost through that UI.
+    costLocked: bool = False
 
 
 @router.get("/settings/sku-catalog")
@@ -225,13 +231,14 @@ async def list_sku_catalog():
 async def upsert_sku(body: SkuUpsert):
     global sku_catalog
     sku_catalog = _catalog()   # reload from disk first
+    payload = body.dict()
     existing = next((s for s in sku_catalog if s["skuKey"] == body.skuKey), None)
     if existing:
-        existing.update(body.dict())
+        existing.update(payload)
     else:
-        sku_catalog.append(body.dict())
+        sku_catalog.append(payload)
     _save(SKU_CATALOG_FILE, sku_catalog)
-    return {"success": True, "sku": body.dict()}
+    return {"success": True, "sku": payload}
 
 
 @router.delete("/settings/sku-catalog/{sku_key:path}")
@@ -1142,35 +1149,91 @@ def _parse_price(s: str) -> Optional[float]:
 def _parse_price_list_csv(content: str) -> List[dict]:
     """
     Parse a QB Item Price List CSV (doubled-comma format).
-    Col 2 = Item (Group:SKU Name), Col 4 = Description, Col 6 = Cost, Col 8 = Price
 
-    Skips parent/category rows (no ':' in Item column).
+    QuickBooks' CSV export for this report has changed the number of leading
+    blank spacer columns between exports -- an older export had 2 blank
+    columns before "Item" (Item at col index 2); a newer export (Sept 2026)
+    has none (Item at col index 0). Hardcoding one layout silently parsed
+    ZERO rows once the format drifted (every row failed a `len(row) < 9`
+    guard). Column positions are therefore detected from the header row on
+    every import instead, so future format drift doesn't reintroduce this.
+
+    Skips TRUE parent/category rows only -- i.e. rows whose Item value (no
+    ':') is itself used as the "Group:" prefix on some OTHER row in this
+    same file. A standalone leaf SKU that simply has no QB group (e.g.
+    "LifeSaver Service", "FleetShare Hosting", "International Payment Fee")
+    also has no ':', but is not a parent of anything else in the file, so
+    it must be kept -- the old code treated "no colon" as "skip", which
+    silently dropped ~37 real SKUs' cost/price data.
+
     Returns list of {skuKey, fullPath, category, desc, cost, defaultPrice}
     """
     reader = csv.reader(io.StringIO(content))
     rows   = list(reader)
-    items  = []
+    if not rows:
+        return []
 
-    for row in rows[1:]:          # skip header
-        if len(row) < 9:
+    # Detect column positions from the header row (case-insensitive; blank
+    # spacer columns are simply ignored since they have no header text).
+    header = rows[0]
+    col: Dict[str, int] = {}
+    for i, h in enumerate(header):
+        h = h.strip().lower()
+        if h and h not in col:
+            col[h] = i
+
+    item_idx  = col.get('item')
+    desc_idx  = col.get('description')
+    cost_idx  = col.get('cost')
+    price_idx = col.get('price')
+
+    # Defensive fallback to the historical hardcoded layout if this doesn't
+    # look like a Price List export at all (should not normally happen).
+    if item_idx is None or price_idx is None:
+        item_idx, desc_idx, cost_idx, price_idx = 2, 4, 6, 8
+
+    data_rows = rows[1:]
+    known_idxs = [i for i in (item_idx, desc_idx, cost_idx, price_idx) if i is not None]
+    min_len = max(known_idxs) + 1
+
+    # Pass 1: collect every string used as a "Group:" prefix anywhere in the
+    # file -- these (and only these) are genuine category-parent rows.
+    group_names: set = set()
+    for row in data_rows:
+        if len(row) <= item_idx:
             continue
-        item_raw  = row[2].strip()
-        desc_raw  = row[4].strip()
-        cost_raw  = row[6].strip()
-        price_raw = row[8].strip()
+        item_raw = row[item_idx].strip()
+        if ':' in item_raw:
+            group_names.add(item_raw.split(':', 1)[0].strip())
 
-        if not item_raw or ':' not in item_raw:
-            continue              # skip category parent rows
+    items = []
+    for row in data_rows:
+        if len(row) < min_len:
+            continue
+        item_raw  = row[item_idx].strip()
+        desc_raw  = row[desc_idx].strip() if desc_idx is not None else ''
+        cost_raw  = row[cost_idx].strip() if cost_idx is not None else ''
+        price_raw = row[price_idx].strip()
+
+        if not item_raw:
+            continue
+
+        if ':' in item_raw:
+            colon    = item_raw.index(':')
+            group    = item_raw[:colon].strip()
+            sku_name = item_raw[colon + 1:].strip()
+        else:
+            if item_raw in group_names:
+                continue          # genuine category parent row -- skip
+            group    = ''
+            sku_name = item_raw   # standalone leaf SKU with no QB group
+
+        if not sku_name:
+            continue
 
         price = _parse_price(price_raw)
         cost  = _parse_price(cost_raw)
         if price is None:
-            continue
-
-        colon    = item_raw.index(':')
-        group    = item_raw[:colon].strip()
-        sku_name = item_raw[colon + 1:].strip()
-        if not sku_name:
             continue
 
         # Disambiguate SKU names that appear under multiple QB groups.
@@ -1198,6 +1261,11 @@ async def import_price_list(file: UploadFile = File(...)):
       - If SKU in catalog with defaultPrice == 0 -> UPDATE price (fill the gap).
       - If SKU in catalog with defaultPrice > 0  -> SKIP (never override
         customer-specific pricing derived from invoice imports).
+      - Cost is normally always refreshed from the price list -- EXCEPT for
+        SKUs marked costLocked=True (set via Settings -> SKU Catalog manual
+        Add/Edit form), which are for SKUs QuickBooks itself can't hold a
+        cost for. Those keep whatever cost the user entered by hand,
+        regardless of what (if anything) this import says.
     """
     global sku_catalog
     sku_catalog = _catalog()    # reload from disk before import
@@ -1210,9 +1278,10 @@ async def import_price_list(file: UploadFile = File(...)):
 
     catalog_index = {s['skuKey']: s for s in sku_catalog}
 
-    added   = 0
-    updated = 0
-    skipped = 0
+    added        = 0
+    updated      = 0
+    skipped      = 0
+    cost_locked_skipped = 0
 
     for item in items:
         existing = catalog_index.get(item['skuKey'])
@@ -1225,13 +1294,18 @@ async def import_price_list(file: UploadFile = File(...)):
                 'category':     item['category'],
                 'desc':         item['desc'],
                 'cost':         item['cost'],
+                'costLocked':   False,
             }
             sku_catalog.append(new_entry)
             catalog_index[item['skuKey']] = new_entry
             added += 1
         else:
-            # Always update cost from the price list -- it's a separate field from price
-            if item.get('cost'):
+            # Always update cost from the price list -- it's a separate field
+            # from price -- UNLESS the user manually locked this SKU's cost
+            # in GeoBridge (for SKUs QB itself can't hold a cost for).
+            if existing.get('costLocked'):
+                cost_locked_skipped += 1
+            elif item.get('cost'):
                 existing['cost'] = item['cost']
 
             if (existing.get('defaultPrice') or 0.0) == 0.0 and item['defaultPrice'] > 0:
@@ -1255,13 +1329,14 @@ async def import_price_list(file: UploadFile = File(...)):
         _save(SKU_MAPPINGS_FILE, sku_mappings)
 
     return {
-        "success":        True,
-        "added":          added,
-        "updated":        updated,
-        "skipped":        skipped,
-        "totalItems":     len(items),
-        "totalSkus":      len(sku_catalog),
-        "mappingsSynced": mappings_synced,
+        "success":           True,
+        "added":             added,
+        "updated":           updated,
+        "skipped":           skipped,
+        "costLockedSkipped": cost_locked_skipped,
+        "totalItems":        len(items),
+        "totalSkus":         len(sku_catalog),
+        "mappingsSynced":    mappings_synced,
     }
 
 

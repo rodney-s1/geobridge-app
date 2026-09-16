@@ -100,7 +100,7 @@ function SkuCatalogTab({ catalog, onRefresh }) {
   const [editKey, setEditKey] = useState(null)   // skuKey being edited
   const [editForm, setEditForm] = useState({})
   const [adding, setAdding] = useState(false)
-  const [newForm, setNewForm] = useState({ skuKey: '', fullPath: '', defaultPrice: '', cost: '', category: '', desc: '' })
+  const [newForm, setNewForm] = useState({ skuKey: '', fullPath: '', defaultPrice: '', cost: '', category: '', desc: '', costLocked: false })
   const [saving, setSaving] = useState(false)
   const [msg, setMsg] = useState(null)
 
@@ -130,7 +130,7 @@ function SkuCatalogTab({ catalog, onRefresh }) {
       setMsg({ type: 'ok', text: 'SKU saved.' })
       setEditKey(null)
       setAdding(false)
-      setNewForm({ skuKey: '', fullPath: '', defaultPrice: '', cost: '', category: '', desc: '' })
+      setNewForm({ skuKey: '', fullPath: '', defaultPrice: '', cost: '', category: '', desc: '', costLocked: false })
       onRefresh()
     } catch (e) {
       setMsg({ type: 'err', text: e.message })
@@ -195,6 +195,15 @@ function SkuCatalogTab({ catalog, onRefresh }) {
                   className="w-full bg-slate-700 border border-slate-600 rounded px-3 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
               </div>
             </div>
+            <div className="col-span-2 flex items-start gap-2 -mt-1">
+              <input type="checkbox" id="newform-cost-lock" checked={newForm.costLocked}
+                onChange={e => setNewForm(f => ({ ...f, costLocked: e.target.checked }))}
+                className="mt-0.5 accent-amber-500" />
+              <label htmlFor="newform-cost-lock" className="text-xs text-slate-400">
+                🔒 Lock this cost — for SKUs QuickBooks can't hold a cost for. A locked cost is never
+                overwritten by a QB Item Price List import.
+              </label>
+            </div>
             <div className="col-span-2">
               <label className="block text-xs text-slate-400 mb-1">Full QB Path (col P)</label>
               <input value={newForm.fullPath} onChange={e => setNewForm(f => ({ ...f, fullPath: e.target.value }))}
@@ -216,7 +225,7 @@ function SkuCatalogTab({ catalog, onRefresh }) {
           </div>
           <div className="flex gap-2">
             <button disabled={saving || !newForm.skuKey.trim()}
-              onClick={() => saveSku({ ...newForm, defaultPrice: parseFloat(newForm.defaultPrice) || 0, cost: parseFloat(newForm.cost) || 0, desc: newForm.desc || '' })}
+              onClick={() => saveSku({ ...newForm, defaultPrice: parseFloat(newForm.defaultPrice) || 0, cost: parseFloat(newForm.cost) || 0, desc: newForm.desc || '', costLocked: !!newForm.costLocked })}
               className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded-lg font-medium">
               {saving ? 'Saving…' : 'Save'}
             </button>
@@ -287,6 +296,15 @@ function SkuCatalogTab({ catalog, onRefresh }) {
                                   className="w-full bg-slate-700 border border-slate-600 rounded px-2 py-1 text-sm text-slate-100 focus:outline-none focus:border-blue-500" />
                               </div>
                             </div>
+                            <div className="col-span-2 flex items-start gap-2">
+                              <input type="checkbox" id={`editform-cost-lock-${sku.skuKey}`} checked={!!editForm.costLocked}
+                                onChange={e => setEditForm(f => ({ ...f, costLocked: e.target.checked }))}
+                                className="mt-0.5 accent-amber-500" />
+                              <label htmlFor={`editform-cost-lock-${sku.skuKey}`} className="text-xs text-slate-400">
+                                🔒 Lock this cost — for SKUs QuickBooks can't hold a cost for. A locked cost is
+                                never overwritten by a QB Item Price List import.
+                              </label>
+                            </div>
                             <div className="col-span-2">
                               <label className="block text-xs text-slate-400 mb-1">Full QB Path (col P)</label>
                               <input value={editForm.fullPath}
@@ -302,7 +320,7 @@ function SkuCatalogTab({ catalog, onRefresh }) {
                           </div>
                           <div className="flex gap-2">
                             <button disabled={saving}
-                              onClick={() => saveSku({ ...editForm, defaultPrice: parseFloat(editForm.defaultPrice) || 0, cost: parseFloat(editForm.cost) || 0, desc: editForm.desc || '' })}
+                              onClick={() => saveSku({ ...editForm, defaultPrice: parseFloat(editForm.defaultPrice) || 0, cost: parseFloat(editForm.cost) || 0, desc: editForm.desc || '', costLocked: !!editForm.costLocked })}
                               className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-sm rounded font-medium">
                               {saving ? 'Saving…' : 'Save'}
                             </button>
@@ -326,6 +344,9 @@ function SkuCatalogTab({ catalog, onRefresh }) {
                           {sku.category}
                         </td>
                         <td className="px-4 py-2.5 text-right font-mono text-slate-400 whitespace-nowrap text-xs">
+                          {sku.costLocked && (
+                            <span title="Manually locked — protected from QB Item Price List imports" className="mr-1">🔒</span>
+                          )}
                           {(sku.cost > 0) ? fmtPrice(sku.cost) : <span className="text-slate-600">—</span>}
                         </td>
                         <td className="px-4 py-2.5 text-right font-mono text-slate-200 whitespace-nowrap">
@@ -1275,21 +1296,22 @@ function ImportCsvTab({ onRefresh }) {
         title="QB Item Price List"
         description="Upload a QuickBooks Item Price List to fill pricing gaps and add new SKUs. Existing SKUs with a price already set are never overwritten — this is the source of truth for default pricing only."
         columns={[
-          ['Col C (2)', 'Item (Group:SKU Name)'],
-          ['Col E (4)', 'Description'],
-          ['Col G (6)', 'Our Cost'],
-          ['Col I (8)', 'Price to Customer'],
+          ['Item', 'Item (Group:SKU Name)'],
+          ['Description', 'Description'],
+          ['Cost', 'Our Cost'],
+          ['Price', 'Price to Customer'],
         ]}
-        columnNote="Note: Item Price List uses standard (non-doubled) column format."
+        columnNote="Note: columns are matched by header name (Item / Description / Cost / Price), not fixed position — this survives QuickBooks changing its export's blank spacer columns."
         endpoint="/api/settings/import-price-list"
         acceptHint="QuickBooks Item Price List export (.csv)"
         resultFields={[
-          { key: 'added',           label: 'New SKUs added' },
-          { key: 'updated',         label: 'Prices filled ($0 → real price)' },
-          { key: 'skipped',         label: 'Skipped (price already set)' },
-          { key: 'mappingsSynced',  label: 'Rate plan prices synced' },
-          { key: 'totalItems',      label: 'Items in file' },
-          { key: 'totalSkus',       label: 'Total SKUs in catalog', bold: true },
+          { key: 'added',             label: 'New SKUs added' },
+          { key: 'updated',           label: 'Prices filled ($0 → real price)' },
+          { key: 'skipped',           label: 'Skipped (price already set)' },
+          { key: 'costLockedSkipped', label: 'Skipped (cost manually locked)' },
+          { key: 'mappingsSynced',    label: 'Rate plan prices synced' },
+          { key: 'totalItems',        label: 'Items in file' },
+          { key: 'totalSkus',         label: 'Total SKUs in catalog', bold: true },
         ]}
         onRefresh={onRefresh}
       />
