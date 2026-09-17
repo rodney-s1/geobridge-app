@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, Fragment } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, memo, Fragment } from 'react'
 
 const API = 'http://127.0.0.1:8001'
 
@@ -724,6 +724,124 @@ function TabTerminated({ data }) {
   )
 }
 
+// One row of the Profit-by-Customer table, plus its expandable line-detail
+// sub-row. Wrapped in memo() so that expanding/collapsing ONE customer only
+// re-renders that customer's row+sub-row, not all ~700+ rows in the table --
+// this is what fixes the lag/lock-up on click.
+const ProfitCustomerRow = memo(function ProfitCustomerRow({ customer: c, isOpen, onToggle }) {
+  const lines = c.lines || []
+  return (
+    <Fragment>
+      <tr
+        onClick={onToggle}
+        className="border-t border-gray-800 hover:bg-gray-800/40 cursor-pointer">
+        <td className="px-4 py-2.5 font-medium text-gray-200 max-w-xs truncate">
+          <span className="inline-flex items-center gap-2">
+            <span className={`text-gray-500 text-xs transition-transform inline-block ${isOpen ? 'rotate-90' : ''}`}>
+              ▶
+            </span>
+            <span className="truncate" title={c.customerName}>{c.customerName}</span>
+          </span>
+        </td>
+        <td className="px-4 py-2.5 text-right text-gray-400 font-mono">{fmtN(c.deviceQty)}</td>
+        <td className="px-4 py-2.5 text-right font-mono text-blue-300">{fmt$(c.revenue)}</td>
+        <td className="px-4 py-2.5 text-right font-mono text-red-300">{fmt$(c.cost)}</td>
+        <td className={`px-4 py-2.5 text-right font-mono font-semibold ${
+          c.profit >= 0 ? 'text-green-400' : 'text-red-400'
+        }`}>
+          {fmt$(c.profit)}
+        </td>
+        <td className={`px-4 py-2.5 text-right font-mono ${
+          c.marginPct >= 0 ? 'text-gray-300' : 'text-red-400'
+        }`}>
+          {c.marginPct}%
+        </td>
+        <td className="px-4 py-2.5">
+          {c.costIncomplete ? (
+            <span className="px-2 py-0.5 rounded-full text-xs bg-amber-500/20
+                             text-amber-300 border border-amber-500/30"
+                  title={c.incompleteSkus.join(', ')}>
+              Incomplete
+            </span>
+          ) : (
+            <span className="px-2 py-0.5 rounded-full text-xs bg-green-500/15
+                             text-green-400 border border-green-500/25">
+              Complete
+            </span>
+          )}
+        </td>
+      </tr>
+      {isOpen && (
+        <tr className="border-t border-gray-800 bg-gray-900/60">
+          <td colSpan={7} className="px-4 py-3">
+            {lines.length === 0 ? (
+              <p className="text-xs text-gray-500 py-2">No line items found for this customer.</p>
+            ) : (
+              <table className="w-full text-xs table-fixed">
+                <colgroup>
+                  <col style={{ width: '32%' }} />
+                  <col style={{ width: '10%' }} />
+                  <col style={{ width: '13%' }} />
+                  <col style={{ width: '13%' }} />
+                  <col style={{ width: '13%' }} />
+                  <col style={{ width: '13%' }} />
+                  <col style={{ width: '13%' }} />
+                </colgroup>
+                <thead>
+                  <tr className="text-left text-gray-500 uppercase tracking-wide border-b border-gray-800">
+                    <th className="px-3 py-1.5 font-medium">SKU</th>
+                    <th className="px-3 py-1.5 font-medium text-right">Qty</th>
+                    <th className="px-3 py-1.5 font-medium text-right">Price</th>
+                    <th className="px-3 py-1.5 font-medium text-right">Cost</th>
+                    <th className="px-3 py-1.5 font-medium text-right">Revenue</th>
+                    <th className="px-3 py-1.5 font-medium text-right">Profit</th>
+                    <th className="px-3 py-1.5 font-medium text-right">Cost Data</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {lines.map((l, j) => (
+                    <tr key={j} className="border-b border-gray-800/60 last:border-b-0">
+                      <td className="px-3 py-1.5 font-mono text-gray-300 truncate" title={l.skuKey}>
+                        {l.skuKey}
+                      </td>
+                      <td className="px-3 py-1.5 text-right text-gray-400 font-mono">{fmtN(l.qty)}</td>
+                      <td className="px-3 py-1.5 text-right font-mono text-blue-300">{fmt$(l.price)}</td>
+                      <td className="px-3 py-1.5 text-right font-mono text-red-300">
+                        {l.costIncomplete ? (
+                          <span className="text-amber-400" title="No cost data for this SKU">—</span>
+                        ) : fmt$(l.cost)}
+                      </td>
+                      <td className="px-3 py-1.5 text-right font-mono text-blue-200">{fmt$(l.revenue)}</td>
+                      <td className={`px-3 py-1.5 text-right font-mono font-semibold ${
+                        l.profit >= 0 ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {fmt$(l.profit)}
+                      </td>
+                      <td className="px-3 py-1.5 text-right">
+                        {l.costIncomplete ? (
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-500/20
+                                           text-amber-300 border border-amber-500/30">
+                            Incomplete
+                          </span>
+                        ) : (
+                          <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-green-500/15
+                                           text-green-400 border border-green-500/25">
+                            Complete
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </td>
+        </tr>
+      )}
+    </Fragment>
+  )
+})
+
 // ═══════════════════════════════════════════════════════════════════════════
 // TAB 8 — Profit
 // ═══════════════════════════════════════════════════════════════════════════
@@ -739,14 +857,24 @@ function TabProfit() {
   const [exportError, setExportError] = useState(null)
   const [expanded, setExpanded] = useState(() => new Set())
 
-  const toggleExpanded = (customerName) => {
-    setExpanded(prev => {
-      const next = new Set(prev)
-      if (next.has(customerName)) next.delete(customerName)
-      else next.add(customerName)
-      return next
-    })
-  }
+  // Stable callback (never changes identity) so it doesn't defeat memo() on
+  // ProfitCustomerRow -- each row gets its own bound toggle via useCallback
+  // below, keyed by customerName, from a shared ref-backed cache.
+  const toggleCallbacksRef = useRef(new Map())
+  const getToggleCallback = useCallback((customerName) => {
+    const cache = toggleCallbacksRef.current
+    let fn = cache.get(customerName)
+    if (!fn) {
+      fn = () => setExpanded(prev => {
+        const next = new Set(prev)
+        if (next.has(customerName)) next.delete(customerName)
+        else next.add(customerName)
+        return next
+      })
+      cache.set(customerName, fn)
+    }
+    return fn
+  }, [])
 
   const load = useCallback(() => {
     setLoading(true)
@@ -819,17 +947,23 @@ function TabProfit() {
   const customers = data?.customers || []
   const missing   = data?.skusMissingCost || []
 
-  const filtered = search
-    ? customers.filter(c => c.customerName.toLowerCase().includes(search.toLowerCase()))
-    : customers
-
-  const sorted = [...filtered].sort((a, b) => {
-    const av = sortKey === 'customerName' ? a.customerName.toLowerCase() : (a[sortKey] ?? 0)
-    const bv = sortKey === 'customerName' ? b.customerName.toLowerCase() : (b[sortKey] ?? 0)
-    if (av < bv) return sortDir === 'asc' ? -1 : 1
-    if (av > bv) return sortDir === 'asc' ? 1 : -1
-    return 0
-  })
+  // Sorting/filtering only need to redo when the underlying data, search text,
+  // or sort key/direction change -- NOT when a row is expanded/collapsed.
+  // Without this memo, every expand/collapse click re-sorts and rebuilds the
+  // whole ~700+ row array (and its JSX) on every render, which is the main
+  // source of the click-to-expand lag.
+  const sorted = useMemo(() => {
+    const filtered = search
+      ? customers.filter(c => c.customerName.toLowerCase().includes(search.toLowerCase()))
+      : customers
+    return [...filtered].sort((a, b) => {
+      const av = sortKey === 'customerName' ? a.customerName.toLowerCase() : (a[sortKey] ?? 0)
+      const bv = sortKey === 'customerName' ? b.customerName.toLowerCase() : (b[sortKey] ?? 0)
+      if (av < bv) return sortDir === 'asc' ? -1 : 1
+      if (av > bv) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [customers, search, sortKey, sortDir])
 
   const toggleSort = (key) => {
     if (sortKey === key) {
@@ -938,7 +1072,16 @@ function TabProfit() {
           onChange={e => setSearch(e.target.value)}
         />
         <div className="overflow-x-auto rounded-xl border border-gray-700 max-h-[32rem] overflow-y-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm table-fixed">
+            <colgroup>
+              <col style={{ width: '28%' }} />
+              <col style={{ width: '12%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '14%' }} />
+              <col style={{ width: '10%' }} />
+              <col style={{ width: '8%' }} />
+            </colgroup>
             <thead className="sticky top-0 bg-gray-800">
               <tr className="text-left text-gray-400 text-xs uppercase tracking-wide">
                 <SortHead label="Customer" k="customerName" align="left" />
@@ -954,111 +1097,14 @@ function TabProfit() {
               {sorted.length === 0 && (
                 <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500">No customers found</td></tr>
               )}
-              {sorted.map((c, i) => {
-                const isOpen = expanded.has(c.customerName)
-                const lines = c.lines || []
-                return (
-                  <Fragment key={i}>
-                    <tr
-                      onClick={() => toggleExpanded(c.customerName)}
-                      className="border-t border-gray-800 hover:bg-gray-800/40 cursor-pointer">
-                      <td className="px-4 py-2.5 font-medium text-gray-200 max-w-xs truncate">
-                        <span className="inline-flex items-center gap-2">
-                          <span className={`text-gray-500 text-xs transition-transform inline-block ${isOpen ? 'rotate-90' : ''}`}>
-                            ▶
-                          </span>
-                          <span className="truncate" title={c.customerName}>{c.customerName}</span>
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-right text-gray-400 font-mono">{fmtN(c.deviceQty)}</td>
-                      <td className="px-4 py-2.5 text-right font-mono text-blue-300">{fmt$(c.revenue)}</td>
-                      <td className="px-4 py-2.5 text-right font-mono text-red-300">{fmt$(c.cost)}</td>
-                      <td className={`px-4 py-2.5 text-right font-mono font-semibold ${
-                        c.profit >= 0 ? 'text-green-400' : 'text-red-400'
-                      }`}>
-                        {fmt$(c.profit)}
-                      </td>
-                      <td className={`px-4 py-2.5 text-right font-mono ${
-                        c.marginPct >= 0 ? 'text-gray-300' : 'text-red-400'
-                      }`}>
-                        {c.marginPct}%
-                      </td>
-                      <td className="px-4 py-2.5">
-                        {c.costIncomplete ? (
-                          <span className="px-2 py-0.5 rounded-full text-xs bg-amber-500/20
-                                           text-amber-300 border border-amber-500/30"
-                                title={c.incompleteSkus.join(', ')}>
-                            Incomplete
-                          </span>
-                        ) : (
-                          <span className="px-2 py-0.5 rounded-full text-xs bg-green-500/15
-                                           text-green-400 border border-green-500/25">
-                            Complete
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                    {isOpen && (
-                      <tr className="border-t border-gray-800 bg-gray-900/60">
-                        <td colSpan={7} className="px-4 py-3">
-                          {lines.length === 0 ? (
-                            <p className="text-xs text-gray-500 py-2">No line items found for this customer.</p>
-                          ) : (
-                            <table className="w-full text-xs">
-                              <thead>
-                                <tr className="text-left text-gray-500 uppercase tracking-wide border-b border-gray-800">
-                                  <th className="px-3 py-1.5 font-medium">SKU</th>
-                                  <th className="px-3 py-1.5 font-medium text-right">Qty</th>
-                                  <th className="px-3 py-1.5 font-medium text-right">Price</th>
-                                  <th className="px-3 py-1.5 font-medium text-right">Cost</th>
-                                  <th className="px-3 py-1.5 font-medium text-right">Revenue</th>
-                                  <th className="px-3 py-1.5 font-medium text-right">Profit</th>
-                                  <th className="px-3 py-1.5 font-medium text-right">Cost Data</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {lines.map((l, j) => (
-                                  <tr key={j} className="border-b border-gray-800/60 last:border-b-0">
-                                    <td className="px-3 py-1.5 font-mono text-gray-300 max-w-xs truncate" title={l.skuKey}>
-                                      {l.skuKey}
-                                    </td>
-                                    <td className="px-3 py-1.5 text-right text-gray-400 font-mono">{fmtN(l.qty)}</td>
-                                    <td className="px-3 py-1.5 text-right font-mono text-blue-300">{fmt$(l.price)}</td>
-                                    <td className="px-3 py-1.5 text-right font-mono text-red-300">
-                                      {l.costIncomplete ? (
-                                        <span className="text-amber-400" title="No cost data for this SKU">—</span>
-                                      ) : fmt$(l.cost)}
-                                    </td>
-                                    <td className="px-3 py-1.5 text-right font-mono text-blue-200">{fmt$(l.revenue)}</td>
-                                    <td className={`px-3 py-1.5 text-right font-mono font-semibold ${
-                                      l.profit >= 0 ? 'text-green-400' : 'text-red-400'
-                                    }`}>
-                                      {fmt$(l.profit)}
-                                    </td>
-                                    <td className="px-3 py-1.5 text-right">
-                                      {l.costIncomplete ? (
-                                        <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-500/20
-                                                         text-amber-300 border border-amber-500/30">
-                                          Incomplete
-                                        </span>
-                                      ) : (
-                                        <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-green-500/15
-                                                         text-green-400 border border-green-500/25">
-                                          Complete
-                                        </span>
-                                      )}
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          )}
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                )
-              })}
+              {sorted.map((c, i) => (
+                <ProfitCustomerRow
+                  key={c.customerName || i}
+                  customer={c}
+                  isOpen={expanded.has(c.customerName)}
+                  onToggle={getToggleCallback(c.customerName)}
+                />
+              ))}
             </tbody>
           </table>
         </div>
