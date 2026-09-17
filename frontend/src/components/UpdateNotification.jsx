@@ -242,7 +242,45 @@ export default function UpdateNotification({ onSyncBlocked, compact = false }) {
   }
 
   // ── render: update available ──────────────────────────────────────────────
+  // compact (sidebar, ~180px usable) stacks icon+text above a full-width
+  // Download button instead of cramming everything into one row — the old
+  // single-row layout (icon + text + ml-auto button + ✕) could never fit
+  // that width, so the Download button visibly overflowed the box border.
   if (phase === 'available') {
+    if (compact) {
+      return (
+        <div className="flex flex-col gap-2 text-xs px-3 py-2 rounded-lg
+                        bg-blue-950/50 border border-blue-700/40 w-full">
+          <div className="flex items-start gap-2">
+            <svg className="w-4 h-4 text-blue-400 flex-shrink-0 mt-0.5" fill="none"
+                 stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round"
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0
+                       011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+            </svg>
+            <div className="flex flex-col min-w-0">
+              <span className="text-blue-200 font-medium truncate">
+                Update available
+              </span>
+              <span className="text-blue-500 truncate">
+                v{availableVersion}
+                {currentVersion && ` \u2014 Current: v${currentVersion}`}
+              </span>
+            </div>
+            <button onClick={() => setPhase('idle')}
+                    className="ml-auto text-slate-500 hover:text-slate-300 flex-shrink-0">✕</button>
+          </div>
+          <button
+            onClick={handleDownload}
+            className="w-full px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500
+                       text-white font-medium transition-colors"
+          >
+            Download
+          </button>
+        </div>
+      )
+    }
+
     return (
       <div className="flex items-center gap-3 text-xs px-3 py-2 rounded-lg
                       bg-blue-950/50 border border-blue-700/40">
@@ -274,15 +312,17 @@ export default function UpdateNotification({ onSyncBlocked, compact = false }) {
   }
 
   // ── render: downloading ───────────────────────────────────────────────────
+  // min-w-[260px] is only safe for the full-width App.jsx instance; the
+  // ~180px-wide sidebar instance needs w-full instead or it overflows too.
   if (phase === 'downloading') {
     return (
-      <div className="flex flex-col gap-1.5 px-3 py-2 rounded-lg
-                      bg-blue-950/50 border border-blue-700/40 min-w-[260px]">
-        <div className="flex items-center justify-between text-xs">
-          <span className="text-blue-300 font-medium">
+      <div className={`flex flex-col gap-1.5 px-3 py-2 rounded-lg
+                      bg-blue-950/50 border border-blue-700/40 ${compact ? 'w-full' : 'min-w-[260px]'}`}>
+        <div className="flex items-center justify-between text-xs gap-2">
+          <span className="text-blue-300 font-medium truncate">
             Downloading v{availableVersion}…
           </span>
-          <span className="text-blue-400 tabular-nums">{downloadProgress}%</span>
+          <span className="text-blue-400 tabular-nums flex-shrink-0">{downloadProgress}%</span>
         </div>
         {/* Progress bar */}
         <div className="w-full h-1.5 bg-blue-900/60 rounded-full overflow-hidden">

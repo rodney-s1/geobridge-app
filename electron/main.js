@@ -76,9 +76,35 @@ autoUpdater.logger.transports.file.level = 'info'
 //
 // Called after app.whenReady() so app.getPath('userData') is available.
 // Reads %APPDATA%\geobridge-app\github_token.json for private-repo access.
-// Sets autoUpdater.requestHeaders once at startup — applies to all checks.
 //
 // Format: { "token": "ghp_xxxxxxxxxxxxxxxxxxxx" }
+//
+// IMPORTANT — why setFeedURL() and not just addAuthHeader():
+// electron-updater's internal provider factory (createClient() in
+// providerFactory.ts) decides between two completely different provider
+// implementations for provider:"github":
+//   - GitHubProvider        (public repos — talks to github.com,
+//                            no authentication)
+//   - PrivateGitHubProvider (private repos — talks to api.github.com,
+//                            sends "authorization: token <token>")
+// That decision is made ONCE, at the moment autoUpdater.checkForUpdates()
+// builds its client, based solely on whether a `token` is present in the
+// feed config it was given (via setFeedURL(), or GH_TOKEN/GITHUB_TOKEN env
+// vars). addAuthHeader() only attaches a header to whichever provider was
+// ALREADY selected — it has no effect on that selection.
+//
+// Our repo (rodney-s1/geobridge-app) is private, but we were only calling
+// addAuthHeader(), so electron-updater kept picking the PUBLIC
+// GitHubProvider. That explains the exact symptom reported: checkForUpdates()
+// can still succeed (GitHub's release-metadata endpoints are sometimes
+// reachable without auth), but the actual installer asset download always
+// fails, because the public provider's github.com download URLs 404/redirect
+// to a login page for a private repo, which Electron's window then tries to
+// render/download natively — surfacing as the browser-style
+// "Cannot download 'https://api.github...' Retry" bar.
+//
+// Calling setFeedURL() with the token merged in forces the correct
+// PrivateGitHubProvider to be used for every subsequent check/download.
 // ---------------------------------------------------------------------------
 function applyGithubToken() {
   try {
@@ -89,11 +115,23 @@ function applyGithubToken() {
       log.info('[updater] Token file contents length:', raw.length)
       const data = JSON.parse(raw)
       if (data && data.token && typeof data.token === 'string' && data.token.length > 4) {
-        // GHToken is the officially supported electron-updater property for
-        // authenticating against private GitHub repositories. It is passed as
-        // a Bearer token on every request made by the GitHubProvider.
+        // Base the feed config on our own package.json publish block so
+        // owner/repo/provider stay in sync automatically if they ever change.
+        let publishConfig = { provider: 'github', owner: 'rodney-s1', repo: 'geobridge-app', private: true }
+        try {
+          const pkg = require('../package.json')
+          if (pkg && pkg.build && pkg.build.publish) {
+            publishConfig = { ...publishConfig, ...pkg.build.publish }
+          }
+        } catch (e) {
+          log.warn('[updater] Could not read package.json publish config, using fallback:', e.message)
+        }
+
+        autoUpdater.setFeedURL({ ...publishConfig, token: data.token })
+        // Also keep addAuthHeader — harmless belt-and-suspenders, some
+        // internal request paths read the header directly.
         autoUpdater.addAuthHeader(`token ${data.token}`)
-        log.info('[updater] GitHub token applied via addAuthHeader — private repo access enabled.')
+        log.info('[updater] GitHub token applied via setFeedURL — PrivateGitHubProvider now active for private repo access.')
         return
       } else {
         log.warn('[updater] Token file found but token field is missing or invalid.')
