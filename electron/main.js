@@ -27,6 +27,41 @@ let updateReadyToInstall = false
 let pendingUpdateVersion  = null   // e.g. "1.2.3" shown in the UI
 
 // ---------------------------------------------------------------------------
+// Recurring background update checks
+//
+// We already check once ~4s after launch (see createWindow()). That alone
+// only helps users who relaunch the app regularly. Users who leave GeoBridge
+// open for days would otherwise never get checked again, so we also re-check
+// on a timer for as long as the app stays running.
+// ---------------------------------------------------------------------------
+const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000   // 24 hours
+let updateCheckIntervalHandle = null
+
+function startRecurringUpdateChecks() {
+  if (isDev || updateCheckIntervalHandle) return   // never in dev; never double-schedule
+  updateCheckIntervalHandle = setInterval(() => {
+    // Don't bother re-checking if an update is already downloaded and
+    // waiting to install -- the user just needs to click "Install" on the
+    // one we already found.
+    if (updateReadyToInstall) {
+      log.info('[updater] recurring check skipped -- an update is already staged')
+      return
+    }
+    log.info('[updater] running scheduled 24h background check')
+    autoUpdater.checkForUpdates().catch(e =>
+      log.error('[updater] scheduled background check failed:', e)
+    )
+  }, UPDATE_CHECK_INTERVAL_MS)
+}
+
+function stopRecurringUpdateChecks() {
+  if (updateCheckIntervalHandle) {
+    clearInterval(updateCheckIntervalHandle)
+    updateCheckIntervalHandle = null
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Auto-updater configuration
 // ---------------------------------------------------------------------------
 const log = require('electron-log')
@@ -247,13 +282,17 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show()
     // Kick off a silent background check ~4 s after the window appears so the
-    // app is fully loaded before any update UI appears.
+    // app is fully loaded before any update UI appears. This covers users who
+    // relaunch the app regularly.
     if (!isDev) {
       setTimeout(() => {
         autoUpdater.checkForUpdates().catch(e =>
           log.error('[updater] background check failed:', e)
         )
       }, 4000)
+      // Also cover users who leave the app open for a long time: re-check
+      // every 24h for as long as the app keeps running.
+      startRecurringUpdateChecks()
     }
   })
 
@@ -427,4 +466,8 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
+})
+
+app.on('before-quit', () => {
+  stopRecurringUpdateChecks()
 })
