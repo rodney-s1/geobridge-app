@@ -891,6 +891,34 @@ function TabProfit() {
 
   useEffect(() => { load() }, [load])
 
+  const customers = data?.customers || []
+
+  // Sorting/filtering only need to redo when the underlying data, search text,
+  // or sort key/direction change -- NOT when a row is expanded/collapsed.
+  // Without this memo, every expand/collapse click re-sorts and rebuilds the
+  // whole ~700+ row array (and its JSX) on every render, which is the main
+  // source of the click-to-expand lag.
+  //
+  // IMPORTANT: this hook must be declared before the loading/error early
+  // returns below (Rules of Hooks) -- React requires the same hooks to run,
+  // in the same order, on every render. Previously this useMemo lived after
+  // those returns, so it wasn't called at all while loading=true, then WAS
+  // called once data arrived, changing the hook count between renders and
+  // crashing with "Rendered more hooks than during the previous render"
+  // (React error #310) as soon as data finished loading.
+  const sorted = useMemo(() => {
+    const filtered = search
+      ? customers.filter(c => c.customerName.toLowerCase().includes(search.toLowerCase()))
+      : customers
+    return [...filtered].sort((a, b) => {
+      const av = sortKey === 'customerName' ? a.customerName.toLowerCase() : (a[sortKey] ?? 0)
+      const bv = sortKey === 'customerName' ? b.customerName.toLowerCase() : (b[sortKey] ?? 0)
+      if (av < bv) return sortDir === 'asc' ? -1 : 1
+      if (av > bv) return sortDir === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [customers, search, sortKey, sortDir])
+
   async function exportExcel() {
     setExporting(true)
     setExportError(null)
@@ -943,27 +971,8 @@ function TabProfit() {
     </div>
   )
 
-  const sum       = data?.summary || {}
-  const customers = data?.customers || []
-  const missing   = data?.skusMissingCost || []
-
-  // Sorting/filtering only need to redo when the underlying data, search text,
-  // or sort key/direction change -- NOT when a row is expanded/collapsed.
-  // Without this memo, every expand/collapse click re-sorts and rebuilds the
-  // whole ~700+ row array (and its JSX) on every render, which is the main
-  // source of the click-to-expand lag.
-  const sorted = useMemo(() => {
-    const filtered = search
-      ? customers.filter(c => c.customerName.toLowerCase().includes(search.toLowerCase()))
-      : customers
-    return [...filtered].sort((a, b) => {
-      const av = sortKey === 'customerName' ? a.customerName.toLowerCase() : (a[sortKey] ?? 0)
-      const bv = sortKey === 'customerName' ? b.customerName.toLowerCase() : (b[sortKey] ?? 0)
-      if (av < bv) return sortDir === 'asc' ? -1 : 1
-      if (av > bv) return sortDir === 'asc' ? 1 : -1
-      return 0
-    })
-  }, [customers, search, sortKey, sortDir])
+  const sum     = data?.summary || {}
+  const missing = data?.skusMissingCost || []
 
   const toggleSort = (key) => {
     if (sortKey === key) {
