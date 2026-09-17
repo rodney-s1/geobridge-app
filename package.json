@@ -1,6 +1,6 @@
 {
   "name": "geobridge-app",
-  "version": "1.0.20",
+  "version": "1.0.21",
   "description": "GeoBridge Invoicing Suite - Geotab MyAdmin to QuickBooks Bridge",
   "main": "electron/main.js",
   "scripts": {
