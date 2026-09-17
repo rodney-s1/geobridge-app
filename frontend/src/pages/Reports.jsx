@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Fragment } from 'react'
 
 const API = 'http://127.0.0.1:8001'
 
@@ -737,6 +737,16 @@ function TabProfit() {
   const [showMissing, setShowMissing] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [exportError, setExportError] = useState(null)
+  const [expanded, setExpanded] = useState(() => new Set())
+
+  const toggleExpanded = (customerName) => {
+    setExpanded(prev => {
+      const next = new Set(prev)
+      if (next.has(customerName)) next.delete(customerName)
+      else next.add(customerName)
+      return next
+    })
+  }
 
   const load = useCallback(() => {
     setLoading(true)
@@ -944,40 +954,111 @@ function TabProfit() {
               {sorted.length === 0 && (
                 <tr><td colSpan={7} className="px-4 py-8 text-center text-gray-500">No customers found</td></tr>
               )}
-              {sorted.map((c, i) => (
-                <tr key={i} className="border-t border-gray-800 hover:bg-gray-800/40">
-                  <td className="px-4 py-2.5 font-medium text-gray-200 max-w-xs truncate" title={c.customerName}>
-                    {c.customerName}
-                  </td>
-                  <td className="px-4 py-2.5 text-right text-gray-400 font-mono">{fmtN(c.deviceQty)}</td>
-                  <td className="px-4 py-2.5 text-right font-mono text-blue-300">{fmt$(c.revenue)}</td>
-                  <td className="px-4 py-2.5 text-right font-mono text-red-300">{fmt$(c.cost)}</td>
-                  <td className={`px-4 py-2.5 text-right font-mono font-semibold ${
-                    c.profit >= 0 ? 'text-green-400' : 'text-red-400'
-                  }`}>
-                    {fmt$(c.profit)}
-                  </td>
-                  <td className={`px-4 py-2.5 text-right font-mono ${
-                    c.marginPct >= 0 ? 'text-gray-300' : 'text-red-400'
-                  }`}>
-                    {c.marginPct}%
-                  </td>
-                  <td className="px-4 py-2.5">
-                    {c.costIncomplete ? (
-                      <span className="px-2 py-0.5 rounded-full text-xs bg-amber-500/20
-                                       text-amber-300 border border-amber-500/30"
-                            title={c.incompleteSkus.join(', ')}>
-                        Incomplete
-                      </span>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-full text-xs bg-green-500/15
-                                       text-green-400 border border-green-500/25">
-                        Complete
-                      </span>
+              {sorted.map((c, i) => {
+                const isOpen = expanded.has(c.customerName)
+                const lines = c.lines || []
+                return (
+                  <Fragment key={i}>
+                    <tr
+                      onClick={() => toggleExpanded(c.customerName)}
+                      className="border-t border-gray-800 hover:bg-gray-800/40 cursor-pointer">
+                      <td className="px-4 py-2.5 font-medium text-gray-200 max-w-xs truncate">
+                        <span className="inline-flex items-center gap-2">
+                          <span className={`text-gray-500 text-xs transition-transform inline-block ${isOpen ? 'rotate-90' : ''}`}>
+                            ▶
+                          </span>
+                          <span className="truncate" title={c.customerName}>{c.customerName}</span>
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-right text-gray-400 font-mono">{fmtN(c.deviceQty)}</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-blue-300">{fmt$(c.revenue)}</td>
+                      <td className="px-4 py-2.5 text-right font-mono text-red-300">{fmt$(c.cost)}</td>
+                      <td className={`px-4 py-2.5 text-right font-mono font-semibold ${
+                        c.profit >= 0 ? 'text-green-400' : 'text-red-400'
+                      }`}>
+                        {fmt$(c.profit)}
+                      </td>
+                      <td className={`px-4 py-2.5 text-right font-mono ${
+                        c.marginPct >= 0 ? 'text-gray-300' : 'text-red-400'
+                      }`}>
+                        {c.marginPct}%
+                      </td>
+                      <td className="px-4 py-2.5">
+                        {c.costIncomplete ? (
+                          <span className="px-2 py-0.5 rounded-full text-xs bg-amber-500/20
+                                           text-amber-300 border border-amber-500/30"
+                                title={c.incompleteSkus.join(', ')}>
+                            Incomplete
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-xs bg-green-500/15
+                                           text-green-400 border border-green-500/25">
+                            Complete
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                    {isOpen && (
+                      <tr className="border-t border-gray-800 bg-gray-900/60">
+                        <td colSpan={7} className="px-4 py-3">
+                          {lines.length === 0 ? (
+                            <p className="text-xs text-gray-500 py-2">No line items found for this customer.</p>
+                          ) : (
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="text-left text-gray-500 uppercase tracking-wide border-b border-gray-800">
+                                  <th className="px-3 py-1.5 font-medium">SKU</th>
+                                  <th className="px-3 py-1.5 font-medium text-right">Qty</th>
+                                  <th className="px-3 py-1.5 font-medium text-right">Price</th>
+                                  <th className="px-3 py-1.5 font-medium text-right">Cost</th>
+                                  <th className="px-3 py-1.5 font-medium text-right">Revenue</th>
+                                  <th className="px-3 py-1.5 font-medium text-right">Profit</th>
+                                  <th className="px-3 py-1.5 font-medium text-right">Cost Data</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {lines.map((l, j) => (
+                                  <tr key={j} className="border-b border-gray-800/60 last:border-b-0">
+                                    <td className="px-3 py-1.5 font-mono text-gray-300 max-w-xs truncate" title={l.skuKey}>
+                                      {l.skuKey}
+                                    </td>
+                                    <td className="px-3 py-1.5 text-right text-gray-400 font-mono">{fmtN(l.qty)}</td>
+                                    <td className="px-3 py-1.5 text-right font-mono text-blue-300">{fmt$(l.price)}</td>
+                                    <td className="px-3 py-1.5 text-right font-mono text-red-300">
+                                      {l.costIncomplete ? (
+                                        <span className="text-amber-400" title="No cost data for this SKU">—</span>
+                                      ) : fmt$(l.cost)}
+                                    </td>
+                                    <td className="px-3 py-1.5 text-right font-mono text-blue-200">{fmt$(l.revenue)}</td>
+                                    <td className={`px-3 py-1.5 text-right font-mono font-semibold ${
+                                      l.profit >= 0 ? 'text-green-400' : 'text-red-400'
+                                    }`}>
+                                      {fmt$(l.profit)}
+                                    </td>
+                                    <td className="px-3 py-1.5 text-right">
+                                      {l.costIncomplete ? (
+                                        <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-amber-500/20
+                                                         text-amber-300 border border-amber-500/30">
+                                          Incomplete
+                                        </span>
+                                      ) : (
+                                        <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-green-500/15
+                                                         text-green-400 border border-green-500/25">
+                                          Complete
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+                        </td>
+                      </tr>
                     )}
-                  </td>
-                </tr>
-              ))}
+                  </Fragment>
+                )
+              })}
             </tbody>
           </table>
         </div>
