@@ -533,6 +533,18 @@ async def get_reports_summary():
 # GET /api/reports/profit
 # ═══════════════════════════════════════════════════════════════════════════
 
+def _profit_excluded_sku_set() -> set:
+    """
+    SKUs the user has chosen to hide entirely from the Profit report (both
+    the per-customer breakdown and the summary totals) via Settings ->
+    Profit Excluded SKUs. Stored independently of QB Authoritative SKUs
+    (which only affects Reconciliation) and cost overrides -- excluding a
+    SKU here has no effect on any other report.
+    """
+    data = _load(os.path.join(_DATA_DIR, "profit_excluded_skus.json"), [])
+    return {e["skuKey"] for e in data if e.get("skuKey")}
+
+
 def _build_cost_index() -> Dict[str, Optional[float]]:
     """
     skuKey -> cost, or None if this SKU has never had cost data confirmed
@@ -841,6 +853,14 @@ def _compute_profit_report() -> dict:
     profit is a pure revenue-vs-cost calculation per invoice line and every
     billed SKU should count toward it.
 
+    The ONE exception: SKUs explicitly added to the "Profit Excluded SKUs"
+    list (Settings -> Profit Excluded SKUs, profit_excluded_skus.json) are
+    skipped entirely here -- they never appear in a customer's line list and
+    never contribute to revenue/cost/profit totals. This is independent of
+    QB Authoritative SKUs / Reconciliation and has no effect on any other
+    report. A customer whose only invoice lines are all excluded SKUs simply
+    won't appear in the Profit report at all for that period.
+
     Shared by both GET /api/reports/profit (JSON, for the UI) and
     GET /api/reports/profit/export (Excel workbook) so the two never drift.
     """
@@ -856,6 +876,7 @@ def _compute_profit_report() -> dict:
     ovr_index, catalog_index = _build_price_index()
     cost_index      = _build_cost_index()
     cost_ovr_index  = _build_cost_override_index()
+    excluded_skus   = _profit_excluded_sku_set()
     catalog_cat = {s["skuKey"]: s.get("category") or "" for s in catalog}
 
     # Aggregate incomplete-cost SKUs across the whole report (for the top-level
@@ -868,6 +889,8 @@ def _compute_profit_report() -> dict:
         sku_key = row.get("skuKey") or ""
         qty     = int(row.get("qbQty") or 0)
         if not cname or not sku_key or qty <= 0:
+            continue
+        if sku_key in excluded_skus:
             continue
 
         price = _resolve_monthly_rate(cname, sku_key, ovr_index, catalog_index)

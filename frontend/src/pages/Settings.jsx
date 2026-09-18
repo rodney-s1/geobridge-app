@@ -2108,6 +2108,270 @@ function QbAuthSkusTab({ authSkus, catalog, onRefresh }) {
 
 
 // ═══════════════════════════════════════════════════════════════════════════════
+//  TAB — Profit Excluded SKUs
+//  SKUs listed here are hidden entirely from the Profit report (per-customer
+//  breakdown AND summary totals). Independent of QB Authoritative SKUs
+//  (Reconciliation-only) and cost overrides — has no effect on any other
+//  report. Backed by profit_excluded_skus.json.
+// ═══════════════════════════════════════════════════════════════════════════════
+function ProfitExcludedSkusTab({ excludedSkus, catalog, onRefresh }) {
+  const [skuKey,      setSkuKey]      = useState('')
+  const [notes,       setNotes]       = useState('')
+  const [saving,      setSaving]      = useState(false)
+  const [error,       setError]       = useState(null)
+  const [search,      setSearch]      = useState('')
+  // Combobox state
+  const [inputText,   setInputText]   = useState('')
+  const [dropOpen,    setDropOpen]    = useState(false)
+  const comboRef = useRef(null)
+
+  // Sorted unique SKU keys from catalog — used as dropdown options
+  const catalogOptions = [...new Set(
+    (catalog || []).map(s => s.skuKey).filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b))
+
+  // Options filtered by whatever the user has typed
+  const comboFiltered = inputText.trim()
+    ? catalogOptions.filter(k => k.toLowerCase().includes(inputText.toLowerCase()))
+    : catalogOptions
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function onDown(e) {
+      if (comboRef.current && !comboRef.current.contains(e.target)) setDropOpen(false)
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [])
+
+  function selectOption(val) {
+    setSkuKey(val)
+    setInputText(val)
+    setDropOpen(false)
+  }
+
+  const filtered = (excludedSkus || []).filter(e => {
+    const q = search.toLowerCase()
+    return !q
+      || (e.skuKey || '').toLowerCase().includes(q)
+      || (e.notes  || '').toLowerCase().includes(q)
+  })
+
+  async function handleAdd(ev) {
+    ev.preventDefault()
+    const key = skuKey.trim()
+    if (!key) return
+    setSaving(true); setError(null)
+    try {
+      const res = await fetch(`${API}/api/settings/profit-excluded-skus`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skuKey: key, notes }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.detail || `HTTP ${res.status}`)
+      }
+      setSkuKey(''); setInputText(''); setNotes('')
+      await onRefresh()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function handleDelete(key) {
+    try {
+      await fetch(`${API}/api/settings/profit-excluded-skus/${encodeURIComponent(key)}`, {
+        method: 'DELETE',
+      })
+      await onRefresh()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+
+      {/* ── Info banner ──────────────────────────────────────────── */}
+      <div className="bg-slate-800/60 border border-slate-700 rounded-xl px-4 py-3 text-sm text-slate-400 leading-relaxed">
+        SKUs listed here are <span className="text-amber-400 font-medium">hidden entirely from the Profit report</span> —
+        their invoice lines are excluded from both the per-customer breakdown and the summary totals
+        (revenue, cost, profit, margin). Use this for loaner devices, internal test lines, or anything
+        billed in QuickBooks that shouldn't count toward profit numbers. This has no effect on any other
+        report (Revenue, Reconciliation, etc.) — only the Profit report is affected.
+      </div>
+
+      {/* ── Add form ─────────────────────────────────────────────── */}
+      <form onSubmit={handleAdd}
+        className="bg-slate-800 border border-slate-700 rounded-xl p-5 space-y-4">
+        <h3 className="text-sm font-semibold text-slate-200 uppercase tracking-wide">
+          Add / Update Excluded SKU
+        </h3>
+
+        {error && (
+          <div className="text-sm text-red-400 bg-red-900/30 border border-red-800 rounded-lg px-3 py-2">
+            {error}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* SKU key — searchable combobox from catalog, also accepts free-text */}
+          <div className="flex flex-col gap-1 sm:col-span-1" ref={comboRef}>
+            <label className="text-xs text-slate-400 font-medium">QB SKU Key *</label>
+            <div className="relative">
+              <input
+                value={inputText}
+                onChange={e => {
+                  setInputText(e.target.value)
+                  setSkuKey(e.target.value)   // allow free-text too
+                  setDropOpen(true)
+                }}
+                onFocus={() => setDropOpen(true)}
+                placeholder="Search or type a SKU…"
+                autoComplete="off"
+                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm
+                  text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500 pr-8"
+              />
+              {/* chevron toggle */}
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => setDropOpen(v => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500
+                  hover:text-slate-300 transition-colors"
+              >
+                <svg className={`w-4 h-4 transition-transform ${dropOpen ? 'rotate-180' : ''}`}
+                  viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10
+                    11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0
+                    01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+                </svg>
+              </button>
+
+              {/* dropdown list */}
+              {dropOpen && (
+                <ul className="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto
+                  bg-slate-900 border border-slate-600 rounded-lg shadow-xl text-sm">
+                  {comboFiltered.length === 0 ? (
+                    <li className="px-3 py-2 text-slate-500 italic">No matches — will save as typed</li>
+                  ) : (
+                    comboFiltered.map(opt => (
+                      <li
+                        key={opt}
+                        onMouseDown={() => selectOption(opt)}
+                        className={`px-3 py-2 cursor-pointer truncate transition-colors
+                          hover:bg-slate-700 hover:text-white
+                          ${ skuKey === opt ? 'bg-slate-700/60 text-amber-300' : 'text-slate-200' }`}
+                        title={opt}
+                      >
+                        {opt}
+                      </li>
+                    ))
+                  )}
+                </ul>
+              )}
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div className="flex flex-col gap-1 sm:col-span-1">
+            <label className="text-xs text-slate-400 font-medium">Notes</label>
+            <input
+              value={notes}
+              onChange={e => setNotes(e.target.value)}
+              placeholder="Why is this excluded from Profit?"
+              className="bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-sm
+                text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500"
+            />
+          </div>
+
+          {/* Submit */}
+          <div className="flex flex-col gap-1 justify-end">
+            <button
+              type="submit"
+              disabled={saving || !skuKey.trim()}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-40
+                text-white text-sm font-medium rounded-lg transition-colors"
+            >
+              {saving ? 'Saving…' : 'Save SKU'}
+            </button>
+          </div>
+        </div>
+      </form>
+
+      {/* ── Table ────────────────────────────────────────────────── */}
+      <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+        {/* Table toolbar */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
+          <span className="text-sm font-semibold text-slate-200">
+            Profit Excluded SKUs
+            <span className="ml-2 text-xs text-slate-500 font-normal">
+              ({(excludedSkus || []).length} entries)
+            </span>
+          </span>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm">🔍</span>
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Filter…"
+              className="pl-8 pr-7 py-1.5 bg-slate-900 border border-slate-600 rounded-lg
+                text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-blue-500 w-44"
+            />
+            {search && (
+              <button
+                onClick={() => setSearch('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500
+                  hover:text-slate-200 transition-colors leading-none"
+                title="Clear"
+              >✕</button>
+            )}
+          </div>
+        </div>
+
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-700 bg-slate-900/50">
+              <th className="px-4 py-2.5 text-left text-xs text-slate-400 font-semibold uppercase tracking-wide">QB SKU Key</th>
+              <th className="px-4 py-2.5 text-left text-xs text-slate-400 font-semibold uppercase tracking-wide">Notes</th>
+              <th className="px-4 py-2.5 w-12" />
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={3} className="px-4 py-8 text-center text-slate-500 text-sm">
+                  {search ? 'No entries match your filter.' : 'No SKUs excluded from Profit report.'}
+                </td>
+              </tr>
+            )}
+            {filtered.map(e => (
+              <tr key={e.skuKey} className="border-b border-slate-700/50 hover:bg-slate-700/30 group transition-colors">
+                <td className="px-4 py-2.5">
+                  <Badge color="red">{e.skuKey}</Badge>
+                </td>
+                <td className="px-4 py-2.5 text-slate-400 text-xs max-w-sm truncate" title={e.notes}>
+                  {e.notes || <span className="text-slate-700">—</span>}
+                </td>
+                <td className="px-4 py-2.5 text-right">
+                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <DeleteBtn small onConfirm={() => handleDelete(e.skuKey)} />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════════════
 //  TAB — S3 Sync
 //  Admin management (add/remove usernames), force pull/push, re-enter creds.
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -2517,13 +2781,14 @@ export default function Settings({ deepLink = null, onDeepLinkConsumed, sessionD
   const [loading,        setLoading]        = useState(true)
   const [prefixMappings, setPrefixMappings] = useState([])
   const [authSkus,        setAuthSkus]        = useState([])
+  const [excludedSkus,    setExcludedSkus]    = useState([])
 
   const [fetchError, setFetchError] = useState(null)
 
   const fetchAll = useCallback(async () => {
     setFetchError(null)
     // Use allSettled so one failing endpoint doesn't cancel the others
-    const [catR, mapR, ovrR, crpR, unmR, sumR, sprR, authR] = await Promise.allSettled([
+    const [catR, mapR, ovrR, crpR, unmR, sumR, sprR, authR, excR] = await Promise.allSettled([
       fetch(`${API}/api/settings/sku-catalog`),
       fetch(`${API}/api/settings/sku-mappings`),
       fetch(`${API}/api/settings/customer-overrides`),
@@ -2532,6 +2797,7 @@ export default function Settings({ deepLink = null, onDeepLinkConsumed, sessionD
       fetch(`${API}/api/settings/summary`),
       fetch(`${API}/api/settings/serial-prefix-mappings`),
       fetch(`${API}/api/settings/qb-authoritative-skus`),
+      fetch(`${API}/api/settings/profit-excluded-skus`),
     ])
     const errors = []
     try {
@@ -2567,6 +2833,10 @@ export default function Settings({ deepLink = null, onDeepLinkConsumed, sessionD
     try {
       if (authR.status === 'fulfilled' && authR.value.ok) setAuthSkus(await authR.value.json())
       // qb authoritative skus non-critical
+    } catch(e) { /* non-critical */ }
+    try {
+      if (excR.status === 'fulfilled' && excR.value.ok) setExcludedSkus(await excR.value.json())
+      // profit excluded skus non-critical
     } catch(e) { /* non-critical */ }
     if (errors.length) setFetchError(`Fetch errors — ${errors.join(', ')}`)
     setLoading(false)
@@ -2636,6 +2906,7 @@ export default function Settings({ deepLink = null, onDeepLinkConsumed, sessionD
         <TabBtn active={activeTab === 'overrides'}     onClick={() => setActiveTab('overrides')}>Customer Prices</TabBtn>
         <TabBtn active={activeTab === 'serialPrefixes'} onClick={() => setActiveTab('serialPrefixes')}>Serial Prefixes</TabBtn>
         <TabBtn active={activeTab === 'qbAuthSkus'}    onClick={() => setActiveTab('qbAuthSkus')}>QB Auth SKUs</TabBtn>
+        <TabBtn active={activeTab === 'profitExcludedSkus'} onClick={() => setActiveTab('profitExcludedSkus')}>Profit Excluded SKUs</TabBtn>
         <TabBtn active={activeTab === 'import'}        onClick={() => setActiveTab('import')}>Import CSV</TabBtn>
         <TabBtn active={activeTab === 's3sync'}        onClick={() => setActiveTab('s3sync')}>☁ S3 Sync</TabBtn>
       </div>
@@ -2657,6 +2928,7 @@ export default function Settings({ deepLink = null, onDeepLinkConsumed, sessionD
           {activeTab === 'overrides'      && <CustomerOverridesTab overrides={overrides} catalog={catalog} onRefresh={fetchAll} />}
           {activeTab === 'serialPrefixes' && <SerialPrefixTab prefixMappings={prefixMappings} catalog={catalog} onRefresh={fetchAll} />}
           {activeTab === 'qbAuthSkus'    && <QbAuthSkusTab authSkus={authSkus} catalog={catalog} onRefresh={fetchAll} />}
+          {activeTab === 'profitExcludedSkus' && <ProfitExcludedSkusTab excludedSkus={excludedSkus} catalog={catalog} onRefresh={fetchAll} />}
           {activeTab === 'import'         && <ImportCsvTab        onRefresh={fetchAll} />}
           {activeTab === 's3sync'         && <S3SyncTab sessionData={sessionData} />}
         </>

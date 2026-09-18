@@ -21,6 +21,10 @@ Endpoints:
   POST /api/settings/customer-overrides            upsert {customerName, skuKey, price}
   DELETE /api/settings/customer-overrides/{id}     remove override by id (customerName|skuKey)
 
+  GET  /api/settings/profit-excluded-skus          list SKUs hidden from the Profit report
+  POST /api/settings/profit-excluded-skus          upsert {skuKey, notes}
+  DELETE /api/settings/profit-excluded-skus/{sku_key}  remove a SKU from the exclusion list
+
   POST /api/settings/import-qb-skus           parse uploaded QB CSV -> populate sku_catalog
   GET  /api/settings/unmapped-rate-plans       rate plan codes seen in MyAdmin with no mapping
 """
@@ -57,6 +61,7 @@ QB_QUANTITIES_FILE          = os.path.join(_DATA_DIR, "qb_invoice_quantities.jso
 MYADMIN_CACHE_FILE          = os.path.join(_DATA_DIR, "myadmin_cache.json")
 SERIAL_PREFIX_FILE          = os.path.join(_DATA_DIR, "serial_prefix_mappings.json")
 QB_AUTH_SKUS_FILE           = os.path.join(_DATA_DIR, "qb_authoritative_skus.json")
+PROFIT_EXCLUDED_SKUS_FILE   = os.path.join(_DATA_DIR, "profit_excluded_skus.json")
 
 
 def _load(path, default):
@@ -112,6 +117,7 @@ def _cust_mappings()    -> list:
     return data
 def _overrides()     -> list: return _load(CUSTOMER_OVERRIDES_FILE,[])
 def _myadmin_cache() -> dict: return _load(MYADMIN_CACHE_FILE,     {})
+def _profit_excluded_skus() -> list: return _load(PROFIT_EXCLUDED_SKUS_FILE, [])
 
 
 def _normalize_mapping(m: dict) -> dict:
@@ -583,6 +589,54 @@ async def delete_qb_auth_sku(sku_key: str):
     before = len(data)
     data = [e for e in data if e["skuKey"] != sku_key]
     _save(QB_AUTH_SKUS_FILE, data)
+    return {"success": True, "removed": before - len(data)}
+
+
+# ================================================================================
+#  PROFIT REPORT EXCLUDED SKUS  (skuKey + optional notes)
+#  SKUs listed here are omitted entirely from the Profit report (both the
+#  per-customer breakdown and the summary totals) -- e.g. loaner devices,
+#  internal test lines, or anything that skews profit numbers but isn't a
+#  real billed line the user wants included. Stored in
+#  profit_excluded_skus.json so it can be maintained from the Settings UI
+#  without touching reports.py. Purely additive/independent of QB
+#  Authoritative SKUs (reconciliation) and cost overrides above --
+#  excluding a SKU here has no effect on Reconciliation or Revenue reports.
+# ================================================================================
+
+class ProfitExcludedSkuUpsert(BaseModel):
+    skuKey: str
+    notes:  str = ""
+
+
+@router.get("/settings/profit-excluded-skus")
+async def list_profit_excluded_skus():
+    data = _profit_excluded_skus()
+    return sorted(data, key=lambda x: x.get("skuKey", "").lower())
+
+
+@router.post("/settings/profit-excluded-skus")
+async def upsert_profit_excluded_sku(body: ProfitExcludedSkuUpsert):
+    sku_key = body.skuKey.strip()
+    if not sku_key:
+        raise HTTPException(status_code=400, detail="skuKey must not be empty")
+    data = _profit_excluded_skus()
+    existing = next((e for e in data if e["skuKey"] == sku_key), None)
+    entry = {"skuKey": sku_key, "notes": body.notes.strip()}
+    if existing:
+        existing.update(entry)
+    else:
+        data.append(entry)
+    _save(PROFIT_EXCLUDED_SKUS_FILE, data)
+    return {"success": True, "entry": entry}
+
+
+@router.delete("/settings/profit-excluded-skus/{sku_key:path}")
+async def delete_profit_excluded_sku(sku_key: str):
+    data = _profit_excluded_skus()
+    before = len(data)
+    data = [e for e in data if e["skuKey"] != sku_key]
+    _save(PROFIT_EXCLUDED_SKUS_FILE, data)
     return {"success": True, "removed": before - len(data)}
 
 
